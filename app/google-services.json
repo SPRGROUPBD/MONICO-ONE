@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "288838128044",
+    "firebase_url": "https://kushtia-depot-default-rtdb.firebaseio.com",
+    "project_id": "kushtia-depot",
+    "storage_bucket": "kushtia-depot.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:288838128044:android:a58b449ec5bacad5846a09",
+        "android_client_info": {
+          "package_name": "filed.pro.com.bd"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLM8SjXVPIr8o7-I-u4hdk5rdcJCq1C40"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
