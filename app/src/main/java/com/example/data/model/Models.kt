@@ -69,3 +69,16 @@ data class AdvertisementItem(
     val code: String = "",
     val status: String = "active"
 )
+
+data class NotificationItem(
+    val id: String = "",
+    val title: String = "",
+    val message: String = "",
+    val timestamp: Long = System.currentTimeMillis(),
+    val dateFormatted: String = "",
+    val targetRole: String = "ALL", // "ALL", "MPO", "AM", "RSM", "PMD", "DIC", etc.
+    val type: String = "info", // "info", "urgent", "update", "notice", "offer"
+    val senderName: String = "Super Admin",
+    val readBy: Map<String, Boolean> = emptyMap()
+)
+

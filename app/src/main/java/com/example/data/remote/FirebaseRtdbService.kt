@@ -528,4 +528,100 @@ class FirebaseRtdbService {
             false
         }
     }
+
+    suspend fun fetchNotifications(): List<NotificationItem> = withContext(Dispatchers.IO) {
+        val list = mutableListOf<NotificationItem>()
+        try {
+            val req = Request.Builder().url("$baseUrl/notifications.json").get().build()
+            val res = client.newCall(req).execute()
+            val body = res.body?.string() ?: return@withContext list
+            if (body == "null" || body.isBlank()) return@withContext list
+
+            val json = JSONObject(body)
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val obj = json.optJSONObject(key) ?: continue
+
+                val readMap = mutableMapOf<String, Boolean>()
+                val readObj = obj.optJSONObject("readBy")
+                if (readObj != null) {
+                    val rKeys = readObj.keys()
+                    while (rKeys.hasNext()) {
+                        val rk = rKeys.next()
+                        readMap[rk] = readObj.optBoolean(rk, true)
+                    }
+                }
+
+                list.add(
+                    NotificationItem(
+                        id = key,
+                        title = obj.optString("title", ""),
+                        message = obj.optString("message", ""),
+                        timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
+                        dateFormatted = obj.optString("dateFormatted", ""),
+                        targetRole = obj.optString("targetRole", "ALL"),
+                        type = obj.optString("type", "info"),
+                        senderName = obj.optString("senderName", "Super Admin"),
+                        readBy = readMap
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        list.sortedByDescending { it.timestamp }
+    }
+
+    suspend fun saveNotification(item: NotificationItem): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val json = JSONObject()
+                .put("title", item.title)
+                .put("message", item.message)
+                .put("timestamp", item.timestamp)
+                .put("dateFormatted", item.dateFormatted)
+                .put("targetRole", item.targetRole)
+                .put("type", item.type)
+                .put("senderName", item.senderName)
+
+            val readObj = JSONObject()
+            item.readBy.forEach { (k, v) -> readObj.put(k, v) }
+            json.put("readBy", readObj)
+
+            val targetUrl = if (item.id.isNotEmpty()) "$baseUrl/notifications/${item.id}.json" else "$baseUrl/notifications.json"
+            val req = if (item.id.isNotEmpty()) {
+                Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
+            } else {
+                Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
+            }
+            client.newCall(req).execute().isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    suspend fun deleteNotification(id: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder().url("$baseUrl/notifications/$id.json").delete().build()
+            client.newCall(req).execute().isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    suspend fun markNotificationRead(notificationId: String, empId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url("$baseUrl/notifications/$notificationId/readBy/$empId.json")
+                .put("true".toRequestBody(jsonMedia))
+                .build()
+            client.newCall(req).execute().isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 }
+

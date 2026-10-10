@@ -68,14 +68,41 @@ fun DashboardScreen(
     val trainingCards by repository.trainingCards.collectAsState()
     val targetSheets by repository.targetSheets.collectAsState()
     val sidebarMenus by repository.sidebarMenus.collectAsState()
+    val notifications by repository.notifications.collectAsState()
     val lastSyncTime by repository.lastSyncTime.collectAsState()
     val isSyncing by repository.isSyncing.collectAsState()
 
     var showProfileDialog by remember { mutableStateOf(false) }
+    var showNotificationsDialog by remember { mutableStateOf(false) }
     var activePopupNotice by remember { mutableStateOf<PopupNotice?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
     var selectedMonth by remember { mutableStateOf("ALL") }
+
+    var readNotificationIds by remember {
+        mutableStateOf(repository.getReadNotificationIds(currentUser?.employeeId ?: ""))
+    }
+
+    LaunchedEffect(currentUser) {
+        val emp = currentUser?.employeeId ?: ""
+        readNotificationIds = repository.getReadNotificationIds(emp)
+    }
+
+    val userRole = (currentUser?.role ?: "MPO").trim().uppercase()
+    val isSuperAdmin = userRole == "SUPER_ADMIN" || userRole == "SUPER ADMIN"
+    val isDIC = userRole == "DIC"
+
+    val unreadNotificationCount = remember(notifications, currentUser, readNotificationIds) {
+        val emp = currentUser?.employeeId?.uppercase() ?: ""
+        val role = userRole
+        notifications.count { notif ->
+            val matches = notif.targetRole.equals("ALL", ignoreCase = true) ||
+                    notif.targetRole.contains(role, ignoreCase = true) ||
+                    notif.targetRole.contains("PALL", ignoreCase = true)
+            val isRead = readNotificationIds.contains(notif.id) || (notif.readBy[emp] == true)
+            matches && !isRead
+        }
+    }
 
     // Initial popup display: Active hole sobar app open korle dekhte pabe, r Off hole dekha jabe na
     LaunchedEffect(popups) {
@@ -84,10 +111,6 @@ fun DashboardScreen(
             activePopupNotice = active
         }
     }
-
-    val userRole = (currentUser?.role ?: "MPO").trim().uppercase()
-    val isSuperAdmin = userRole == "SUPER_ADMIN" || userRole == "SUPER ADMIN"
-    val isDIC = userRole == "DIC"
 
     // Role restriction: MPO, AM, RSM, TM, DA, ADIC cannot see or access sidemenu
     val canViewSidebar = isSuperAdmin || isDIC
@@ -325,6 +348,43 @@ fun DashboardScreen(
                                             contentDescription = "Toggle theme",
                                             modifier = Modifier.size(20.dp)
                                         )
+                                    }
+
+                                    // Notification Icon with pending count badge (disappears when 0/read)
+                                    IconButton(
+                                        onClick = { showNotificationsDialog = true },
+                                        modifier = Modifier.size(34.dp).testTag("header_notifications_button")
+                                    ) {
+                                        if (unreadNotificationCount > 0) {
+                                            BadgedBox(
+                                                badge = {
+                                                    Badge(
+                                                        containerColor = MaterialTheme.colorScheme.error,
+                                                        contentColor = MaterialTheme.colorScheme.onError
+                                                    ) {
+                                                        Text(
+                                                            text = if (unreadNotificationCount > 99) "99+" else "$unreadNotificationCount",
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+                                                }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Notifications,
+                                                    contentDescription = "Notifications",
+                                                    tint = MonicoBlue,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.NotificationsNone,
+                                                contentDescription = "Notifications",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
                                     }
 
                                     if (isSuperAdmin || isDIC) {
@@ -703,6 +763,41 @@ fun DashboardScreen(
         UserPopupDialog(
             popup = popup,
             onDismiss = { activePopupNotice = null }
+        )
+    }
+
+    // Notifications Dialog
+    if (showNotificationsDialog) {
+        NotificationsDialog(
+            currentUser = currentUser,
+            notifications = notifications,
+            readNotificationIds = readNotificationIds,
+            onDismiss = { showNotificationsDialog = false },
+            onMarkAsRead = { id ->
+                val emp = currentUser?.employeeId ?: ""
+                scope.launch {
+                    repository.markNotificationAsRead(id, emp)
+                    readNotificationIds = repository.getReadNotificationIds(emp)
+                }
+            },
+            onMarkAllAsRead = {
+                val emp = currentUser?.employeeId ?: ""
+                scope.launch {
+                    repository.markAllNotificationsAsRead(emp)
+                    readNotificationIds = repository.getReadNotificationIds(emp)
+                }
+            },
+            onSendNotification = { title, message, targetRole, type ->
+                scope.launch {
+                    repository.sendNotification(
+                        title = title,
+                        message = message,
+                        targetRole = targetRole,
+                        type = type,
+                        senderName = currentUser?.fullName ?: "Super Admin"
+                    )
+                }
+            }
         )
     }
 }

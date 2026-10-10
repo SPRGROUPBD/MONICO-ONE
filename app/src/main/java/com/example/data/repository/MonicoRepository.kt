@@ -52,6 +52,9 @@ class MonicoRepository(context: Context) {
     private val _allUsers = MutableStateFlow<List<User>>(emptyList())
     val allUsers: StateFlow<List<User>> = _allUsers.asStateFlow()
 
+    private val _notifications = MutableStateFlow<List<NotificationItem>>(emptyList())
+    val notifications: StateFlow<List<NotificationItem>> = _notifications.asStateFlow()
+
     private val _lastSyncTime = MutableStateFlow("")
     val lastSyncTime: StateFlow<String> = _lastSyncTime.asStateFlow()
 
@@ -171,6 +174,30 @@ class MonicoRepository(context: Context) {
                 )
             )
         }
+        if (_notifications.value.isEmpty()) {
+            _notifications.value = listOf(
+                NotificationItem(
+                    id = "-N_WELCOME",
+                    title = "মনিকো ওয়ান প্ল্যাটফর্মে স্বাগতম!",
+                    message = "মাঠপর্যায়ের সকল অর্ডার, বোনাস শিট এবং সার্কুলার নিয়মিত আপডেট পেতে নোটিফিকেশন চেক করুন।",
+                    timestamp = System.currentTimeMillis() - 3600000L,
+                    dateFormatted = "আজ, ০১:০০ PM",
+                    targetRole = "ALL",
+                    type = "info",
+                    senderName = "Super Admin"
+                ),
+                NotificationItem(
+                    id = "-N_CIRCULAR",
+                    title = "মার্চ ২০২৬ নতুন সেলস পলিসি প্রকাশিত",
+                    message = "সকল ফিল্ড ফোর্সকে মার্চ মাসের নতুন বিক্রয় নির্দেশিকা এবং বোনাস নিয়মাবলি দেখার জন্য অনুরোধ করা যাচ্ছে।",
+                    timestamp = System.currentTimeMillis() - 7200000L,
+                    dateFormatted = "আজ, ১১:৩০ AM",
+                    targetRole = "ALL",
+                    type = "urgent",
+                    senderName = "Head Office Admin"
+                )
+            )
+        }
     }
 
     private fun getDefaultMenus(): List<MenuItem> {
@@ -278,6 +305,7 @@ class MonicoRepository(context: Context) {
                 val targetDeferred = async { service.fetchCards("product_target_sheets") }
                 val sideDeferred = async { service.fetchSidebarMenus() }
                 val usersDeferred = async { service.fetchUsers() }
+                val notifDeferred = async { service.fetchNotifications() }
 
                 val m = menusDeferred.await()
                 if (m.isNotEmpty()) {
@@ -307,6 +335,11 @@ class MonicoRepository(context: Context) {
 
                 val side = sideDeferred.await()
                 if (side.isNotEmpty()) _sidebarMenus.value = side
+
+                val notifs = notifDeferred.await()
+                if (notifs.isNotEmpty()) {
+                    _notifications.value = notifs
+                }
 
                 val u = usersDeferred.await()
                 if (u.isNotEmpty()) {
@@ -537,5 +570,101 @@ class MonicoRepository(context: Context) {
     suspend fun deleteUser(employeeId: String): Boolean {
         _allUsers.value = _allUsers.value.filterNot { it.employeeId.equals(employeeId, ignoreCase = true) }
         return service.deleteUser(employeeId)
+    }
+
+    fun getReadNotificationIds(empId: String): Set<String> {
+        if (empId.isBlank()) return emptySet()
+        return prefs.getStringSet("read_notifs_${empId.lowercase()}", emptySet()) ?: emptySet()
+    }
+
+    suspend fun markNotificationAsRead(id: String, empId: String) {
+        if (empId.isBlank() || id.isBlank()) return
+        val currentSet = getReadNotificationIds(empId).toMutableSet()
+        currentSet.add(id)
+        prefs.edit().putStringSet("read_notifs_${empId.lowercase()}", currentSet).apply()
+
+        // Also update in memory
+        val list = _notifications.value.toMutableList()
+        val idx = list.indexOfFirst { it.id == id }
+        if (idx != -1) {
+            val updatedRead = list[idx].readBy.toMutableMap()
+            updatedRead[empId.uppercase()] = true
+            list[idx] = list[idx].copy(readBy = updatedRead)
+            _notifications.value = list
+        }
+
+        withContext(Dispatchers.IO) {
+            service.markNotificationRead(id, empId.uppercase())
+        }
+    }
+
+    suspend fun markAllNotificationsAsRead(empId: String) {
+        if (empId.isBlank()) return
+        val currentSet = getReadNotificationIds(empId).toMutableSet()
+        val list = _notifications.value.map { notif ->
+            currentSet.add(notif.id)
+            val updatedRead = notif.readBy.toMutableMap()
+            updatedRead[empId.uppercase()] = true
+            notif.copy(readBy = updatedRead)
+        }
+        prefs.edit().putStringSet("read_notifs_${empId.lowercase()}", currentSet).apply()
+        _notifications.value = list
+
+        withContext(Dispatchers.IO) {
+            _notifications.value.forEach { notif ->
+                service.markNotificationRead(notif.id, empId.uppercase())
+            }
+        }
+    }
+
+    fun getUnreadNotificationCount(empId: String, role: String): Int {
+        if (empId.isBlank()) return 0
+        val readIds = getReadNotificationIds(empId)
+        val upperEmp = empId.uppercase()
+        val upperRole = role.uppercase()
+
+        return _notifications.value.count { notif ->
+            val matchesRole = notif.targetRole.equals("ALL", ignoreCase = true) ||
+                    notif.targetRole.contains(upperRole, ignoreCase = true) ||
+                    notif.targetRole.contains("PALL", ignoreCase = true)
+
+            val isRead = readIds.contains(notif.id) || (notif.readBy[upperEmp] == true)
+            matchesRole && !isRead
+        }
+    }
+
+    suspend fun sendNotification(
+        title: String,
+        message: String,
+        targetRole: String = "ALL",
+        type: String = "info",
+        senderName: String = "Super Admin"
+    ): Boolean {
+        val sdf = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
+        val formattedDate = sdf.format(Date())
+        val newId = "-N" + System.currentTimeMillis()
+
+        val newItem = NotificationItem(
+            id = newId,
+            title = title.trim(),
+            message = message.trim(),
+            timestamp = System.currentTimeMillis(),
+            dateFormatted = formattedDate,
+            targetRole = targetRole,
+            type = type,
+            senderName = senderName,
+            readBy = emptyMap()
+        )
+
+        val updated = mutableListOf(newItem)
+        updated.addAll(_notifications.value)
+        _notifications.value = updated
+
+        return service.saveNotification(newItem)
+    }
+
+    suspend fun deleteNotification(id: String): Boolean {
+        _notifications.value = _notifications.value.filter { it.id != id }
+        return service.deleteNotification(id)
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 val MonicoBlue = Color(0xFF2563EB)
 val MonicoBlueDark = Color(0xFF1D4ED8)
+val MonicoDarkBlue = Color(0xFF1E3A8A)
 val MonicoNavy = Color(0xFF1E3A8A)
 val MonicoCyan = Color(0xFF0284C7)
 val MonicoGreen = Color(0xFF16A34A)

@@ -57,7 +57,7 @@ fun AdminPanelScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("মেনু ফাইল (Grids)", "সাইডবার মেনু", "স্লাইডার", "নোটিশ", "পপআপ", "প্রোডাক্ট/ট্রেনিং", "ইউজার")
+    val tabs = listOf("মেনু ফাইল (Grids)", "সাইডবার মেনু", "স্লাইডার", "নোটিশ", "পপআপ", "প্রোডাক্ট/ট্রেনিং", "ইউজার", "নোটিফিকেশন")
 
     val menus by repository.menus.collectAsState()
     val sidebarMenus by repository.sidebarMenus.collectAsState()
@@ -68,6 +68,7 @@ fun AdminPanelScreen(
     val trainingCards by repository.trainingCards.collectAsState()
     val targetSheets by repository.targetSheets.collectAsState()
     val allUsers by repository.allUsers.collectAsState()
+    val notifications by repository.notifications.collectAsState()
     val isSyncing by repository.isSyncing.collectAsState()
 
     // Dialog control states
@@ -92,6 +93,8 @@ fun AdminPanelScreen(
 
     var editingUserItem by remember { mutableStateOf<User?>(null) }
     var showUserDialog by remember { mutableStateOf(false) }
+
+    var showSendNotificationDialog by remember { mutableStateOf(false) }
 
     // Delete confirmation state
     var itemToDelete by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
@@ -144,6 +147,7 @@ fun AdminPanelScreen(
                         4 -> { editingPopupItem = null; showPopupDialog = true }
                         5 -> { editingCardItem = null; showCardDialog = true }
                         6 -> { editingUserItem = null; showUserDialog = true }
+                        7 -> { showSendNotificationDialog = true }
                     }
                 },
                 containerColor = MonicoBlue,
@@ -305,6 +309,18 @@ fun AdminPanelScreen(
                             }
                         }
                     )
+                    7 -> AdminNotificationsTab(
+                        notifications = notifications,
+                        onAddNew = { showSendNotificationDialog = true },
+                        onDelete = { id ->
+                            itemToDelete = "এই নোটিফিকেশনটি মুছে ফেলতে চান?" to {
+                                scope.launch {
+                                    repository.deleteNotification(id)
+                                    snackbarHostState.showSnackbar("নোটিফিকেশন মুছে ফেলা হয়েছে।")
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -434,6 +450,30 @@ fun AdminPanelScreen(
                     repository.saveUser(updatedUser)
                     snackbarHostState.showSnackbar("ইউজার সংরক্ষিত হয়েছে।")
                     showUserDialog = false
+                }
+            }
+        )
+    }
+
+    // 8. Notification Broadcast Dialog (Super Admin)
+    if (showSendNotificationDialog) {
+        SendNotificationDialog(
+            onDismiss = { showSendNotificationDialog = false },
+            onSend = { title, message, targetRole, type ->
+                scope.launch {
+                    val success = repository.sendNotification(
+                        title = title,
+                        message = message,
+                        targetRole = targetRole,
+                        type = type,
+                        senderName = "Super Admin"
+                    )
+                    showSendNotificationDialog = false
+                    if (success) {
+                        snackbarHostState.showSnackbar("সকল ইউজারের কাছে নোটিফিকেশন সফলভাবে পাঠানো হয়েছে।")
+                    } else {
+                        snackbarHostState.showSnackbar("নোটিফিকেশন সেভ হয়েছে।")
+                    }
                 }
             }
         )
@@ -2311,3 +2351,222 @@ private fun AdminUsersTab(
         }
     }
 }
+
+@Composable
+private fun AdminNotificationsTab(
+    notifications: List<NotificationItem>,
+    onAddNew: () -> Unit,
+    onDelete: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(14.dp)
+    ) {
+        // Broadcast Info Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MonicoBlue.copy(alpha = 0.08f)),
+            shape = RoundedCornerShape(14.dp),
+            border = CardDefaults.outlinedCardBorder().copy(
+                brush = androidx.compose.ui.graphics.SolidColor(MonicoBlue.copy(alpha = 0.3f))
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MonicoBlue,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Campaign,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "সকল ইউজারকে নোটিফিকেশন ব্রডকাস্ট",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "মোট প্রেরিত: ${notifications.size} টি নোটিফিকেশন",
+                                fontSize = 11.5.sp,
+                                color = MonicoBlue
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = onAddNew,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
+                        modifier = Modifier.testTag("admin_send_new_notif_btn")
+                    ) {
+                        Icon(imageVector = Icons.Default.Send, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("নতুন পাঠান", fontSize = 12.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "সুপারঅ্যাডমিন হিসেবে যেকোনো নোটিশ, সার্কুলার বা জরুরি ঘোষণা সকল ইউজারের কাছে তাৎক্ষণিকভাবে পাঠাতে পারেন। ইউজারের হেডার নোটিফিকেশন আইকনে পেন্ডিং সংখ্যা প্রদর্শন হবে এবং পঠিত হলে স্বয়ংক্রিয়ভাবে মুছে যাবে।",
+                    fontSize = 11.5.sp,
+                    lineHeight = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (notifications.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsNone,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "কোনো নোটিফিকেশন এখনো প্রেরণ করা হয়নি।",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(notifications, key = { it.id }) { notif ->
+                    val (typeColor, typeIcon, typeLabel) = when (notif.type.lowercase()) {
+                        "urgent" -> Triple(MaterialTheme.colorScheme.error, Icons.Default.Warning, "জরুরি")
+                        "update" -> Triple(MonicoAmber, Icons.Default.Campaign, "আপডেট")
+                        "offer" -> Triple(MonicoGreen, Icons.Default.CheckCircle, "অফার")
+                        "notice" -> Triple(MonicoBlue, Icons.Default.Campaign, "নোটিশ")
+                        else -> Triple(MonicoBlue, Icons.Default.Info, "তথ্য")
+                    }
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = typeColor.copy(alpha = 0.15f),
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Icon(imageVector = typeIcon, contentDescription = null, tint = typeColor, modifier = Modifier.size(11.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Text(typeLabel, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = typeColor)
+                                        }
+                                    }
+
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                    ) {
+                                        Text(
+                                            text = "প্রাপক: ${if (notif.targetRole == "ALL") "সকল ইউজার (All)" else notif.targetRole}",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                IconButton(
+                                    onClick = { onDelete(notif.id) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MonicoRed,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = notif.title,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            if (notif.message.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = notif.message,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "সময়: ${if (notif.dateFormatted.isNotBlank()) notif.dateFormatted else "সম্প্রতি"}",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    text = "প্রেরক: ${notif.senderName}",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

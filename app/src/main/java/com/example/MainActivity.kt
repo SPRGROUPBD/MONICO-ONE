@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
 
             val currentUser by repository.currentUser.collectAsState()
             var currentScreen by remember { mutableStateOf<ScreenState>(ScreenState.Dashboard) }
+            var showSplash by remember { mutableStateOf(true) }
 
             var loginLoading by remember { mutableStateOf(false) }
             var loginError by remember { mutableStateOf<String?>(null) }
@@ -61,7 +62,13 @@ class MainActivity : ComponentActivity() {
 
             MyApplicationTheme(darkTheme = isDarkMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    if (currentUser == null) {
+                    if (showSplash) {
+                        SplashScreen(
+                            onFinish = {
+                                showSplash = false
+                            }
+                        )
+                    } else if (currentUser == null) {
                         LoginScreen(
                             isLoading = loginLoading,
                             errorMessage = loginError,
