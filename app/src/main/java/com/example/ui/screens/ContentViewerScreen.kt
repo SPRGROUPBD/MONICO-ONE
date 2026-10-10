@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -127,6 +129,16 @@ fun ContentViewerScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        webViewInstance?.zoomOut()
+                    }) {
+                        Icon(imageVector = Icons.Default.ZoomOut, contentDescription = "Zoom Out", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                    IconButton(onClick = {
+                        webViewInstance?.zoomIn()
+                    }) {
+                        Icon(imageVector = Icons.Default.ZoomIn, contentDescription = "Zoom In", tint = MaterialTheme.colorScheme.onSurface)
+                    }
                     IconButton(onClick = {
                         hasError = false
                         webViewInstance?.reload()

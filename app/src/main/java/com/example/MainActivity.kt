@@ -70,23 +70,41 @@ class MainActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
             val context = LocalContext.current
 
-            // Notification permission request on startup (Android 13+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val permissionLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestPermission()
-                ) { isGranted ->
-                    if (isGranted) {
-                        NotificationHelper.initNotificationChannel(applicationContext)
+            // App permissions request on startup (Location, Notification, Camera, Files & Images)
+            val startupPermissionsLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestMultiplePermissions()
+            ) { permissionsMap ->
+                val notifGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    permissionsMap[android.Manifest.permission.POST_NOTIFICATIONS] ?: false
+                } else true
+                if (notifGranted) {
+                    NotificationHelper.initNotificationChannel(applicationContext)
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                val neededPermissions = mutableListOf<String>()
+                if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    neededPermissions.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                    neededPermissions.add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                }
+                if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                    neededPermissions.add(android.Manifest.permission.CAMERA)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        neededPermissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+                        neededPermissions.add(android.Manifest.permission.READ_MEDIA_IMAGES)
+                    }
+                } else {
+                    if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                        neededPermissions.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
                     }
                 }
-                LaunchedEffect(Unit) {
-                    val status = ContextCompat.checkSelfPermission(
-                        context,
-                        android.Manifest.permission.POST_NOTIFICATIONS
-                    )
-                    if (status != PackageManager.PERMISSION_GRANTED) {
-                        permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                    }
+                if (neededPermissions.isNotEmpty()) {
+                    startupPermissionsLauncher.launch(neededPermissions.toTypedArray())
                 }
             }
 

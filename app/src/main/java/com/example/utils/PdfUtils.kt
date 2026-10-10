@@ -111,9 +111,9 @@ object PdfUtils {
             val pageCount = minOf(renderer.pageCount, maxPages)
             for (i in 0 until pageCount) {
                 val page = renderer.openPage(i)
-                val scale = 2
-                val width = (page.width * scale).coerceIn(600, 1400)
-                val height = (page.height * scale).coerceIn(800, 2000)
+                val renderScale = 2.5f
+                val width = (page.width * renderScale).toInt().coerceIn(720, 1800)
+                val height = (page.height * renderScale).toInt().coerceIn(1000, 2600)
                 val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(bitmap)
                 canvas.drawColor(Color.WHITE)

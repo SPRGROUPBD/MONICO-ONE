@@ -76,6 +76,7 @@ fun DashboardScreen(
 
     var showProfileDialog by remember { mutableStateOf(false) }
     var showNotificationsDialog by remember { mutableStateOf(initialShowNotifications) }
+    var showPermissionsDialog by remember { mutableStateOf(false) }
     var activePopupNotice by remember { mutableStateOf<PopupNotice?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
@@ -250,6 +251,16 @@ fun DashboardScreen(
                             onClick = {
                                 scope.launch { drawerState.close() }
                                 onOpenAdminPanel()
+                            }
+                        )
+
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.Security, contentDescription = null, tint = MonicoGreen) },
+                            label = { Text("অ্যাপ অনুমতি (Permissions)", fontWeight = FontWeight.SemiBold) },
+                            selected = false,
+                            onClick = {
+                                scope.launch { drawerState.close() }
+                                showPermissionsDialog = true
                             }
                         )
 

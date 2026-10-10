@@ -43,6 +43,27 @@ object ImageUtils {
         }
     }
 
+    fun bitmapToBase64(bitmap: Bitmap, maxWidth: Int = 600, quality: Int = 65): String? {
+        return try {
+            val width = bitmap.width
+            val height = bitmap.height
+            val scaledBitmap = if (width > maxWidth) {
+                val newHeight = (height.toFloat() * (maxWidth.toFloat() / width.toFloat())).toInt()
+                Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
+            } else {
+                bitmap
+            }
+            val outputStream = ByteArrayOutputStream()
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+            val byteArray = outputStream.toByteArray()
+            val base64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
+            "data:image/jpeg;base64,$base64"
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     /**
      * Converts a data:image base64 string or raw base64 to a Bitmap so Coil and Compose
      * can render it reliably and instantly without fetcher errors.

@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,10 +19,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,7 +55,8 @@ fun ProfileDialog(
     user: User,
     onDismiss: () -> Unit,
     onUpdateProfile: (name: String, newPassword: String, newProfilePic: String?) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onOpenPermissions: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -60,6 +66,7 @@ fun ProfileDialog(
 
     var currentPic by remember(user.profilePic) { mutableStateOf(user.profilePic) }
     var isUploadingPic by remember { mutableStateOf(false) }
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
 
     var newName by remember { mutableStateOf(user.fullName) }
     var oldPass by remember { mutableStateOf("") }
@@ -81,6 +88,30 @@ fun ProfileDialog(
                 }
                 isUploadingPic = false
             }
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        bitmap?.let {
+            scope.launch {
+                isUploadingPic = true
+                val base64 = ImageUtils.bitmapToBase64(it, maxWidth = 380, quality = 65)
+                if (base64 != null) {
+                    currentPic = base64
+                    onUpdateProfile(user.fullName, "", base64)
+                }
+                isUploadingPic = false
+            }
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            cameraLauncher.launch(null)
         }
     }
 
@@ -123,7 +154,7 @@ fun ProfileDialog(
                             .size(96.dp)
                             .clip(CircleShape)
                             .border(3.dp, MonicoBlue, CircleShape)
-                            .clickable { photoPickerLauncher.launch("image/*") },
+                            .clickable { showPhotoSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
                         if (currentPic.isNotBlank()) {
@@ -150,7 +181,7 @@ fun ProfileDialog(
                             .clip(CircleShape)
                             .background(MonicoBlue)
                             .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
-                            .clickable { photoPickerLauncher.launch("image/*") },
+                            .clickable { showPhotoSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -215,13 +246,13 @@ fun ProfileDialog(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         OutlinedButton(
-                            onClick = { photoPickerLauncher.launch("image/*") },
+                            onClick = { showPhotoSourceDialog = true },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = MonicoGreen)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("প্রোফাইল ছবি পরিবর্তন করুন (Change Photo)")
+                            Text("প্রোফাইল ছবি পরিবর্তন (ক্যামেরা / গ্যালারি)")
                         }
 
                         OutlinedButton(
@@ -242,6 +273,19 @@ fun ProfileDialog(
                             Icon(Icons.Default.Key, contentDescription = null, tint = MonicoAmber)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("পাসওয়ার্ড পরিবর্তন (Change Password)")
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                onDismiss()
+                                onOpenPermissions()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Security, contentDescription = null, tint = MonicoBlue)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("অ্যাপ পারমিশন (App Permissions)")
                         }
 
                         Button(
@@ -411,6 +455,44 @@ fun ProfileDialog(
             dismissButton = {
                 TextButton(onClick = { showLogoutConfirm = false }) {
                     Text("না")
+                }
+            }
+        )
+    }
+
+    if (showPhotoSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoSourceDialog = false },
+            title = { Text("প্রোফাইল ছবি পরিবর্তন", fontWeight = FontWeight.Bold) },
+            text = { Text("ছবি তোলার জন্য সরাসরি ক্যামেরা ব্যবহার করুন অথবা গ্যালারি/ফাইল থেকে বেছে নিন।") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPhotoSourceDialog = false
+                        val hasCam = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                        if (hasCam) {
+                            cameraLauncher.launch(null)
+                        } else {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue)
+                ) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("ক্যামেরা (Camera)")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showPhotoSourceDialog = false
+                        photoPickerLauncher.launch("image/*")
+                    }
+                ) {
+                    Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("গ্যালারি/ফাইল")
                 }
             }
         )
