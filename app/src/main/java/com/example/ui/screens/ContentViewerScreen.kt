@@ -33,6 +33,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.ui.theme.MonicoBlue
 import com.example.ui.theme.MonicoRed
 import com.example.utils.PdfUtils
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
@@ -58,9 +59,11 @@ fun ContentViewerScreen(
                 url.startsWith("data:application/pdf", ignoreCase = true)
     }
 
-    // Prepare URL for WebView: if PDF, route via Google Docs Viewer
+    val scope = rememberCoroutineScope()
+
+    // Prepare URL for WebView: if PDF and HTTP, route via Google Docs Viewer
     val effectiveUrl = remember(url, isPdf) {
-        if (isPdf && !url.contains("docs.google.com")) {
+        if (isPdf && !url.contains("docs.google.com") && (url.startsWith("http://") || url.startsWith("https://"))) {
             "https://docs.google.com/gview?embedded=true&url=${Uri.encode(url)}"
         } else {
             url
@@ -68,15 +71,21 @@ fun ContentViewerScreen(
     }
 
     fun openInExternalApp() {
-        try {
-            if (isPdf) {
-                val opened = PdfUtils.openPdfWithExternalApp(context, url)
-                if (opened) return
+        scope.launch {
+            try {
+                if (isPdf) {
+                    val opened = PdfUtils.openPdfWithExternalApp(context, url)
+                    if (opened) return@launch
+                }
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
@@ -132,7 +141,6 @@ fun ContentViewerScreen(
             )
         },
         bottomBar = {
-            // Prominent bottom action bar for opening in phone's PDF / browser app
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 8.dp,
@@ -145,24 +153,45 @@ fun ContentViewerScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Main Refresh button to refresh current page
                     Button(
-                        onClick = { openInExternalApp() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isPdf) MonicoRed else MonicoBlue
-                        ),
+                        onClick = {
+                            hasError = false
+                            webViewInstance?.reload()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f).height(46.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "রিফ্রেশ করুন (Refresh)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    // Secondary button for external app
+                    OutlinedButton(
+                        onClick = { openInExternalApp() },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(46.dp)
                     ) {
                         Icon(
                             imageVector = if (isPdf) Icons.Default.PictureAsPdf else Icons.Default.OpenInBrowser,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isPdf) "সরাসরি PDF অ্যাপে দেখুন" else "ব্রাউজারে খুলুন",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            text = if (isPdf) "PDF অ্যাপ" else "ব্রাউজার",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -195,8 +224,18 @@ fun ContentViewerScreen(
                         settings.allowFileAccess = true
                         settings.allowContentAccess = true
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        // Modern Android User-Agent to prevent sites from refusing WebView
                         settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+
+                        setDownloadListener { downloadUrl, _, _, _, _ ->
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                ctx.startActivity(intent)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
 
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
@@ -229,6 +268,17 @@ fun ContentViewerScreen(
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                 val reqUrl = request?.url?.toString() ?: ""
                                 if (reqUrl.startsWith("go:")) {
+                                    return true
+                                }
+                                if (!reqUrl.startsWith("http://") && !reqUrl.startsWith("https://")) {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(reqUrl)).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        ctx.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
                                     return true
                                 }
                                 return false

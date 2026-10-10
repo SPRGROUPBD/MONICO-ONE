@@ -64,7 +64,6 @@ class MonicoRepository(context: Context) {
     init {
         loadSessionFromLocal()
         loadCacheFromLocal()
-        ensureDefaultItemsIfEmpty()
     }
 
     private fun loadSessionFromLocal() {
@@ -121,113 +120,7 @@ class MonicoRepository(context: Context) {
         }
     }
 
-    private fun ensureDefaultItemsIfEmpty() {
-        if (_menus.value.isEmpty()) {
-            _menus.value = getDefaultMenus()
-        }
-        if (_sliders.value.isEmpty()) {
-            _sliders.value = listOf(
-                SliderItem("s1", "Monico One - One Platform Complete Solution", "https://picsum.photos/800/400?random=1"),
-                SliderItem("s2", "ফিল্ড সেলস ও অর্ডার এন্ট্রি ২০২৬", "https://picsum.photos/800/400?random=2"),
-                SliderItem("s3", "নতুন পলিসি ও ইনসেন্টিভ প্রোগ্রাম", "https://picsum.photos/800/400?random=3")
-            )
-        }
-        if (_notices.value.isEmpty()) {
-            _notices.value = listOf(
-                NoticeItem("n1", "জরুরি নোটিশ: ২০২৬ সালের সকল এমপ্লয়ি প্রতিদিন সকাল ৯টার মধ্যে হাজিরা নিশ্চিত করুন।"),
-                NoticeItem("n2", "ফ্ল্যাট বোনাস ও টিএ বিল ফাইলসমূহ যথাসময়ে সাবমিট করুন।")
-            )
-        }
-        if (_productCards.value.isEmpty()) {
-            _productCards.value = listOf(
-                ContentCard("pc1", "নতুন পণ্য: MoniCef 500mg", "", listOf("https://picsum.photos/600/800?random=11", "https://picsum.photos/600/800?random=12"), "https://picsum.photos/600/800?random=11"),
-                ContentCard("pc2", "নতুন পণ্য: CardioPlus 20", "", listOf("https://picsum.photos/600/800?random=13"), "https://picsum.photos/600/800?random=13")
-            )
-        }
-        if (_trainingCards.value.isEmpty()) {
-            _trainingCards.value = listOf(
-                ContentCard("tc1", "অ্যান্টিবায়োটিক সেলস ট্রেনিং", "", listOf("https://picsum.photos/600/800?random=21", "https://picsum.photos/600/800?random=22", "https://picsum.photos/600/800?random=23"), "https://picsum.photos/600/800?random=21"),
-                ContentCard("tc2", "প্রোডাক্ট নলেজ ও প্রেজেন্টেশন", "", listOf("https://picsum.photos/600/800?random=24", "https://picsum.photos/600/800?random=25"), "https://picsum.photos/600/800?random=24")
-            )
-        }
-        if (_targetSheets.value.isEmpty()) {
-            _targetSheets.value = listOf(
-                ContentCard("ts1", "মার্চ ২০২৬ প্রোডাক্ট টার্গেট শিট", "", listOf("https://picsum.photos/600/800?random=31", "https://picsum.photos/600/800?random=32"), "https://picsum.photos/600/800?random=31"),
-                ContentCard("ts2", "এপ্রিল ২০২৬ ফিল্ড কোটা শিট", "", listOf("https://picsum.photos/600/800?random=33"), "https://picsum.photos/600/800?random=33")
-            )
-        }
-        if (_sidebarMenus.value.isEmpty()) {
-            _sidebarMenus.value = listOf(
-                SidebarMenuItem("sm1", "Monico Web ERP", "https://example.com/erp", "fa-globe", "active", "SUPER_ADMIN,DIC"),
-                SidebarMenuItem("sm2", "Order Monitoring Portal", "https://example.com/orders", "fa-chart-line", "active", "SUPER_ADMIN,DIC")
-            )
-        }
-        if (_popups.value.isEmpty()) {
-            _popups.value = listOf(
-                PopupNotice(
-                    id = "-P_WELCOME",
-                    title = "মনিকো ওয়ান (Monico One) এ স্বাগতম",
-                    body = "মাঠপর্যায়ের কাজের সকল ফাইল, বোনাস শিট ও সার্কুলার নিয়মিত দেখতে অ্যাপটি ব্যবহার করুন।",
-                    status = "active",
-                    type = "general",
-                    image = ""
-                )
-            )
-        }
-        if (_notifications.value.isEmpty()) {
-            _notifications.value = listOf(
-                NotificationItem(
-                    id = "-N_WELCOME",
-                    title = "মনিকো ওয়ান প্ল্যাটফর্মে স্বাগতম!",
-                    message = "মাঠপর্যায়ের সকল অর্ডার, বোনাস শিট এবং সার্কুলার নিয়মিত আপডেট পেতে নোটিফিকেশন চেক করুন।",
-                    timestamp = System.currentTimeMillis() - 3600000L,
-                    dateFormatted = "আজ, ০১:০০ PM",
-                    targetRole = "ALL",
-                    type = "info",
-                    senderName = "Super Admin"
-                ),
-                NotificationItem(
-                    id = "-N_CIRCULAR",
-                    title = "মার্চ ২০২৬ নতুন সেলস পলিসি প্রকাশিত",
-                    message = "সকল ফিল্ড ফোর্সকে মার্চ মাসের নতুন বিক্রয় নির্দেশিকা এবং বোনাস নিয়মাবলি দেখার জন্য অনুরোধ করা যাচ্ছে।",
-                    timestamp = System.currentTimeMillis() - 7200000L,
-                    dateFormatted = "আজ, ১১:৩০ AM",
-                    targetRole = "ALL",
-                    type = "urgent",
-                    senderName = "Head Office Admin"
-                )
-            )
-        }
-    }
 
-    private fun getDefaultMenus(): List<MenuItem> {
-        return listOf(
-            // Grid 1: Primary Menus (Daily Work)
-            MenuItem("g1_1", "grid1", "অর্ডার এন্ট্রি (Order Entry)", "fa-cart-shopping", "https://example.com/orders", emptyList(), "PALL+SALL", "", "", "", false, "active"),
-            MenuItem("g1_2", "grid1", "ডি সি সি (DCC Entry)", "fa-check", "go:dcc", emptyList(), "PALL+SALL", "", "", "", false, "active"),
-            MenuItem("g1_3", "grid1", "দৈনিক হাজিরা (Daily Attendance)", "fa-calendar", "https://example.com/attendance", emptyList(), "PALL+SALL", "", "", "", false, "active"),
-            MenuItem("g1_4", "grid1", "ট্যুর প্ল্যান (Tour Plan)", "fa-route", "https://example.com/tour", emptyList(), "PALL+SALL", "", "", "", false, "active"),
-            MenuItem("g1_5", "grid1", "ডেলিভারি ট্র্যাকিং (Delivery)", "fa-truck", "https://example.com/delivery", emptyList(), "PALL+SALL", "", "", "", false, "active"),
-            MenuItem("g1_6", "grid1", "কালেকশন রিপোর্ট (Collection)", "fa-money-bill", "https://example.com/collection", emptyList(), "PALL+SALL", "", "", "", false, "active"),
-
-            // Grid 2: Flat Bonus Sheet (Date, Month, Page count, unread dot)
-            MenuItem("g2_1", "grid2", "মার্চ ২০২৬ ফ্ল্যাট বোনাস শিট", "https://picsum.photos/600/800?random=41", "", listOf("https://picsum.photos/600/800?random=41", "https://picsum.photos/600/800?random=42"), "PALL+SALL", "March", "2026-03-20", "", true, "active"),
-            MenuItem("g2_2", "grid2", "ফেব্রুয়ারি ২০২৬ বোনাস শিট", "https://picsum.photos/600/800?random=43", "", listOf("https://picsum.photos/600/800?random=43", "https://picsum.photos/600/800?random=44", "https://picsum.photos/600/800?random=45"), "PALL+SALL", "February", "2026-02-15", "", false, "active"),
-            MenuItem("g2_3", "grid2", "জানুয়ারি ২০২৬ স্পেশাল বোনাস", "https://picsum.photos/600/800?random=46", "", listOf("https://picsum.photos/600/800?random=46"), "PALL+SALL", "January", "2026-01-25", "", false, "active"),
-
-            // Grid 3: Head Office Circular
-            MenuItem("g3_1", "grid3", "সার্কুলার: নতুন পলিসি ২০২৬", "https://picsum.photos/600/800?random=51", "", listOf("https://picsum.photos/600/800?random=51", "https://picsum.photos/600/800?random=52"), "PALL+SALL", "March", "2026-03-01", "", true, "active"),
-            MenuItem("g3_2", "grid3", "মার্কেট ডিরেক্টিভ ও গাইডলাইন", "https://picsum.photos/600/800?random=53", "", listOf("https://picsum.photos/600/800?random=53"), "PALL+SALL", "February", "2026-02-10", "", false, "active"),
-
-            // Grid 4: Salary TA Bill
-            MenuItem("g4_1", "grid4", "মার্চ ২০২৬ টিএ বিল শিট", "https://picsum.photos/600/800?random=61", "", listOf("https://picsum.photos/600/800?random=61", "https://picsum.photos/600/800?random=62"), "PALL+SALL", "March", "2026-03-25", "", false, "active"),
-            MenuItem("g4_2", "grid4", "ফেব্রুয়ারি ২০২৬ বেতন শিট", "https://picsum.photos/600/800?random=63", "", listOf("https://picsum.photos/600/800?random=63"), "PALL+SALL", "February", "2026-02-28", "", false, "active"),
-
-            // Grid 5: Sales Report (PDF)
-            MenuItem("g5_1", "grid5", "মার্চ সেলস রিপোর্ট (PDF)", "fa-file-pdf", "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf", emptyList(), "PALL+SALL", "March", "2026-03-31", "", false, "active"),
-            MenuItem("g5_2", "grid5", "কোয়ার্টার ১ ওভারভিউ (PDF)", "fa-file-pdf", "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf", emptyList(), "PALL+SALL", "February", "2026-02-25", "", false, "active")
-        )
-    }
 
     suspend fun login(empIdInput: String, passInput: String): Result<User> {
         val cleanId = empIdInput.trim().uppercase()
@@ -311,8 +204,6 @@ class MonicoRepository(context: Context) {
                 if (m.isNotEmpty()) {
                     _menus.value = m
                     saveMenusToCache(m)
-                } else if (_menus.value.isEmpty()) {
-                    _menus.value = getDefaultMenus()
                 }
 
                 val s = slidersDeferred.await()
@@ -375,20 +266,23 @@ class MonicoRepository(context: Context) {
     private fun saveMenusToCache(list: List<MenuItem>) {
         try {
             val arr = JSONArray()
-            // To prevent massive disk freezes, keep metadata in cache
-            list.take(40).forEach { m ->
+            list.forEach { m ->
                 val obj = JSONObject()
                     .put("id", m.id)
                     .put("group", m.group)
                     .put("title", m.title)
-                    .put("icon", if (m.icon.startsWith("data:")) "icon" else m.icon)
-                    .put("url", if (m.url.startsWith("data:")) "" else m.url)
+                    .put("icon", m.icon)
+                    .put("url", m.url)
                     .put("allowedRole", m.allowedRole)
                     .put("month", m.month)
                     .put("date", m.date)
                     .put("color", m.color)
                     .put("isPinned", m.isPinned)
                     .put("status", m.status)
+
+                val imgArr = JSONArray()
+                m.images.forEach { imgArr.put(it) }
+                obj.put("images", imgArr)
                 arr.put(obj)
             }
             prefs.edit().putString("cache_menus", arr.toString()).apply()

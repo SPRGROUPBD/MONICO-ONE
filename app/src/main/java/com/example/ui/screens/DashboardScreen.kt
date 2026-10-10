@@ -115,20 +115,53 @@ fun DashboardScreen(
     // Role restriction: MPO, AM, RSM, TM, DA, ADIC cannot see or access sidemenu
     val canViewSidebar = isSuperAdmin || isDIC
 
-    // Role-based access helper
-    val primaryRoles = listOf("MPO", "AM", "RSM", "TM", "SUPER_ADMIN")
-    val specialRoles = listOf("DIC", "ADIC", "DA", "SUPER_ADMIN")
+    // Role & User Group Configuration:
+    // 1. Super Admin: সম্পূর্ণ অ্যাপের নিয়ন্ত্রণ
+    // 2. Everyone: MPO, AM, TM, RSM, DA, ADIC, DIC, Super Admin
+    // 3. MPO: MPO-এর জন্য নির্ধারিত Feature ও Access
+    // 4. Supervisor: AM, TM, RSM
+    // 5. DA (Delivery Assistant): নির্ধারিত Delivery Assistant Feature
+    val supervisorRoles = listOf("SUPERVISOR", "AM", "TM", "RSM")
 
     fun hasAccess(itemAllowedRole: String): Boolean {
         if (isSuperAdmin) return true
-        if (itemAllowedRole.isBlank() || itemAllowedRole.equals("ALL", ignoreCase = true)) return true
-        val allowed = itemAllowedRole.split(",").map { it.trim().uppercase() }
-        if (allowed.contains("ALL") || allowed.contains("PALL+SALL")) return true
-        if (userRole == "PALL+SALL") return true
-        if (allowed.contains("PALL") && primaryRoles.contains(userRole)) return true
-        if (allowed.contains("SALL") && specialRoles.contains(userRole)) return true
-        if (allowed.contains(userRole)) return true
-        return false
+        val roleStr = itemAllowedRole.trim()
+        if (roleStr.isBlank() ||
+            roleStr.equals("ALL", ignoreCase = true) ||
+            roleStr.equals("EVERYONE", ignoreCase = true) ||
+            roleStr.equals("PALL+SALL", ignoreCase = true)) {
+            return true
+        }
+
+        val tokens = roleStr.split(",", "+").map { it.trim().uppercase() }
+        if (tokens.any { it == "ALL" || it == "EVERYONE" || it == "PALL+SALL" }) {
+            return true
+        }
+
+        // Supervisor group
+        val isUserSupervisor = userRole in supervisorRoles
+        if (tokens.any { it == "SUPERVISOR" || it == "SUPERVISORS" } && isUserSupervisor) {
+            return true
+        }
+
+        // MPO specific
+        if (tokens.contains("MPO") && userRole == "MPO") {
+            return true
+        }
+
+        // DA specific
+        val isUserDA = userRole == "DA" || userRole == "DELIVERY_ASSISTANT" || userRole == "DELIVERY ASSISTANT"
+        if (tokens.any { it == "DA" || it == "DELIVERY_ASSISTANT" || it == "DELIVERY ASSISTANT" } && isUserDA) {
+            return true
+        }
+
+        // Legacy groups
+        val primaryRoles = listOf("MPO", "AM", "RSM", "TM", "SUPER_ADMIN", "SUPERVISOR")
+        val specialRoles = listOf("DIC", "ADIC", "DA", "SUPER_ADMIN")
+        if (tokens.contains("PALL") && userRole in primaryRoles) return true
+        if (tokens.contains("SALL") && userRole in specialRoles) return true
+
+        return tokens.contains(userRole)
     }
 
     // Filter menus
@@ -634,14 +667,7 @@ fun DashboardScreen(
                             items(trainingCards) { card ->
                                 ContentCardItem(
                                     card = card,
-                                    onClick = {
-                                        val imgs = if (card.images.isNotEmpty()) card.images else listOf(card.image)
-                                        if (card.url.isNotBlank() && card.url.startsWith("http")) {
-                                            onOpenUrl(card.title, card.url)
-                                        } else {
-                                            onOpenImageViewer(card.title, imgs)
-                                        }
-                                    }
+                                    onClick = { handleContentCardClick(card, onOpenUrl, onOpenImageViewer) }
                                 )
                             }
                         }
@@ -665,14 +691,7 @@ fun DashboardScreen(
                             items(productCards) { card ->
                                 ContentCardItem(
                                     card = card,
-                                    onClick = {
-                                        val imgs = if (card.images.isNotEmpty()) card.images else listOf(card.image)
-                                        if (card.url.isNotBlank() && card.url.startsWith("http")) {
-                                            onOpenUrl(card.title, card.url)
-                                        } else {
-                                            onOpenImageViewer(card.title, imgs)
-                                        }
-                                    }
+                                    onClick = { handleContentCardClick(card, onOpenUrl, onOpenImageViewer) }
                                 )
                             }
                         }
@@ -696,14 +715,7 @@ fun DashboardScreen(
                             items(targetSheets) { card ->
                                 ContentCardItem(
                                     card = card,
-                                    onClick = {
-                                        val imgs = if (card.images.isNotEmpty()) card.images else listOf(card.image)
-                                        if (card.url.isNotBlank() && card.url.startsWith("http")) {
-                                            onOpenUrl(card.title, card.url)
-                                        } else {
-                                            onOpenImageViewer(card.title, imgs)
-                                        }
-                                    }
+                                    onClick = { handleContentCardClick(card, onOpenUrl, onOpenImageViewer) }
                                 )
                             }
                         }
@@ -819,12 +831,21 @@ private fun handleMenuCardClick(
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
-    // 1. Check if this item is a PDF
-    val isPdf = item.group == "grid5" || isPdfFile(item.url) || item.icon.contains("pdf", ignoreCase = true)
+    // 1. Check if this item is or has a PDF
+    val pdfFromImages = item.images.firstOrNull { isPdfFile(it) }
+    val isPdf = item.group == "grid5" || isPdfFile(item.url) || pdfFromImages != null || item.icon.contains("pdf", ignoreCase = true)
 
-    if (isPdf && item.url.isNotBlank()) {
+    val pdfSource = when {
+        isPdfFile(item.url) -> item.url
+        pdfFromImages != null -> pdfFromImages
+        item.group == "grid5" && item.url.isNotBlank() -> item.url
+        item.url.isNotBlank() && isPdf -> item.url
+        else -> ""
+    }
+
+    if (isPdf && pdfSource.isNotBlank()) {
         // Open natively in ImageViewerDialog with PdfRenderer
-        onOpenImageViewer(item.title, listOf(item.url))
+        onOpenImageViewer(item.title, listOf(pdfSource))
         return
     }
 
@@ -833,7 +854,7 @@ private fun handleMenuCardClick(
     item.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) allImages.add(it) }
 
     if (allImages.isEmpty()) {
-        if (item.url.isNotBlank() && !isPdfFile(item.url) && (isImageFile(item.url) || item.group != "grid1")) {
+        if (item.url.isNotBlank() && !isPdfFile(item.url) && (isImageFile(item.url) || item.group != "grid1" || item.url.startsWith("data:image"))) {
             allImages.add(item.url)
         } else if (item.icon.isNotBlank() && !isPdfFile(item.icon) && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
             allImages.add(item.icon)
@@ -843,17 +864,61 @@ private fun handleMenuCardClick(
     if (allImages.isNotEmpty()) {
         onOpenImageViewer(item.title, allImages)
     } else if (item.url.isNotBlank()) {
-        if (item.url.startsWith("go:")) {
-            val target = item.url.removePrefix("go:").trim()
-            try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$target"))
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                onOpenUrl(item.title, item.url)
+        val effective = resolveGoUrl(item.url)
+        onOpenUrl(item.title, effective)
+    } else if (item.icon.isNotBlank() && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
+        onOpenImageViewer(item.title, listOf(item.icon))
+    }
+}
+
+private fun resolveGoUrl(url: String): String {
+    val clean = url.trim()
+    return when (clean) {
+        "go:order" -> "http://103.153.241.44/monicoapp"
+        "go:Tour" -> "https://sprgroupbd.github.io/SmartManager/monicoone.html"
+        "go:delivery" -> "https://sprgroupbd.github.io/SmartManager/depo_bill.html"
+        "go:bill" -> "https://sprgroupbd.github.io/SmartManager/admin"
+        "go:att1" -> "https://sprgroupbd.github.io/SmartManager/att.html"
+        "go:dcc" -> "https://sprgroupbd.github.io/SmartManager/dcs.html"
+        else -> {
+            if (clean.startsWith("go:")) {
+                "https://sprgroupbd.github.io/SmartManager/" + clean.removePrefix("go:").trim()
+            } else {
+                clean
             }
-        } else {
-            onOpenUrl(item.title, item.url)
         }
+    }
+}
+
+private fun handleContentCardClick(
+    card: ContentCard,
+    onOpenUrl: (title: String, url: String) -> Unit,
+    onOpenImageViewer: (title: String, images: List<String>) -> Unit
+) {
+    val pdfSource = when {
+        isPdfFile(card.url) -> card.url
+        isPdfFile(card.image) -> card.image
+        card.images.any { isPdfFile(it) } -> card.images.first { isPdfFile(it) }
+        else -> null
+    }
+
+    if (pdfSource != null) {
+        onOpenImageViewer(card.title, listOf(pdfSource))
+        return
+    }
+
+    val validImgs = mutableListOf<String>()
+    card.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) validImgs.add(it) }
+    if (validImgs.isEmpty() && card.image.isNotBlank() && !isPdfFile(card.image)) {
+        validImgs.add(card.image)
+    }
+
+    if (card.url.isNotBlank() && (card.url.startsWith("http://") || card.url.startsWith("https://"))) {
+        onOpenUrl(card.title, card.url)
+    } else if (validImgs.isNotEmpty()) {
+        onOpenImageViewer(card.title, validImgs)
+    } else if (card.url.isNotBlank()) {
+        onOpenUrl(card.title, card.url)
     }
 }
 

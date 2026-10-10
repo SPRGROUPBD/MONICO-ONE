@@ -156,6 +156,7 @@ fun AdminPanelScreen(
                 Icon(imageVector = Icons.Default.Add, contentDescription = "Add Item")
             }
         },
+        floatingActionButtonPosition = FabPosition.Center,
         modifier = Modifier.fillMaxSize().testTag("admin_panel_screen")
     ) { innerPadding ->
         Column(
@@ -177,7 +178,7 @@ fun AdminPanelScreen(
                 }
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize().padding(bottom = 80.dp)) {
                 when (selectedTab) {
                     0 -> AdminMenusTab(
                         menus = menus,
@@ -505,13 +506,13 @@ private fun MenuEditDialog(
         "July", "August", "September", "October", "November", "December"
     )
     val roleOptions = listOf(
-        "PALL+SALL" to "PALL+SALL (All Field Roles)",
-        "ALL" to "ALL (Everyone)",
-        "PALL" to "PALL (Primary: MPO, AM, RSM, TM)",
-        "SALL" to "SALL (Special: DIC, ADIC, DA)",
-        "MPO" to "MPO Only",
-        "DIC" to "DIC Only",
-        "SUPER_ADMIN" to "Super Admin Only"
+        "ALL" to "Everyone (MPO, AM, TM, RSM, DA, ADIC, DIC, Super Admin)",
+        "SUPERVISOR" to "Supervisor (AM, TM, RSM)",
+        "MPO" to "MPO (MPO-এর নির্ধারিত Feature)",
+        "DA" to "DA (Delivery Assistant Feature)",
+        "SUPER_ADMIN" to "Super Admin (সম্পূর্ণ নিয়ন্ত্রণ)",
+        "PALL+SALL" to "Everyone (PALL+SALL)",
+        "DIC" to "DIC Only"
     )
 
     var selectedGrid by remember { mutableStateOf(item?.group?.ifBlank { "grid2" } ?: "grid2") }
@@ -520,8 +521,21 @@ private fun MenuEditDialog(
     var selectedMonth by remember { mutableStateOf(item?.month?.ifBlank { "March" } ?: "March") }
     var monthMenuOpen by remember { mutableStateOf(false) }
 
-    var selectedRole by remember { mutableStateOf(item?.allowedRole?.ifBlank { "PALL+SALL" } ?: "PALL+SALL") }
-    var roleMenuOpen by remember { mutableStateOf(false) }
+    val initialRoleSet = remember(item) {
+        val r = item?.allowedRole?.trim() ?: "ALL"
+        when {
+            r.isBlank() || r.equals("ALL", true) || r.equals("EVERYONE", true) || r.equals("PALL+SALL", true) -> {
+                setOf("SUPER_ADMIN", "MPO", "AM", "TM", "RSM", "DA", "ADIC", "DIC")
+            }
+            r.equals("SUPERVISOR", true) -> {
+                setOf("AM", "TM", "RSM")
+            }
+            else -> {
+                r.split(",", "+").map { it.trim().uppercase() }.filter { it.isNotBlank() }.toSet()
+            }
+        }
+    }
+    var selectedRoleSet by remember { mutableStateOf(initialRoleSet) }
 
     var title by remember { mutableStateOf(item?.title ?: "") }
     var dateStr by remember { mutableStateOf(item?.date?.ifBlank { "2026-03-25" } ?: "2026-03-25") }
@@ -814,34 +828,117 @@ private fun MenuEditDialog(
                     }
                 }
 
-                // Allowed Role Dropdown
-                Text("অনুমোদিত রোল (Allowed Role):", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = { roleMenuOpen = true },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            roleOptions.firstOrNull { it.first == selectedRole }?.second ?: selectedRole,
-                            fontSize = 12.sp,
-                            maxLines = 1
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                    }
-                    DropdownMenu(
-                        expanded = roleMenuOpen,
-                        onDismissRequest = { roleMenuOpen = false }
-                    ) {
-                        roleOptions.forEach { (key, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label, fontSize = 12.sp) },
+                // Role & User Group Configuration Section
+                Text("Role & User Group Access Level:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Quick presets
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            FilledTonalButton(
                                 onClick = {
-                                    selectedRole = key
-                                    roleMenuOpen = false
+                                    selectedRoleSet = setOf("SUPER_ADMIN", "MPO", "AM", "TM", "RSM", "DA", "ADIC", "DIC")
+                                },
+                                modifier = Modifier.weight(1f).height(36.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text("Everyone (সবাই)", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            FilledTonalButton(
+                                onClick = {
+                                    selectedRoleSet = setOf("AM", "TM", "RSM")
+                                },
+                                modifier = Modifier.weight(1f).height(36.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text("Supervisor", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            FilledTonalButton(
+                                onClick = { selectedRoleSet = emptySet() },
+                                modifier = Modifier.height(36.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text("Clear", fontSize = 10.sp)
+                            }
+                        }
+
+                        // Supervisor group with AM, TM, RSM
+                        val isSupervisorAll = selectedRoleSet.containsAll(listOf("AM", "TM", "RSM"))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(
+                                        checked = isSupervisorAll,
+                                        onCheckedChange = { checked ->
+                                            selectedRoleSet = if (checked) {
+                                                selectedRoleSet + setOf("AM", "TM", "RSM")
+                                            } else {
+                                                selectedRoleSet - setOf("AM", "TM", "RSM")
+                                            }
+                                        }
+                                    )
+                                    Text("Supervisor (AM, TM, RSM)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MonicoBlue)
                                 }
-                            )
+                                Row(
+                                    modifier = Modifier.padding(start = 24.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    listOf("AM", "TM", "RSM").forEach { sRole ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Checkbox(
+                                                checked = selectedRoleSet.contains(sRole),
+                                                onCheckedChange = { checked ->
+                                                    selectedRoleSet = if (checked) selectedRoleSet + sRole else selectedRoleSet - sRole
+                                                },
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(2.dp))
+                                            Text(sRole, fontSize = 11.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Individual roles: MPO, DA, ADIC, DIC, Super Admin
+                        listOf(
+                            "MPO" to "MPO (Medical Promotion Officer)",
+                            "DA" to "DA (Delivery Assistant)",
+                            "ADIC" to "ADIC (Assistant Depot In-Charge)",
+                            "DIC" to "DIC (Depot In-Charge)",
+                            "SUPER_ADMIN" to "Super Admin (সম্পূর্ণ নিয়ন্ত্রণ)"
+                        ).forEach { (rKey, rLabel) ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedRoleSet = if (selectedRoleSet.contains(rKey)) {
+                                            selectedRoleSet - rKey
+                                        } else {
+                                            selectedRoleSet + rKey
+                                        }
+                                    }
+                            ) {
+                                Checkbox(
+                                    checked = selectedRoleSet.contains(rKey),
+                                    onCheckedChange = { checked ->
+                                        selectedRoleSet = if (checked) selectedRoleSet + rKey else selectedRoleSet - rKey
+                                    }
+                                )
+                                Text(rLabel, fontSize = 11.sp, fontWeight = if (selectedRoleSet.contains(rKey)) FontWeight.Bold else FontWeight.Normal)
+                            }
                         }
                     }
                 }
@@ -860,6 +957,13 @@ private fun MenuEditDialog(
                         }
                         val finalIcon = if (selectedGrid == "grid5" || PdfUtils.isPdf(finalUrl)) "fa-file-pdf" else if (deviceImages.isNotEmpty()) deviceImages[0] else icon
 
+                        val finalRole = when {
+                            selectedRoleSet.isEmpty() -> "ALL"
+                            selectedRoleSet.containsAll(listOf("MPO", "AM", "TM", "RSM", "DA", "ADIC", "DIC", "SUPER_ADMIN")) -> "ALL"
+                            selectedRoleSet.containsAll(listOf("AM", "TM", "RSM")) && selectedRoleSet.size == 3 -> "SUPERVISOR"
+                            else -> selectedRoleSet.joinToString(",")
+                        }
+
                         onSave(
                             MenuItem(
                                 id = item?.id ?: "",
@@ -871,7 +975,7 @@ private fun MenuEditDialog(
                                 month = if (selectedGrid == "grid1") "" else selectedMonth,
                                 date = if (selectedGrid == "grid1") "" else dateStr,
                                 isPinned = isPinned,
-                                allowedRole = selectedRole,
+                                allowedRole = finalRole,
                                 status = item?.status ?: "active"
                             )
                         )
@@ -1490,9 +1594,34 @@ private fun UserEditDialog(
                 OutlinedTextField(
                     value = role,
                     onValueChange = { role = it.uppercase() },
-                    label = { Text("রোল (MPO / AM / RSM / TM / DIC / SUPER_ADMIN)") },
+                    label = { Text("নির্বাচিত রোল (Selected Role)") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Text("রোল নির্বাচন করুন (Role Selection):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                val allUserRoles = listOf(
+                    "MPO" to "MPO",
+                    "AM" to "AM",
+                    "TM" to "TM",
+                    "RSM" to "RSM",
+                    "DA" to "DA",
+                    "ADIC" to "ADIC",
+                    "DIC" to "DIC",
+                    "SUPER_ADMIN" to "Super Admin"
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    allUserRoles.chunked(4).forEach { rowList ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            rowList.forEach { (rCode, rName) ->
+                                FilterChip(
+                                    selected = role == rCode,
+                                    onClick = { role = rCode },
+                                    label = { Text(rName, fontSize = 10.sp, fontWeight = if (role == rCode) FontWeight.Bold else FontWeight.Normal) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Button(
                     onClick = { userPhotoPicker.launch("image/*") },

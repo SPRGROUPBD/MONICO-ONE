@@ -54,6 +54,7 @@ object PdfUtils {
     suspend fun preparePdfFile(context: Context, source: String): File? = withContext(Dispatchers.IO) {
         try {
             val s = source.trim()
+            if (s.isBlank()) return@withContext null
             val outputFile = File(context.cacheDir, "preview_document.pdf")
 
             if (s.startsWith("data:application/pdf", ignoreCase = true)) {
@@ -66,12 +67,23 @@ object PdfUtils {
                 FileOutputStream(outputFile).use { it.write(bytes) }
                 return@withContext outputFile
             } else if (s.startsWith("http://", ignoreCase = true) || s.startsWith("https://", ignoreCase = true)) {
-                val req = Request.Builder().url(s).build()
+                val targetUrl = if (s.contains("drive.google.com/file/d/")) {
+                    val fileId = s.substringAfter("/file/d/").substringBefore("/")
+                    "https://drive.google.com/uc?export=download&id=$fileId"
+                } else {
+                    s
+                }
+                val req = Request.Builder()
+                    .url(targetUrl)
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) Chrome/124.0.0.0 Mobile Safari/537.36")
+                    .build()
                 val res = httpClient.newCall(req).execute()
                 val body = res.body ?: return@withContext null
                 val bytes = body.bytes()
-                FileOutputStream(outputFile).use { it.write(bytes) }
-                return@withContext outputFile
+                if (bytes.isNotEmpty()) {
+                    FileOutputStream(outputFile).use { it.write(bytes) }
+                    return@withContext outputFile
+                }
             } else if (s.startsWith("content://") || s.startsWith("file://")) {
                 val uri = Uri.parse(s)
                 val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
@@ -118,20 +130,32 @@ object PdfUtils {
         bitmaps
     }
 
-    fun openPdfWithExternalApp(context: Context, source: String): Boolean {
-        return try {
+    suspend fun openPdfWithExternalApp(context: Context, source: String): Boolean = withContext(Dispatchers.IO) {
+        return@withContext try {
             val s = source.trim()
-            val pdfFile = File(context.cacheDir, "preview_document.pdf")
-            if (!pdfFile.exists()) return false
-
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", pdfFile)
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/pdf")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val pdfFile = preparePdfFile(context, s)
+            if (pdfFile != null && pdfFile.exists() && pdfFile.length() > 0) {
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", pdfFile)
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/pdf")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                withContext(Dispatchers.Main) {
+                    context.startActivity(Intent.createChooser(intent, "PDF ডকুমেন্টটি খুলুন"))
+                }
+                true
+            } else if (s.startsWith("http://") || s.startsWith("https://")) {
+                withContext(Dispatchers.Main) {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(s)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                }
+                true
+            } else {
+                false
             }
-            context.startActivity(Intent.createChooser(intent, "PDF ডকুমেন্টটি খুলুন"))
-            true
         } catch (e: Exception) {
             e.printStackTrace()
             false

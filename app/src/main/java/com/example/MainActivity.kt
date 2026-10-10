@@ -1,7 +1,9 @@
 package com.example
 
+import android.app.Activity
 import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.example.data.repository.MonicoRepository
 import com.example.ui.screens.*
 import com.example.ui.theme.MyApplicationTheme
@@ -58,6 +61,25 @@ class MainActivity : ComponentActivity() {
                 if (currentUser != null) {
                     repository.syncAll()
                 }
+            }
+
+            val context = LocalContext.current
+            var lastBackPressedTime by remember { mutableLongStateOf(0L) }
+
+            // Handle 2-tap back press to close app on Dashboard or Login
+            BackHandler(enabled = !showSplash && (currentUser == null || currentScreen is ScreenState.Dashboard)) {
+                val now = System.currentTimeMillis()
+                if (now - lastBackPressedTime < 2000L) {
+                    (context as? Activity)?.finish()
+                } else {
+                    lastBackPressedTime = now
+                    Toast.makeText(context, "অ্যাপ বন্ধ করতে আবার ব্যাক চাপুন", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            // Handle back press from sub-screens
+            BackHandler(enabled = !showSplash && currentUser != null && currentScreen !is ScreenState.Dashboard) {
+                currentScreen = ScreenState.Dashboard
             }
 
             MyApplicationTheme(darkTheme = isDarkMode) {
