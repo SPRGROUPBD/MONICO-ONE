@@ -1,0 +1,6 @@
+{
+  "name": "Monico One",
+  "description": "Monico One Mobile Edition - Enterprise platform for field operations, sales orders, circulars, bonus sheets, product launches, and reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
