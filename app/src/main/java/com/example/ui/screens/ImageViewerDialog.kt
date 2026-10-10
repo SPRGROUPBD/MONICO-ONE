@@ -12,6 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.example.ui.theme.MonicoBlue
 import com.example.ui.theme.MonicoRed
 
@@ -47,6 +49,16 @@ fun ImageViewerDialog(
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+
+    val currentUrl = images.getOrNull(currentIndex) ?: ""
+    val isPdf = remember(currentUrl) {
+        val lower = currentUrl.lowercase()
+        lower.endsWith(".pdf") ||
+                lower.contains(".pdf?") ||
+                lower.contains("type=pdf") ||
+                lower.contains("/pdf") ||
+                currentUrl.startsWith("data:application/pdf", ignoreCase = true)
+    }
 
     // Reset zoom when switching page
     LaunchedEffect(currentIndex) {
@@ -65,7 +77,7 @@ fun ImageViewerDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xE6020617))
+                .background(Color(0xF2020617))
                 .testTag("image_viewer_dialog")
         ) {
             // Header bar
@@ -73,7 +85,7 @@ fun ImageViewerDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter),
-                color = Color(0xCC0F172A),
+                color = Color(0xE60F172A),
                 shadowElevation = 4.dp
             ) {
                 Row(
@@ -109,8 +121,6 @@ fun ImageViewerDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Open in external browser / viewer if valid HTTP
-                        val currentUrl = images.getOrNull(currentIndex) ?: ""
                         if (currentUrl.startsWith("http://") || currentUrl.startsWith("https://")) {
                             IconButton(
                                 onClick = {
@@ -148,7 +158,7 @@ fun ImageViewerDialog(
                 }
             }
 
-            // Image Content with Pinch to Zoom and Pan
+            // Image or PDF Content with Zoom and Pan
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -167,19 +177,105 @@ fun ImageViewerDialog(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = images.getOrNull(currentIndex) ?: "",
-                    contentDescription = "$title page ${currentIndex + 1}",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer(
-                            scaleX = scale,
-                            scaleY = scale,
-                            translationX = offsetX,
-                            translationY = offsetY
+                if (isPdf) {
+                    // This item is a PDF file
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PictureAsPdf,
+                            contentDescription = "PDF",
+                            tint = MonicoRed,
+                            modifier = Modifier.size(72.dp)
                         )
-                )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "এটি একটি PDF ডকুমেন্ট",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "PDF টি দেখতে সরাসরি আপনার ফোনের PDF অ্যাপে খুলুন।",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.LightGray,
+                                textAlign = TextAlign.Center
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(
+                            onClick = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl))
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MonicoRed),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.OpenInBrowser, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("PDF অ্যাপে খুলুন")
+                        }
+                    }
+                } else {
+                    SubcomposeAsyncImage(
+                        model = currentUrl,
+                        contentDescription = "$title page ${currentIndex + 1}",
+                        contentScale = ContentScale.Fit,
+                        loading = {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = MonicoBlue)
+                            }
+                        },
+                        error = {
+                            Column(
+                                modifier = Modifier.fillMaxSize().padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(48.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "ছবিটি লোড হতে সমস্যা হয়েছে",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                if (currentUrl.startsWith("http")) {
+                                    Button(
+                                        onClick = {
+                                            try {
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl))
+                                                context.startActivity(intent)
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("ব্রাউজারে খুলুন")
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                scaleX = scale,
+                                scaleY = scale,
+                                translationX = offsetX,
+                                translationY = offsetY
+                            )
+                    )
+                }
             }
 
             // Bottom Navigation Controls
@@ -187,7 +283,7 @@ fun ImageViewerDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter),
-                color = Color(0xCC0F172A),
+                color = Color(0xE60F172A),
                 shadowElevation = 8.dp
             ) {
                 Row(

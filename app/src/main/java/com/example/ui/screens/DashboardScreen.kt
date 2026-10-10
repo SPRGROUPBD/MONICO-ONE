@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.*
@@ -202,42 +203,75 @@ fun DashboardScreen(
                     shadowElevation = 3.dp
                 ) {
                     Column(modifier = Modifier.statusBarsPadding()) {
+                        // Fixed clean 56dp compact Top Bar
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .height(56.dp)
+                                .padding(horizontal = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                // Hamburger icon only visible to SUPER_ADMIN and DIC
-                                if (canViewSidebar) {
-                                    IconButton(
-                                        onClick = { scope.launch { drawerState.open() } },
-                                        modifier = Modifier.size(38.dp)
-                                    ) {
-                                        Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu")
-                                    }
-                                }
-
-                                Image(
-                                    painter = painterResource(id = R.drawable.monico_one_icon_1791604475434),
-                                    contentDescription = "Monico One",
+                            if (isSearchActive) {
+                                // Full width search bar
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    placeholder = { Text("মেনু বা ফাইল খুঁজুন...", fontSize = 12.sp) },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    },
+                                    trailingIcon = {
+                                        IconButton(onClick = {
+                                            searchQuery = ""
+                                            isSearchActive = false
+                                        }) {
+                                            Icon(Icons.Default.Close, contentDescription = "Close search", modifier = Modifier.size(18.dp))
+                                        }
+                                    },
                                     modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .fillMaxWidth()
+                                        .height(44.dp)
                                 )
+                            } else {
+                                // Left side: Hamburger (if admin) + Logo + User Info
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f, fill = false)
+                                ) {
+                                    if (canViewSidebar) {
+                                        IconButton(
+                                            onClick = { scope.launch { drawerState.open() } },
+                                            modifier = Modifier.size(34.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu")
+                                        }
+                                    }
 
-                                AnimatedVisibility(visible = !isSearchActive) {
-                                    Column {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.monico_one_icon_1791604475434),
+                                        contentDescription = "Monico One",
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                    )
+
+                                    // User Name and ID (Guaranteed single line, never wraps vertically)
+                                    Column(
+                                        modifier = Modifier.widthIn(max = 140.dp),
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
                                         Text(
                                             text = currentUser?.fullName ?: (currentUser?.employeeId ?: "Employee"),
-                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp
+                                            ),
                                             maxLines = 1,
+                                            softWrap = false,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
@@ -246,101 +280,91 @@ fun DashboardScreen(
                                                 color = MonicoBlue,
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.SemiBold
+                                            ),
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                // Right side: Compact Icon Buttons
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = { isSearchActive = true },
+                                        modifier = Modifier.size(34.dp)
+                                    ) {
+                                        Icon(Icons.Default.Search, contentDescription = "Search", modifier = Modifier.size(20.dp))
+                                    }
+
+                                    IconButton(
+                                        onClick = { scope.launch { repository.syncAll() } },
+                                        enabled = !isSyncing,
+                                        modifier = Modifier.size(34.dp)
+                                    ) {
+                                        if (isSyncing) {
+                                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MonicoBlue)
+                                        } else {
+                                            Icon(Icons.Default.Sync, contentDescription = "Sync", tint = MonicoBlue, modifier = Modifier.size(20.dp))
+                                        }
+                                    }
+
+                                    IconButton(
+                                        onClick = onToggleDarkMode,
+                                        modifier = Modifier.size(34.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                            contentDescription = "Toggle theme",
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    if (isSuperAdmin || isDIC) {
+                                        IconButton(
+                                            onClick = onOpenAdminPanel,
+                                            modifier = Modifier.size(34.dp)
+                                        ) {
+                                            Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin Panel", tint = MonicoAmber, modifier = Modifier.size(20.dp))
+                                        }
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .clickable { showProfileDialog = true }
+                                    ) {
+                                        val pic = currentUser?.profilePic ?: ""
+                                        if (pic.isNotBlank() && (pic.startsWith("http") || pic.startsWith("data:"))) {
+                                            AsyncImage(
+                                                model = pic,
+                                                contentDescription = "Profile",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
                                             )
-                                        )
-                                    }
-                                }
-
-                                AnimatedVisibility(visible = isSearchActive, modifier = Modifier.weight(1f)) {
-                                    OutlinedTextField(
-                                        value = searchQuery,
-                                        onValueChange = { searchQuery = it },
-                                        placeholder = { Text("মেনু বা ফাইল খুঁজুন...", fontSize = 12.sp) },
-                                        singleLine = true,
-                                        shape = RoundedCornerShape(12.dp),
-                                        trailingIcon = {
-                                            IconButton(onClick = {
-                                                searchQuery = ""
-                                                isSearchActive = false
-                                            }) {
-                                                Icon(Icons.Default.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp))
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth().height(48.dp)
-                                    )
-                                }
-                            }
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                if (!isSearchActive) {
-                                    IconButton(onClick = { isSearchActive = true }) {
-                                        Icon(Icons.Default.Search, contentDescription = "Search")
-                                    }
-                                }
-
-                                // Sync button
-                                IconButton(
-                                    onClick = { scope.launch { repository.syncAll() } },
-                                    enabled = !isSyncing
-                                ) {
-                                    if (isSyncing) {
-                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MonicoBlue)
-                                    } else {
-                                        Icon(Icons.Default.Sync, contentDescription = "Sync", tint = MonicoBlue)
-                                    }
-                                }
-
-                                // Dark mode toggle
-                                IconButton(onClick = onToggleDarkMode) {
-                                    Icon(
-                                        imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                        contentDescription = "Toggle theme"
-                                    )
-                                }
-
-                                // Admin panel button (Only for SUPER_ADMIN or DIC)
-                                if (isSuperAdmin || isDIC) {
-                                    IconButton(onClick = onOpenAdminPanel) {
-                                        Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin Panel", tint = MonicoAmber)
-                                    }
-                                }
-
-                                // Profile button
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .clickable { showProfileDialog = true }
-                                ) {
-                                    val pic = currentUser?.profilePic ?: ""
-                                    if (pic.isNotBlank() && (pic.startsWith("http") || pic.startsWith("data:"))) {
-                                        AsyncImage(
-                                            model = pic,
-                                            contentDescription = "Profile",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.monico_one_icon_1791604475434),
-                                            contentDescription = "Profile",
-                                            modifier = Modifier.fillMaxSize()
-                                        )
+                                        } else {
+                                            Image(
+                                                painter = painterResource(id = R.drawable.monico_one_icon_1791604475434),
+                                                contentDescription = "Profile",
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
 
-                        // Sync timestamp bar if available
+                        // Compact Sync timestamp & role bar
                         if (lastSyncTime.isNotBlank()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                                    .padding(horizontal = 14.dp, vertical = 2.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -405,7 +429,7 @@ fun DashboardScreen(
                                     currentEmpId = currentUser?.employeeId ?: "",
                                     onClick = {
                                         scope.launch { repository.markMenuSeen(item.id) }
-                                        handleMenuCardClick(item, onOpenUrl, onOpenImageViewer)
+                                        handleMenuCardClick(item, context, onOpenUrl, onOpenImageViewer)
                                     }
                                 )
                             }
@@ -437,13 +461,13 @@ fun DashboardScreen(
                             currentEmpId = currentUser?.employeeId ?: "",
                             onMenuClick = { item ->
                                 scope.launch { repository.markMenuSeen(item.id) }
-                                handleMenuCardClick(item, onOpenUrl, onOpenImageViewer)
+                                handleMenuCardClick(item, context, onOpenUrl, onOpenImageViewer)
                             }
                         )
                     }
                 }
 
-                // 6. Grid 2: Flat Bonus Sheet (তারিখ, মাস ও পৃষ্ঠা সংখ্যাসহ বোনাস শিট এবং আনরিড রেড ডট ইন্ডিকেটর)
+                // 6. Grid 2: Flat Bonus Sheet
                 item {
                     SectionHeader(
                         title = "ফ্ল্যাট বোনাস শিট (FLAT BONUS SHEET)",
@@ -461,7 +485,7 @@ fun DashboardScreen(
                                     currentEmpId = currentUser?.employeeId ?: "",
                                     onClick = {
                                         scope.launch { repository.markMenuSeen(item.id) }
-                                        handleMenuCardClick(item, onOpenUrl, onOpenImageViewer)
+                                        handleMenuCardClick(item, context, onOpenUrl, onOpenImageViewer)
                                     }
                                 )
                             }
@@ -471,7 +495,7 @@ fun DashboardScreen(
                     }
                 }
 
-                // 7. Grid 3: Head Office Circular (প্রধান কার্যালয়ের সার্কুলার ও অফিস আদেশ)
+                // 7. Grid 3: Head Office Circular
                 item {
                     SectionHeader(
                         title = "হেড অফিস সার্কুলার (HEAD OFFICE CIRCULAR)",
@@ -489,7 +513,7 @@ fun DashboardScreen(
                                     currentEmpId = currentUser?.employeeId ?: "",
                                     onClick = {
                                         scope.launch { repository.markMenuSeen(item.id) }
-                                        handleMenuCardClick(item, onOpenUrl, onOpenImageViewer)
+                                        handleMenuCardClick(item, context, onOpenUrl, onOpenImageViewer)
                                     }
                                 )
                             }
@@ -499,7 +523,7 @@ fun DashboardScreen(
                     }
                 }
 
-                // 8. Grid 4: Salary TA Bill (বেতন ও টিএ বিল ডকুমেন্টস)
+                // 8. Grid 4: Salary TA Bill
                 item {
                     SectionHeader(
                         title = "স্যালারি ও টিএ বিল (SALARY TA BILL)",
@@ -517,7 +541,7 @@ fun DashboardScreen(
                                     currentEmpId = currentUser?.employeeId ?: "",
                                     onClick = {
                                         scope.launch { repository.markMenuSeen(item.id) }
-                                        handleMenuCardClick(item, onOpenUrl, onOpenImageViewer)
+                                        handleMenuCardClick(item, context, onOpenUrl, onOpenImageViewer)
                                     }
                                 )
                             }
@@ -527,7 +551,7 @@ fun DashboardScreen(
                     }
                 }
 
-                // 9. Grid 5: Sales Report (PDF) (সেলস ও অ্যানালিটিক্স রিপোর্ট)
+                // 9. Grid 5: Sales Report (PDF)
                 item {
                     SectionHeader(
                         title = "সেলস রিপোর্ট (SALES REPORT PDF)",
@@ -545,7 +569,7 @@ fun DashboardScreen(
                                     currentEmpId = currentUser?.employeeId ?: "",
                                     onClick = {
                                         scope.launch { repository.markMenuSeen(item.id) }
-                                        handleMenuCardClick(item, onOpenUrl, onOpenImageViewer)
+                                        handleMenuCardClick(item, context, onOpenUrl, onOpenImageViewer)
                                     }
                                 )
                             }
@@ -703,6 +727,63 @@ fun DashboardScreen(
     }
 }
 
+private fun isPdfFile(url: String): Boolean {
+    if (url.isBlank()) return false
+    if (url.startsWith("data:application/pdf", ignoreCase = true)) return true
+    val lower = url.lowercase()
+    return lower.endsWith(".pdf") ||
+            lower.contains(".pdf?") ||
+            lower.contains("type=pdf") ||
+            lower.contains("/pdf")
+}
+
+private fun isImageFile(url: String): Boolean {
+    if (url.isBlank()) return false
+    if (url.startsWith("data:image", ignoreCase = true)) return true
+    val lower = url.lowercase()
+    return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp") || lower.contains("image")
+}
+
+private fun handleMenuCardClick(
+    item: MenuItem,
+    context: Context,
+    onOpenUrl: (title: String, url: String) -> Unit,
+    onOpenImageViewer: (title: String, images: List<String>) -> Unit
+) {
+    // 1. Gather all potential images
+    val allImages = mutableListOf<String>()
+    item.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) allImages.add(it) }
+
+    if (allImages.isEmpty()) {
+        if (item.url.isNotBlank() && !isPdfFile(item.url) && (isImageFile(item.url) || item.group != "grid1")) {
+            allImages.add(item.url)
+        } else if (item.icon.isNotBlank() && !isPdfFile(item.icon) && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
+            allImages.add(item.icon)
+        }
+    }
+
+    // 2. Check if this item is a PDF
+    val isPdf = isPdfFile(item.url) || item.group == "grid5" || item.icon.contains("pdf", ignoreCase = true)
+
+    if (isPdf && item.url.isNotBlank()) {
+        onOpenUrl(item.title, item.url)
+    } else if (allImages.isNotEmpty()) {
+        onOpenImageViewer(item.title, allImages)
+    } else if (item.url.isNotBlank()) {
+        if (item.url.startsWith("go:")) {
+            val target = item.url.removePrefix("go:").trim()
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$target"))
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                onOpenUrl(item.title, item.url)
+            }
+        } else {
+            onOpenUrl(item.title, item.url)
+        }
+    }
+}
+
 @Composable
 private fun EmptySectionNotice(text: String) {
     Surface(
@@ -719,31 +800,6 @@ private fun EmptySectionNotice(text: String) {
             modifier = Modifier.padding(12.dp),
             textAlign = TextAlign.Center
         )
-    }
-}
-
-private fun handleMenuCardClick(
-    item: MenuItem,
-    onOpenUrl: (title: String, url: String) -> Unit,
-    onOpenImageViewer: (title: String, images: List<String>) -> Unit
-) {
-    if (item.group == "grid1") {
-        if (item.url.isNotBlank()) {
-            onOpenUrl(item.title, item.url)
-        }
-    } else if (item.group == "grid5") {
-        // PDF
-        if (item.url.isNotBlank()) {
-            onOpenUrl(item.title, item.url)
-        }
-    } else {
-        // Image gallery
-        val imgList = if (item.images.isNotEmpty()) item.images else if (item.url.isNotBlank()) listOf(item.url) else emptyList()
-        if (imgList.isNotEmpty()) {
-            onOpenImageViewer(item.title, imgList)
-        } else if (item.url.isNotBlank()) {
-            onOpenUrl(item.title, item.url)
-        }
     }
 }
 
@@ -771,7 +827,6 @@ private fun SectionHeader(title: String, icon: androidx.compose.ui.graphics.vect
 private fun SliderCarousel(sliders: List<SliderItem>, onSliderClick: (SliderItem) -> Unit) {
     val pagerState = rememberPagerState(pageCount = { sliders.size })
 
-    // Auto-scroll effect
     LaunchedEffect(sliders.size) {
         while (true) {
             delay(4500)
@@ -828,7 +883,6 @@ private fun SliderCarousel(sliders: List<SliderItem>, onSliderClick: (SliderItem
                 }
             }
 
-            // Indicator dots
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -1098,9 +1152,22 @@ private fun MenuItemCard(
     onClick: () -> Unit
 ) {
     val hasSeen = item.seenBy[currentEmpId] == true
-    val imageList = if (item.images.isNotEmpty()) item.images else if (item.url.isNotBlank() && !item.url.endsWith(".pdf", ignoreCase = true)) listOf(item.url) else emptyList()
-    val isPdfGroup = item.group == "grid5" || item.icon.contains("pdf", ignoreCase = true) || item.url.endsWith(".pdf", ignoreCase = true)
-    val isImageCard = imageList.isNotEmpty() && (imageList[0].startsWith("http") || imageList[0].startsWith("data:"))
+    val isPdf = isPdfFile(item.url) || item.group == "grid5" || item.icon.contains("pdf", ignoreCase = true)
+
+    val imageList = remember(item) {
+        val list = mutableListOf<String>()
+        item.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) list.add(it) }
+        if (list.isEmpty()) {
+            if (item.url.isNotBlank() && !isPdfFile(item.url) && (isImageFile(item.url) || item.group != "grid1")) {
+                list.add(item.url)
+            } else if (item.icon.isNotBlank() && !isPdfFile(item.icon) && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
+                list.add(item.icon)
+            }
+        }
+        list
+    }
+
+    val isImageCard = !isPdf && imageList.isNotEmpty()
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -1112,7 +1179,7 @@ private fun MenuItemCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (isImageCard && !isPdfGroup) {
+            if (isImageCard) {
                 AsyncImage(
                     model = imageList[0],
                     contentDescription = item.title,
@@ -1128,7 +1195,8 @@ private fun MenuItemCard(
                             )
                         )
                 )
-            } else if (isPdfGroup) {
+            } else if (isPdf) {
+                // PDF Card styling
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -1147,7 +1215,7 @@ private fun MenuItemCard(
                             imageVector = Icons.Default.PictureAsPdf,
                             contentDescription = "PDF",
                             tint = Color.White,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(34.dp)
                         )
                         Surface(
                             shape = RoundedCornerShape(4.dp),
@@ -1179,7 +1247,7 @@ private fun MenuItemCard(
             }
 
             // Page count badge (for images)
-            if (!isPdfGroup && imageList.size > 1) {
+            if (!isPdf && imageList.size > 1) {
                 Surface(
                     shape = RoundedCornerShape(6.dp),
                     color = Color(0xCC0F172A),
@@ -1220,7 +1288,7 @@ private fun MenuItemCard(
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
-                        color = if (isImageCard || isPdfGroup) Color.White else MaterialTheme.colorScheme.onSurface
+                        color = if (isImageCard || isPdf) Color.White else MaterialTheme.colorScheme.onSurface
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1231,7 +1299,7 @@ private fun MenuItemCard(
                         text = dateLabel,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isImageCard || isPdfGroup) Color(0xFFFFD54F) else MaterialTheme.colorScheme.primary
+                        color = if (isImageCard || isPdf) Color(0xFFFFD54F) else MaterialTheme.colorScheme.primary
                     )
                 }
             }
