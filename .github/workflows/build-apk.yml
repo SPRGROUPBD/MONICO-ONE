@@ -1,4 +1,4 @@
-name: Build Android APK (.kts)
+name: Build Android APK
 
 on:
   push:
@@ -18,16 +18,21 @@ jobs:
       with:
         distribution: 'zulu'
         java-version: '17'
-        cache: 'gradle' # Automatically handles .gradle.kts dependencies and build cache
+        cache: 'gradle'
 
+    # Add "working-directory" pointing to your folder (e.g., android)
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+      working-directory: android 
 
+    # Add "working-directory" here as well
     - name: Build Debug APK
       run: ./gradlew assembleDebug
+      working-directory: android
 
     - name: Upload Generated APK
       uses: actions/upload-artifact@v4
       with:
         name: android-debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        # Update the path to include your subfolder name
+        path: android/app/build/outputs/apk/debug/app-debug.apk
