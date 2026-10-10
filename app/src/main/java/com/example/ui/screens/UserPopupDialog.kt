@@ -25,6 +25,7 @@ import com.example.data.model.PopupNotice
 import com.example.ui.theme.MonicoAmber
 import com.example.ui.theme.MonicoBlue
 import com.example.ui.theme.MonicoGreen
+import com.example.utils.ImageUtils
 
 @Composable
 fun UserPopupDialog(
@@ -49,9 +50,9 @@ fun UserPopupDialog(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // If image exists, show image
-                if (popup.image.isNotBlank() && (popup.image.startsWith("http") || popup.image.startsWith("data:"))) {
+                if (popup.image.isNotBlank()) {
                     AsyncImage(
-                        model = popup.image,
+                        model = ImageUtils.resolveImageModel(popup.image),
                         contentDescription = popup.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier

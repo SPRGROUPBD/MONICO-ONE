@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,6 +40,8 @@ import com.example.R
 import com.example.data.model.*
 import com.example.data.repository.MonicoRepository
 import com.example.ui.theme.*
+import com.example.utils.ImageUtils
+import com.example.utils.PdfUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -74,9 +77,9 @@ fun DashboardScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var selectedMonth by remember { mutableStateOf("ALL") }
 
-    // Initial popup display
+    // Initial popup display: Active hole sobar app open korle dekhte pabe, r Off hole dekha jabe na
     LaunchedEffect(popups) {
-        val active = popups.firstOrNull { it.status == "active" }
+        val active = popups.firstOrNull { it.status.equals("active", ignoreCase = true) }
         if (active != null && activePopupNotice == null) {
             activePopupNotice = active
         }
@@ -197,18 +200,19 @@ fun DashboardScreen(
         }
     ) {
         Scaffold(
+            contentWindowInsets = WindowInsets(0.dp),
             topBar = {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 3.dp
+                    shadowElevation = 2.dp
                 ) {
                     Column(modifier = Modifier.statusBarsPadding()) {
-                        // Fixed clean 56dp compact Top Bar
+                        // Fixed clean 52dp compact Top Bar
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp)
-                                .padding(horizontal = 10.dp),
+                                .height(52.dp)
+                                .padding(horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -339,9 +343,9 @@ fun DashboardScreen(
                                             .clickable { showProfileDialog = true }
                                     ) {
                                         val pic = currentUser?.profilePic ?: ""
-                                        if (pic.isNotBlank() && (pic.startsWith("http") || pic.startsWith("data:"))) {
+                                        if (pic.isNotBlank()) {
                                             AsyncImage(
-                                                model = pic,
+                                                model = ImageUtils.resolveImageModel(pic),
                                                 contentDescription = "Profile",
                                                 contentScale = ContentScale.Crop,
                                                 modifier = Modifier.fillMaxSize()
@@ -355,30 +359,6 @@ fun DashboardScreen(
                                         }
                                     }
                                 }
-                            }
-                        }
-
-                        // Compact Sync timestamp & role bar
-                        if (lastSyncTime.isNotBlank()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .padding(horizontal = 14.dp, vertical = 2.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "সর্বশেষ সিঙ্ক: $lastSyncTime",
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "Role: ${currentUser?.role}",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MonicoBlue
-                                )
                             }
                         }
                     }
@@ -706,9 +686,9 @@ fun DashboardScreen(
         ProfileDialog(
             user = currentUser!!,
             onDismiss = { showProfileDialog = false },
-            onUpdateProfile = { name, pass ->
+            onUpdateProfile = { name, pass, newPic ->
                 scope.launch {
-                    repository.updateProfile(name, pass)
+                    repository.updateProfile(name, pass, newPic)
                     repository.syncAll()
                 }
             },
@@ -728,13 +708,7 @@ fun DashboardScreen(
 }
 
 private fun isPdfFile(url: String): Boolean {
-    if (url.isBlank()) return false
-    if (url.startsWith("data:application/pdf", ignoreCase = true)) return true
-    val lower = url.lowercase()
-    return lower.endsWith(".pdf") ||
-            lower.contains(".pdf?") ||
-            lower.contains("type=pdf") ||
-            lower.contains("/pdf")
+    return PdfUtils.isPdf(url)
 }
 
 private fun isImageFile(url: String): Boolean {
@@ -750,7 +724,16 @@ private fun handleMenuCardClick(
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
-    // 1. Gather all potential images
+    // 1. Check if this item is a PDF
+    val isPdf = item.group == "grid5" || isPdfFile(item.url) || item.icon.contains("pdf", ignoreCase = true)
+
+    if (isPdf && item.url.isNotBlank()) {
+        // Open natively in ImageViewerDialog with PdfRenderer
+        onOpenImageViewer(item.title, listOf(item.url))
+        return
+    }
+
+    // 2. Gather all potential images
     val allImages = mutableListOf<String>()
     item.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) allImages.add(it) }
 
@@ -762,12 +745,7 @@ private fun handleMenuCardClick(
         }
     }
 
-    // 2. Check if this item is a PDF
-    val isPdf = isPdfFile(item.url) || item.group == "grid5" || item.icon.contains("pdf", ignoreCase = true)
-
-    if (isPdf && item.url.isNotBlank()) {
-        onOpenUrl(item.title, item.url)
-    } else if (allImages.isNotEmpty()) {
+    if (allImages.isNotEmpty()) {
         onOpenImageViewer(item.title, allImages)
     } else if (item.url.isNotBlank()) {
         if (item.url.startsWith("go:")) {
@@ -954,8 +932,13 @@ private fun NoticeTicker(notices: List<NoticeItem>) {
                     color = MaterialTheme.colorScheme.onSurface
                 ),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .basicMarquee(
+                        iterations = Int.MAX_VALUE,
+                        initialDelayMillis = 500,
+                        velocity = 40.dp
+                    )
             )
         }
     }
@@ -1152,22 +1135,30 @@ private fun MenuItemCard(
     onClick: () -> Unit
 ) {
     val hasSeen = item.seenBy[currentEmpId] == true
-    val isPdf = isPdfFile(item.url) || item.group == "grid5" || item.icon.contains("pdf", ignoreCase = true)
+    // Explicitly determine if it's a PDF: Grid 5 is PDF group, or url/icon explicitly has .pdf
+    val isPdf = item.group == "grid5" ||
+            (item.url.isNotBlank() && isPdfFile(item.url)) ||
+            item.icon.equals("fa-file-pdf", ignoreCase = true)
 
-    val imageList = remember(item) {
-        val list = mutableListOf<String>()
-        item.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) list.add(it) }
-        if (list.isEmpty()) {
-            if (item.url.isNotBlank() && !isPdfFile(item.url) && (isImageFile(item.url) || item.group != "grid1")) {
-                list.add(item.url)
-            } else if (item.icon.isNotBlank() && !isPdfFile(item.icon) && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
-                list.add(item.icon)
+    val imageList = remember(item, isPdf) {
+        if (isPdf) {
+            emptyList()
+        } else {
+            val list = mutableListOf<String>()
+            item.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) list.add(it) }
+            if (list.isEmpty()) {
+                if (item.url.isNotBlank() && !isPdfFile(item.url) && (isImageFile(item.url) || item.group != "grid1")) {
+                    list.add(item.url)
+                } else if (item.icon.isNotBlank() && !isPdfFile(item.icon) && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
+                    list.add(item.icon)
+                }
             }
+            list
         }
-        list
     }
 
-    val isImageCard = !isPdf && imageList.isNotEmpty()
+    val isImageCard = !isPdf
+    val hasImagePreview = isImageCard && imageList.isNotEmpty()
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -1179,9 +1170,10 @@ private fun MenuItemCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (isImageCard) {
+            if (hasImagePreview) {
+                // Image preview with overlay
                 AsyncImage(
-                    model = imageList[0],
+                    model = ImageUtils.resolveImageModel(imageList[0]),
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -1196,7 +1188,7 @@ private fun MenuItemCard(
                         )
                 )
             } else if (isPdf) {
-                // PDF Card styling
+                // PDF Card styling with PDF Icon
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -1213,7 +1205,7 @@ private fun MenuItemCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.PictureAsPdf,
-                            contentDescription = "PDF",
+                            contentDescription = "PDF Icon",
                             tint = Color.White,
                             modifier = Modifier.size(34.dp)
                         )
@@ -1232,36 +1224,83 @@ private fun MenuItemCard(
                     }
                 }
             } else {
+                // Image card placeholder with Image Icon
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                    MaterialTheme.colorScheme.surface
-                                )
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFF0D9488), Color(0xFF0F766E))
                             )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Image Icon",
+                            tint = Color.White,
+                            modifier = Modifier.size(34.dp)
                         )
-                )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color.White.copy(alpha = 0.25f)
+                        ) {
+                            Text(
+                                text = "IMAGE FILE",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
 
-            // Page count badge (for images)
-            if (!isPdf && imageList.size > 1) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Color(0xCC0F172A),
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp)
+            // Top-left type badge: Image icon on Image cards, PDF icon on PDF cards
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0xCC0F172A),
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    Text(
-                        text = "${imageList.size} Pages",
-                        fontSize = 8.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
+                    if (isPdf) {
+                        Icon(
+                            imageVector = Icons.Default.PictureAsPdf,
+                            contentDescription = "PDF",
+                            tint = Color(0xFFF87171),
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = "PDF",
+                            fontSize = 8.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Image",
+                            tint = Color(0xFF38BDF8),
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = if (imageList.size > 1) "${imageList.size} Pages" else "IMAGE",
+                            fontSize = 8.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 
@@ -1288,7 +1327,7 @@ private fun MenuItemCard(
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
-                        color = if (isImageCard || isPdf) Color.White else MaterialTheme.colorScheme.onSurface
+                        color = Color.White
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1299,7 +1338,7 @@ private fun MenuItemCard(
                         text = dateLabel,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isImageCard || isPdf) Color(0xFFFFD54F) else MaterialTheme.colorScheme.primary
+                        color = Color(0xFFFFD54F)
                     )
                 }
             }
@@ -1326,7 +1365,7 @@ private fun ContentCardItem(
         Box(modifier = Modifier.fillMaxSize()) {
             if (imageList.isNotEmpty()) {
                 AsyncImage(
-                    model = imageList[0],
+                    model = ImageUtils.resolveImageModel(imageList[0]),
                     contentDescription = card.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -1351,29 +1390,56 @@ private fun ContentCardItem(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Description,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(34.dp)
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color.White.copy(alpha = 0.25f)
+                        ) {
+                            Text(
+                                text = "PRODUCT CARD",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
             }
 
-            if (imageList.size > 1) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Color(0xCC0F172A),
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp)
+            // Image badge in top-left
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0xCC0F172A),
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Image",
+                        tint = Color(0xFF38BDF8),
+                        modifier = Modifier.size(11.dp)
+                    )
                     Text(
-                        text = "${imageList.size} Pages",
+                        text = if (imageList.size > 1) "${imageList.size} Pages" else "IMAGE",
                         fontSize = 8.sp,
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

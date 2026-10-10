@@ -4,9 +4,13 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.data.model.*
 import com.example.data.remote.FirebaseRtdbService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -155,6 +159,18 @@ class MonicoRepository(context: Context) {
                 SidebarMenuItem("sm2", "Order Monitoring Portal", "https://example.com/orders", "fa-chart-line", "active", "SUPER_ADMIN,DIC")
             )
         }
+        if (_popups.value.isEmpty()) {
+            _popups.value = listOf(
+                PopupNotice(
+                    id = "-P_WELCOME",
+                    title = "মনিকো ওয়ান (Monico One) এ স্বাগতম",
+                    body = "মাঠপর্যায়ের কাজের সকল ফাইল, বোনাস শিট ও সার্কুলার নিয়মিত দেখতে অ্যাপটি ব্যবহার করুন।",
+                    status = "active",
+                    type = "general",
+                    image = ""
+                )
+            )
+        }
     }
 
     private fun getDefaultMenus(): List<MenuItem> {
@@ -248,41 +264,61 @@ class MonicoRepository(context: Context) {
             .apply()
     }
 
-    suspend fun syncAll(): Boolean {
+    // High performance parallel sync
+    suspend fun syncAll(): Boolean = withContext(Dispatchers.IO) {
         _isSyncing.value = true
         try {
-            val m = service.fetchMenus()
-            if (m.isNotEmpty()) {
-                _menus.value = m
-                saveMenusToCache(m)
-            } else if (_menus.value.isEmpty()) {
-                _menus.value = getDefaultMenus()
-            }
+            coroutineScope {
+                val menusDeferred = async { service.fetchMenus() }
+                val slidersDeferred = async { service.fetchSliders() }
+                val noticesDeferred = async { service.fetchNotices() }
+                val popupsDeferred = async { service.fetchPopups() }
+                val prodDeferred = async { service.fetchCards("product_launch_cards") }
+                val trainDeferred = async { service.fetchCards("product_training_cards") }
+                val targetDeferred = async { service.fetchCards("product_target_sheets") }
+                val sideDeferred = async { service.fetchSidebarMenus() }
+                val usersDeferred = async { service.fetchUsers() }
 
-            val s = service.fetchSliders()
-            if (s.isNotEmpty()) _sliders.value = s
+                val m = menusDeferred.await()
+                if (m.isNotEmpty()) {
+                    _menus.value = m
+                    saveMenusToCache(m)
+                } else if (_menus.value.isEmpty()) {
+                    _menus.value = getDefaultMenus()
+                }
 
-            val n = service.fetchNotices()
-            if (n.isNotEmpty()) _notices.value = n
+                val s = slidersDeferred.await()
+                if (s.isNotEmpty()) _sliders.value = s
 
-            val p = service.fetchPopups()
-            if (p.isNotEmpty()) _popups.value = p
+                val n = noticesDeferred.await()
+                if (n.isNotEmpty()) _notices.value = n
 
-            val prod = service.fetchCards("product_launch_cards")
-            if (prod.isNotEmpty()) _productCards.value = prod
+                val p = popupsDeferred.await()
+                if (p.isNotEmpty()) _popups.value = p
 
-            val train = service.fetchCards("product_training_cards")
-            if (train.isNotEmpty()) _trainingCards.value = train
+                val prod = prodDeferred.await()
+                if (prod.isNotEmpty()) _productCards.value = prod
 
-            val target = service.fetchCards("product_target_sheets")
-            if (target.isNotEmpty()) _targetSheets.value = target
+                val train = trainDeferred.await()
+                if (train.isNotEmpty()) _trainingCards.value = train
 
-            val side = service.fetchSidebarMenus()
-            if (side.isNotEmpty()) _sidebarMenus.value = side
+                val target = targetDeferred.await()
+                if (target.isNotEmpty()) _targetSheets.value = target
 
-            val u = service.fetchUsers()
-            if (u.isNotEmpty()) {
-                _allUsers.value = u.values.toList()
+                val side = sideDeferred.await()
+                if (side.isNotEmpty()) _sidebarMenus.value = side
+
+                val u = usersDeferred.await()
+                if (u.isNotEmpty()) {
+                    _allUsers.value = u.values.toList()
+                    val cur = _currentUser.value
+                    if (cur != null) {
+                        val freshUser = u[cur.employeeId]
+                        if (freshUser != null) {
+                            saveUserSession(freshUser)
+                        }
+                    }
+                }
             }
 
             val sdf = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
@@ -294,10 +330,10 @@ class MonicoRepository(context: Context) {
             if (cur != null) {
                 service.updatePresence(cur.employeeId, cur.fullName, cur.role)
             }
-            return true
+            true
         } catch (e: Exception) {
             e.printStackTrace()
-            return false
+            false
         } finally {
             _isSyncing.value = false
         }
@@ -306,22 +342,20 @@ class MonicoRepository(context: Context) {
     private fun saveMenusToCache(list: List<MenuItem>) {
         try {
             val arr = JSONArray()
-            list.forEach { m ->
+            // To prevent massive disk freezes, keep metadata in cache
+            list.take(40).forEach { m ->
                 val obj = JSONObject()
                     .put("id", m.id)
                     .put("group", m.group)
                     .put("title", m.title)
-                    .put("icon", m.icon)
-                    .put("url", m.url)
+                    .put("icon", if (m.icon.startsWith("data:")) "icon" else m.icon)
+                    .put("url", if (m.url.startsWith("data:")) "" else m.url)
                     .put("allowedRole", m.allowedRole)
                     .put("month", m.month)
                     .put("date", m.date)
                     .put("color", m.color)
                     .put("isPinned", m.isPinned)
                     .put("status", m.status)
-                val imgArr = JSONArray()
-                m.images.forEach { imgArr.put(it) }
-                obj.put("images", imgArr)
                 arr.put(obj)
             }
             prefs.edit().putString("cache_menus", arr.toString()).apply()
@@ -342,15 +376,24 @@ class MonicoRepository(context: Context) {
         }
     }
 
-    suspend fun updateProfile(fullName: String, newPassword: String): Boolean {
+    suspend fun updateProfile(fullName: String, newPassword: String, newProfilePic: String? = null): Boolean {
         val user = _currentUser.value ?: return false
         try {
-            service.updateUser(user.employeeId, fullName, newPassword, null)
+            val finalPic = newProfilePic ?: user.profilePic
+            val finalPass = if (newPassword.isNotBlank()) newPassword else user.password
+            service.updateUser(user.employeeId, fullName, finalPass, finalPic)
             val updated = user.copy(
                 fullName = fullName,
-                password = if (newPassword.isNotEmpty()) newPassword else user.password
+                password = finalPass,
+                profilePic = finalPic
             )
             saveUserSession(updated)
+
+            // Also update in all users list
+            val currentAll = _allUsers.value.toMutableList()
+            val idx = currentAll.indexOfFirst { it.employeeId.equals(user.employeeId, ignoreCase = true) }
+            if (idx != -1) currentAll[idx] = updated else currentAll.add(updated)
+            _allUsers.value = currentAll
             return true
         } catch (e: Exception) {
             e.printStackTrace()
@@ -358,87 +401,141 @@ class MonicoRepository(context: Context) {
         }
     }
 
-    suspend fun saveSidebarMenu(item: SidebarMenuItem): Boolean {
-        val ok = service.saveSidebarMenu(item)
-        if (ok) syncAll()
-        return ok
-    }
-
-    suspend fun deleteSidebarMenu(id: String): Boolean {
-        val ok = service.deleteSidebarMenu(id)
-        if (ok) syncAll()
-        return ok
-    }
-
-    suspend fun saveCard(path: String, card: ContentCard): Boolean {
-        val ok = service.saveContentCard(path, card)
-        if (ok) syncAll()
-        return ok
-    }
-
-    suspend fun deleteCard(path: String, id: String): Boolean {
-        val ok = service.deleteContentCard(path, id)
-        if (ok) syncAll()
-        return ok
-    }
-
+    // Instant optimistic CRUD operations
     suspend fun saveMenuItem(menu: MenuItem): Boolean {
-        val ok = service.saveMenuItem(menu)
-        if (ok) syncAll()
-        return ok
+        val targetId = if (menu.id.isNotBlank()) menu.id else "-M" + System.currentTimeMillis()
+        val itemToSave = menu.copy(id = targetId)
+        val currentList = _menus.value.toMutableList()
+        val idx = currentList.indexOfFirst { it.id == targetId }
+        if (idx != -1) {
+            currentList[idx] = itemToSave
+        } else {
+            currentList.add(0, itemToSave)
+        }
+        _menus.value = currentList
+        saveMenusToCache(currentList)
+
+        return service.saveMenuItem(itemToSave)
     }
 
     suspend fun deleteMenuItem(id: String): Boolean {
-        val ok = service.deleteMenuItem(id)
-        if (ok) syncAll()
-        return ok
+        val currentList = _menus.value.filter { it.id != id }
+        _menus.value = currentList
+        saveMenusToCache(currentList)
+
+        return service.deleteMenuItem(id)
+    }
+
+    suspend fun saveSidebarMenu(item: SidebarMenuItem): Boolean {
+        val targetId = if (item.id.isNotBlank()) item.id else "-SM" + System.currentTimeMillis()
+        val itemToSave = item.copy(id = targetId)
+        val list = _sidebarMenus.value.toMutableList()
+        val idx = list.indexOfFirst { it.id == targetId }
+        if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
+        _sidebarMenus.value = list
+
+        return service.saveSidebarMenu(itemToSave)
+    }
+
+    suspend fun deleteSidebarMenu(id: String): Boolean {
+        _sidebarMenus.value = _sidebarMenus.value.filter { it.id != id }
+        return service.deleteSidebarMenu(id)
     }
 
     suspend fun saveSlider(slider: SliderItem): Boolean {
-        val ok = service.saveSlider(slider)
-        if (ok) syncAll()
-        return ok
+        val targetId = if (slider.id.isNotBlank()) slider.id else "-S" + System.currentTimeMillis()
+        val itemToSave = slider.copy(id = targetId)
+        val list = _sliders.value.toMutableList()
+        val idx = list.indexOfFirst { it.id == targetId }
+        if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
+        _sliders.value = list
+
+        return service.saveSlider(itemToSave)
     }
 
     suspend fun deleteSlider(id: String): Boolean {
-        val ok = service.deleteSlider(id)
-        if (ok) syncAll()
-        return ok
+        _sliders.value = _sliders.value.filter { it.id != id }
+        return service.deleteSlider(id)
     }
 
     suspend fun saveNotice(text: String, id: String = ""): Boolean {
-        val ok = service.saveNotice(text, id)
-        if (ok) syncAll()
-        return ok
+        val targetId = if (id.isNotBlank()) id else "-N" + System.currentTimeMillis()
+        val itemToSave = NoticeItem(targetId, text)
+        val list = _notices.value.toMutableList()
+        val idx = list.indexOfFirst { it.id == targetId }
+        if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
+        _notices.value = list
+
+        return service.saveNotice(text, targetId)
     }
 
     suspend fun deleteNotice(id: String): Boolean {
-        val ok = service.deleteNotice(id)
-        if (ok) syncAll()
-        return ok
+        _notices.value = _notices.value.filter { it.id != id }
+        return service.deleteNotice(id)
     }
 
     suspend fun savePopup(popup: PopupNotice): Boolean {
-        val ok = service.savePopup(popup)
-        if (ok) syncAll()
-        return ok
+        val targetId = if (popup.id.isNotBlank()) popup.id else "-P" + System.currentTimeMillis()
+        val itemToSave = popup.copy(id = targetId)
+        val list = _popups.value.toMutableList()
+        val idx = list.indexOfFirst { it.id == targetId }
+        if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
+        _popups.value = list
+
+        return service.savePopup(itemToSave)
     }
 
     suspend fun deletePopup(id: String): Boolean {
-        val ok = service.deletePopup(id)
-        if (ok) syncAll()
-        return ok
+        _popups.value = _popups.value.filter { it.id != id }
+        return service.deletePopup(id)
+    }
+
+    suspend fun saveCard(path: String, card: ContentCard): Boolean {
+        val targetId = if (card.id.isNotBlank()) card.id else "-C" + System.currentTimeMillis()
+        val itemToSave = card.copy(id = targetId)
+        when (path) {
+            "product_launch_cards" -> {
+                val list = _productCards.value.toMutableList()
+                val idx = list.indexOfFirst { it.id == targetId }
+                if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
+                _productCards.value = list
+            }
+            "product_training_cards" -> {
+                val list = _trainingCards.value.toMutableList()
+                val idx = list.indexOfFirst { it.id == targetId }
+                if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
+                _trainingCards.value = list
+            }
+            "product_target_sheets" -> {
+                val list = _targetSheets.value.toMutableList()
+                val idx = list.indexOfFirst { it.id == targetId }
+                if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
+                _targetSheets.value = list
+            }
+        }
+        return service.saveContentCard(path, itemToSave)
+    }
+
+    suspend fun deleteCard(path: String, id: String): Boolean {
+        when (path) {
+            "product_launch_cards" -> _productCards.value = _productCards.value.filter { it.id != id }
+            "product_training_cards" -> _trainingCards.value = _trainingCards.value.filter { it.id != id }
+            "product_target_sheets" -> _targetSheets.value = _targetSheets.value.filter { it.id != id }
+        }
+        return service.deleteContentCard(path, id)
     }
 
     suspend fun saveUser(user: User): Boolean {
-        val ok = service.saveUser(user)
-        if (ok) syncAll()
-        return ok
+        val list = _allUsers.value.toMutableList()
+        val idx = list.indexOfFirst { it.employeeId.equals(user.employeeId, ignoreCase = true) }
+        if (idx != -1) list[idx] = user else list.add(user)
+        _allUsers.value = list
+
+        return service.saveUser(user)
     }
 
     suspend fun deleteUser(employeeId: String): Boolean {
-        val ok = service.deleteUser(employeeId)
-        if (ok) syncAll()
-        return ok
+        _allUsers.value = _allUsers.value.filterNot { it.employeeId.equals(employeeId, ignoreCase = true) }
+        return service.deleteUser(employeeId)
     }
 }

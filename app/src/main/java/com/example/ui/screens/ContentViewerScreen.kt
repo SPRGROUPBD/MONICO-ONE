@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.ui.theme.MonicoBlue
 import com.example.ui.theme.MonicoRed
+import com.example.utils.PdfUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
@@ -68,22 +69,14 @@ fun ContentViewerScreen(
 
     fun openInExternalApp() {
         try {
-            val intent = if (isPdf) {
-                Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(Uri.parse(url), "application/pdf")
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            } else {
-                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            if (isPdf) {
+                val opened = PdfUtils.openPdfWithExternalApp(context, url)
+                if (opened) return
             }
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             context.startActivity(intent)
         } catch (e: Exception) {
-            try {
-                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                context.startActivity(browserIntent)
-            } catch (ex: Exception) {
-                ex.printStackTrace()
-            }
+            e.printStackTrace()
         }
     }
 

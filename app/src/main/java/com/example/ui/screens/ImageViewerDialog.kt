@@ -1,7 +1,9 @@
 package com.example.ui.screens
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
@@ -20,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -34,7 +37,13 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.SubcomposeAsyncImage
 import com.example.ui.theme.MonicoBlue
+import com.example.ui.theme.MonicoGreen
 import com.example.ui.theme.MonicoRed
+import com.example.utils.ImageUtils
+import com.example.utils.PdfUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ImageViewerDialog(
@@ -45,27 +54,53 @@ fun ImageViewerDialog(
     if (images.isEmpty()) return
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var currentIndex by remember { mutableIntStateOf(0) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
 
-    val currentUrl = images.getOrNull(currentIndex) ?: ""
-    val isPdf = remember(currentUrl) {
-        val lower = currentUrl.lowercase()
-        lower.endsWith(".pdf") ||
-                lower.contains(".pdf?") ||
-                lower.contains("type=pdf") ||
-                lower.contains("/pdf") ||
-                currentUrl.startsWith("data:application/pdf", ignoreCase = true)
+    val rawUrl = images.getOrNull(currentIndex) ?: ""
+    val isPdf = remember(rawUrl) { PdfUtils.isPdf(rawUrl) }
+
+    // State for rendered PDF pages if it is a PDF
+    var pdfPages by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
+    var isPdfLoading by remember { mutableStateOf(false) }
+    var pdfLoadError by remember { mutableStateOf(false) }
+    var pdfPageIndex by remember { mutableIntStateOf(0) }
+
+    // When a PDF is encountered, render its pages
+    LaunchedEffect(rawUrl, isPdf) {
+        if (isPdf) {
+            isPdfLoading = true
+            pdfLoadError = false
+            pdfPages = emptyList()
+            pdfPageIndex = 0
+            try {
+                val rendered = PdfUtils.renderPdfPages(context, rawUrl)
+                if (rendered.isNotEmpty()) {
+                    pdfPages = rendered
+                } else {
+                    pdfLoadError = true
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                pdfLoadError = true
+            } finally {
+                isPdfLoading = false
+            }
+        }
     }
 
     // Reset zoom when switching page
-    LaunchedEffect(currentIndex) {
+    LaunchedEffect(currentIndex, pdfPageIndex) {
         scale = 1f
         offsetX = 0f
         offsetY = 0f
     }
+
+    val totalPages = if (isPdf && pdfPages.isNotEmpty()) pdfPages.size else images.size
+    val activePageIndex = if (isPdf && pdfPages.isNotEmpty()) pdfPageIndex else currentIndex
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -97,18 +132,38 @@ fun ImageViewerDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (images.size > 1) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            if (isPdf) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MonicoRed
+                                ) {
+                                    Text(
+                                        text = "PDF",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                             Text(
-                                text = "পৃষ্ঠা ${currentIndex + 1} / ${images.size} (Page ${currentIndex + 1} of ${images.size})",
+                                text = title,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        if (totalPages > 1) {
+                            Text(
+                                text = "পৃষ্ঠা ${activePageIndex + 1} / $totalPages",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = Color.LightGray,
                                     fontSize = 12.sp
@@ -121,11 +176,26 @@ fun ImageViewerDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (currentUrl.startsWith("http://") || currentUrl.startsWith("https://")) {
+                        // Open with external app button (Works for both PDF via FileProvider and Web URLs)
+                        if (isPdf) {
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        PdfUtils.openPdfWithExternalApp(context, rawUrl)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PictureAsPdf,
+                                    contentDescription = "Open in PDF App",
+                                    tint = MonicoRed
+                                )
+                            }
+                        } else if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
                             IconButton(
                                 onClick = {
                                     try {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl))
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(rawUrl))
                                         context.startActivity(intent)
                                     } catch (e: Exception) {
                                         e.printStackTrace()
@@ -178,55 +248,84 @@ fun ImageViewerDialog(
                 contentAlignment = Alignment.Center
             ) {
                 if (isPdf) {
-                    // This item is a PDF file
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PictureAsPdf,
-                            contentDescription = "PDF",
-                            tint = MonicoRed,
-                            modifier = Modifier.size(72.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "এটি একটি PDF ডকুমেন্ট",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "PDF টি দেখতে সরাসরি আপনার ফোনের PDF অ্যাপে খুলুন।",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = Color.LightGray,
-                                textAlign = TextAlign.Center
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            onClick = {
-                                try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl))
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MonicoRed),
-                            shape = RoundedCornerShape(12.dp)
+                    if (isPdfLoading) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(Icons.Default.OpenInBrowser, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("PDF অ্যাপে খুলুন")
+                            CircularProgressIndicator(color = MonicoRed)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("PDF লোড ও পেজ রেন্ডার করা হচ্ছে...", color = Color.White, fontSize = 13.sp)
+                        }
+                    } else if (pdfPages.isNotEmpty()) {
+                        val currentBitmap = pdfPages.getOrNull(pdfPageIndex)
+                        if (currentBitmap != null) {
+                            Image(
+                                bitmap = currentBitmap.asImageBitmap(),
+                                contentDescription = "$title PDF page ${pdfPageIndex + 1}",
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp)
+                                    .graphicsLayer(
+                                        scaleX = scale,
+                                        scaleY = scale,
+                                        translationX = offsetX,
+                                        translationY = offsetY
+                                    )
+                            )
+                        }
+                    } else {
+                        // PDF could not render directly as bitmaps, show open externally button
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PictureAsPdf,
+                                contentDescription = "PDF",
+                                tint = MonicoRed,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                text = "PDF ফাইলটি প্রস্তুত রয়েছে",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "আপনার পছন্দের PDF ভিউয়ারে দেখতে নিচের বোতামে চাপুন।",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color.LightGray,
+                                    textAlign = TextAlign.Center
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(18.dp))
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        PdfUtils.openPdfWithExternalApp(context, rawUrl)
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MonicoRed),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.OpenInBrowser, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("PDF অ্যাপে খুলুন (Open in PDF App)")
+                            }
                         }
                     }
                 } else {
+                    // Regular Image (Supports HTTP URL, content URI, and base64 ByteArray)
+                    val resolvedModel = remember(rawUrl) { ImageUtils.resolveImageModel(rawUrl) }
+
                     SubcomposeAsyncImage(
-                        model = currentUrl,
+                        model = resolvedModel,
                         contentDescription = "$title page ${currentIndex + 1}",
                         contentScale = ContentScale.Fit,
                         loading = {
@@ -248,11 +347,11 @@ fun ImageViewerDialog(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                if (currentUrl.startsWith("http")) {
+                                if (rawUrl.startsWith("http")) {
                                     Button(
                                         onClick = {
                                             try {
-                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl))
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(rawUrl))
                                                 context.startActivity(intent)
                                             } catch (e: Exception) {
                                                 e.printStackTrace()
@@ -294,11 +393,16 @@ fun ImageViewerDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    if (images.size > 1) {
+                    if (totalPages > 1) {
                         FilledTonalButton(
                             onClick = {
-                                if (currentIndex > 0) currentIndex--
-                                else currentIndex = images.size - 1
+                                if (isPdf && pdfPages.isNotEmpty()) {
+                                    if (pdfPageIndex > 0) pdfPageIndex--
+                                    else pdfPageIndex = pdfPages.size - 1
+                                } else {
+                                    if (currentIndex > 0) currentIndex--
+                                    else currentIndex = images.size - 1
+                                }
                             },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.filledTonalButtonColors(
@@ -315,7 +419,7 @@ fun ImageViewerDialog(
                         }
 
                         Text(
-                            text = "${currentIndex + 1} / ${images.size}",
+                            text = "${activePageIndex + 1} / $totalPages",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold
@@ -325,8 +429,13 @@ fun ImageViewerDialog(
 
                         FilledTonalButton(
                             onClick = {
-                                if (currentIndex < images.size - 1) currentIndex++
-                                else currentIndex = 0
+                                if (isPdf && pdfPages.isNotEmpty()) {
+                                    if (pdfPageIndex < pdfPages.size - 1) pdfPageIndex++
+                                    else pdfPageIndex = 0
+                                } else {
+                                    if (currentIndex < images.size - 1) currentIndex++
+                                    else currentIndex = 0
+                                }
                             },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.filledTonalButtonColors(
