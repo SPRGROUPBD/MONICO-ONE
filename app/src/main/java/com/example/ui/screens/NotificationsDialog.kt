@@ -76,7 +76,8 @@ fun NotificationsDialog(
     onDismiss: () -> Unit,
     onMarkAsRead: (String) -> Unit,
     onMarkAllAsRead: () -> Unit,
-    onSendNotification: (title: String, message: String, targetRole: String, type: String) -> Unit
+    onSendNotification: (title: String, message: String, targetRole: String, type: String, targetUrl: String) -> Unit,
+    onOpenUrl: ((title: String, url: String) -> Unit)? = null
 ) {
     val empId = currentUser?.employeeId?.uppercase() ?: ""
     val userRole = currentUser?.role?.uppercase() ?: "MPO"
@@ -238,7 +239,18 @@ fun NotificationsDialog(
                                     if (!isRead) {
                                         onMarkAsRead(notif.id)
                                     }
-                                }
+                                    if (notif.targetUrl.isNotBlank() && onOpenUrl != null) {
+                                        onDismiss()
+                                        onOpenUrl(notif.title, notif.targetUrl)
+                                    }
+                                },
+                                onOpenFile = if (notif.targetUrl.isNotBlank() && onOpenUrl != null) {
+                                    {
+                                        if (!isRead) onMarkAsRead(notif.id)
+                                        onDismiss()
+                                        onOpenUrl(notif.title, notif.targetUrl)
+                                    }
+                                } else null
                             )
                         }
                     }
@@ -250,8 +262,8 @@ fun NotificationsDialog(
     if (showSendDialog) {
         SendNotificationDialog(
             onDismiss = { showSendDialog = false },
-            onSend = { title, message, targetRole, type ->
-                onSendNotification(title, message, targetRole, type)
+            onSend = { title, message, targetRole, type, targetUrl ->
+                onSendNotification(title, message, targetRole, type, targetUrl)
                 showSendDialog = false
             }
         )
@@ -262,7 +274,8 @@ fun NotificationsDialog(
 fun NotificationCardItem(
     notification: NotificationItem,
     isRead: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onOpenFile: (() -> Unit)? = null
 ) {
     val (typeColor, typeIcon, typeLabel) = when (notification.type.lowercase()) {
         "urgent" -> Triple(MaterialTheme.colorScheme.error, Icons.Default.Warning, "জরুরি")
@@ -383,6 +396,35 @@ fun NotificationCardItem(
                 )
             }
 
+            // Attached URL / file button
+            if (notification.targetUrl.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MonicoBlue.copy(alpha = 0.12f),
+                    modifier = Modifier.clickable { onOpenFile?.invoke() ?: onClick() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NotificationsActive,
+                            contentDescription = null,
+                            tint = MonicoBlue,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "সংযুক্ত ফাইল/নোটিশ খুলুন (Open Attachment)",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MonicoBlue
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Footer: Date and Sender
@@ -414,12 +456,13 @@ fun NotificationCardItem(
 @Composable
 fun SendNotificationDialog(
     onDismiss: () -> Unit,
-    onSend: (title: String, message: String, targetRole: String, type: String) -> Unit
+    onSend: (title: String, message: String, targetRole: String, type: String, targetUrl: String) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var targetRole by remember { mutableStateOf("ALL") }
     var type by remember { mutableStateOf("info") }
+    var targetUrl by remember { mutableStateOf("") }
     var targetExpanded by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
@@ -495,8 +538,22 @@ fun SendNotificationDialog(
                     placeholder = { Text("সকল ফিল্ড ফোর্সকে নির্দেশিকা দেখার জন্য...") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(110.dp)
+                        .height(95.dp)
                         .testTag("notif_message_input"),
+                    shape = RoundedCornerShape(10.dp)
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                OutlinedTextField(
+                    value = targetUrl,
+                    onValueChange = { targetUrl = it },
+                    label = { Text("সংযুক্ত ফাইল বা রিপোর্ট URL (ঐচ্ছিক)") },
+                    placeholder = { Text("https://example.com/doc.pdf বা go:order") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("notif_url_input"),
+                    singleLine = true,
                     shape = RoundedCornerShape(10.dp)
                 )
 
@@ -599,7 +656,7 @@ fun SendNotificationDialog(
                             } else if (message.isBlank()) {
                                 errorText = "অনুগ্রহ করে বার্তা বিবরণ লিখুন।"
                             } else {
-                                onSend(title.trim(), message.trim(), targetRole, type)
+                                onSend(title.trim(), message.trim(), targetRole, type, targetUrl.trim())
                             }
                         },
                         shape = RoundedCornerShape(10.dp),

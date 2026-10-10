@@ -2,21 +2,29 @@ package com.example
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.example.data.repository.MonicoRepository
 import com.example.ui.screens.*
 import com.example.ui.theme.MyApplicationTheme
+import com.example.utils.NotificationHelper
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 sealed class ScreenState {
@@ -28,12 +36,17 @@ sealed class ScreenState {
 class MainActivity : ComponentActivity() {
 
     private lateinit var repository: MonicoRepository
+    private val notificationIntentTrigger = MutableStateFlow(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         repository = MonicoRepository(applicationContext)
+
+        if (intent?.getBooleanExtra("open_notifications", false) == true) {
+            notificationIntentTrigger.value = true
+        }
 
         setContent {
             val prefs = remember { getSharedPreferences("monico_app_settings", Context.MODE_PRIVATE) }
@@ -55,6 +68,39 @@ class MainActivity : ComponentActivity() {
             var isImageViewerOpen by remember { mutableStateOf(false) }
 
             val scope = rememberCoroutineScope()
+            val context = LocalContext.current
+
+            // Notification permission request on startup (Android 13+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { isGranted ->
+                    if (isGranted) {
+                        NotificationHelper.initNotificationChannel(applicationContext)
+                    }
+                }
+                LaunchedEffect(Unit) {
+                    val status = ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    )
+                    if (status != PackageManager.PERMISSION_GRANTED) {
+                        permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+            }
+
+            // Notification tap trigger listener
+            val shouldOpenNotifsFromIntent by notificationIntentTrigger.collectAsState()
+            var triggerNotificationsDialog by remember { mutableStateOf(false) }
+
+            LaunchedEffect(shouldOpenNotifsFromIntent) {
+                if (shouldOpenNotifsFromIntent) {
+                    currentScreen = ScreenState.Dashboard
+                    triggerNotificationsDialog = true
+                    notificationIntentTrigger.value = false
+                }
+            }
 
             // Initial sync if logged in
             LaunchedEffect(currentUser) {
@@ -63,7 +109,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val context = LocalContext.current
             var lastBackPressedTime by remember { mutableLongStateOf(0L) }
 
             // Handle 2-tap back press to close app ONLY on root Dashboard or Login (and not when modal viewer is open)
@@ -131,7 +176,8 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onOpenAdminPanel = {
                                         currentScreen = ScreenState.AdminPanel
-                                    }
+                                    },
+                                    initialShowNotifications = triggerNotificationsDialog
                                 )
                             }
                             is ScreenState.ContentViewer -> {
@@ -160,6 +206,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("open_notifications", false)) {
+            notificationIntentTrigger.value = true
         }
     }
 }

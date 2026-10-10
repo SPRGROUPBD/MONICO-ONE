@@ -563,6 +563,7 @@ class FirebaseRtdbService {
                         targetRole = obj.optString("targetRole", "ALL"),
                         type = obj.optString("type", "info"),
                         senderName = obj.optString("senderName", "Super Admin"),
+                        targetUrl = obj.optString("targetUrl", ""),
                         readBy = readMap
                     )
                 )
@@ -583,6 +584,7 @@ class FirebaseRtdbService {
                 .put("targetRole", item.targetRole)
                 .put("type", item.type)
                 .put("senderName", item.senderName)
+                .put("targetUrl", item.targetUrl)
 
             val readObj = JSONObject()
             item.readBy.forEach { (k, v) -> readObj.put(k, v) }

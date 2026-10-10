@@ -252,7 +252,7 @@ fun LoginScreen(
                 Button(
                     onClick = {
                         if (employeeId.isBlank() || password.isBlank()) {
-                            validationError = "অনুগ্রহ করে এমপ্লয়ি আইডি ও পাসওয়ার্ড লিখুন (বা নিচের সুপার অ্যাডমিন বাটনে ট্যাপ করুন)"
+                            validationError = "অনুগ্রহ করে এমপ্লয়ি আইডি ও পাসওয়ার্ড লিখুন"
                         } else {
                             validationError = null
                             onLogin(employeeId, password)
@@ -293,77 +293,6 @@ fun LoginScreen(
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center
                     )
-                }
-
-                // Quick 1-Click Super Admin Access Button
-                OutlinedButton(
-                    onClick = {
-                        employeeId = "KS"
-                        password = "Monico@Ku007"
-                        validationError = null
-                        onLogin("KS", "Monico@Ku007")
-                    },
-                    enabled = !isLoading,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MonicoBlue
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Key,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Super Admin হিসেবে সরাসরি প্রবেশ (১-ক্লিক)",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
-                }
-
-                // Quick Admin demo tip (clickable to auto-fill)
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            employeeId = "KS"
-                            password = "Monico@Ku007"
-                            validationError = null
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Key,
-                            contentDescription = "Demo Tip",
-                            tint = MonicoBlue,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Column {
-                            Text(
-                                text = "Super Admin ক্রেডেনশিয়াল (ট্যাপ করে অটো-ফিল করুন):",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = MonicoBlue,
-                                    fontSize = 11.sp
-                                )
-                            )
-                            Text(
-                                text = "আইডি: KS  |  পাসওয়ার্ড: Monico@Ku007",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    }
                 }
             }
         }

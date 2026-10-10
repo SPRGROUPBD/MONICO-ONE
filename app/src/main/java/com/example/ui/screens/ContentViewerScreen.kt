@@ -131,14 +131,7 @@ fun ContentViewerScreen(
                         hasError = false
                         webViewInstance?.reload()
                     }) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Reload")
-                    }
-                    IconButton(onClick = { openInExternalApp() }) {
-                        Icon(
-                            imageVector = if (isPdf) Icons.Default.PictureAsPdf else Icons.Default.OpenInBrowser,
-                            contentDescription = "Open in external app",
-                            tint = if (isPdf) MonicoRed else MonicoBlue
-                        )
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh", tint = MonicoBlue)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -157,10 +150,10 @@ fun ContentViewerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Main Refresh button to refresh current page
+                    // Only Refresh button as requested
                     Button(
                         onClick = {
                             hasError = false
@@ -168,37 +161,18 @@ fun ContentViewerScreen(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f).height(46.dp)
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "রিফ্রেশ করুন (Refresh)",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
-                        )
-                    }
-
-                    // Secondary button for external app
-                    OutlinedButton(
-                        onClick = { openInExternalApp() },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.height(46.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isPdf) Icons.Default.PictureAsPdf else Icons.Default.OpenInBrowser,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isPdf) "PDF অ্যাপ" else "ব্রাউজার",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            fontSize = 14.sp
                         )
                     }
                 }

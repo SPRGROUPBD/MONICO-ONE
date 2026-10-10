@@ -79,6 +79,7 @@ data class NotificationItem(
     val targetRole: String = "ALL", // "ALL", "MPO", "AM", "RSM", "PMD", "DIC", etc.
     val type: String = "info", // "info", "urgent", "update", "notice", "offer"
     val senderName: String = "Super Admin",
+    val targetUrl: String = "",
     val readBy: Map<String, Boolean> = emptyMap()
 )
 

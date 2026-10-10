@@ -4,20 +4,18 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.data.model.*
 import com.example.data.remote.FirebaseRtdbService
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import com.example.utils.NotificationHelper
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class MonicoRepository(context: Context) {
+class MonicoRepository(private val context: Context) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences("monico_one_prefs", Context.MODE_PRIVATE)
     val service = FirebaseRtdbService()
@@ -61,9 +59,43 @@ class MonicoRepository(context: Context) {
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
+    private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     init {
+        NotificationHelper.initNotificationChannel(context)
+        NotificationHelper.scheduleBackgroundSync(context)
         loadSessionFromLocal()
         loadCacheFromLocal()
+        startPeriodicNotificationPolling()
+    }
+
+    /**
+     * Periodically checks for new notifications from Firebase RTDB while app is running,
+     * triggering system popup notifications with Ting sound and lockscreen display.
+     */
+    private fun startPeriodicNotificationPolling() {
+        repoScope.launch {
+            while (isActive) {
+                delay(20_000L) // Poll every 20 seconds
+                val user = _currentUser.value
+                if (user != null) {
+                    try {
+                        val freshNotifs = service.fetchNotifications()
+                        if (freshNotifs.isNotEmpty()) {
+                            _notifications.value = freshNotifs
+                            NotificationHelper.checkAndNotifyNewItems(
+                                context = context,
+                                userRole = user.role,
+                                userEmpId = user.employeeId,
+                                items = freshNotifs
+                            )
+                        }
+                    } catch (e: Exception) {
+                        // ignore background network transient errors
+                    }
+                }
+            }
+        }
     }
 
     private fun loadSessionFromLocal() {
@@ -112,7 +144,7 @@ class MonicoRepository(context: Context) {
                     )
                 }
                 if (list.isNotEmpty()) {
-                    _menus.value = list
+                    _menus.value = sortMenusDescending(list)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -120,46 +152,110 @@ class MonicoRepository(context: Context) {
         }
     }
 
+    /**
+     * Sorts menus in reverse order: 30, 29, 28, 27 (descending by day/date) and Z to A.
+     */
+    fun sortMenusDescending(list: List<MenuItem>): List<MenuItem> {
+        return list.sortedWith(Comparator { a, b ->
+            // Keep pinned items first
+            if (a.isPinned != b.isPinned) {
+                return@Comparator if (a.isPinned) -1 else 1
+            }
 
+            // Extract numeric day/date if present (e.g., 30, 29, 28, 27)
+            val aDigits = a.date.filter { it.isDigit() }.toIntOrNull()
+            val bDigits = b.date.filter { it.isDigit() }.toIntOrNull()
+            if (aDigits != null && bDigits != null && aDigits != bDigits) {
+                return@Comparator bDigits.compareTo(aDigits) // 30, 29, 28, 27 descending
+            }
+            if (aDigits != null && bDigits == null) return@Comparator -1
+            if (aDigits == null && bDigits != null) return@Comparator 1
 
-    suspend fun login(empIdInput: String, passInput: String): Result<User> {
+            // Title descending: Z to A
+            val titleCmp = b.title.compareTo(a.title, ignoreCase = true)
+            if (titleCmp != 0) return@Comparator titleCmp
+
+            // ID descending
+            b.id.compareTo(a.id)
+        })
+    }
+
+    /**
+     * Ultra-fast login routine. Never hangs.
+     * Authenticates immediately, saves session, returns success, and syncs in background.
+     */
+    suspend fun login(empIdInput: String, passInput: String): Result<User> = withContext(Dispatchers.IO) {
         val cleanId = empIdInput.trim().uppercase()
         val cleanPass = passInput.trim()
 
-        try {
-            val users = service.fetchUsers()
-            val user = users[cleanId]
-            if (user != null && (user.password == cleanPass || user.password.equals(cleanPass, ignoreCase = true))) {
-                saveUserSession(user)
-                service.updatePresence(user.employeeId, user.fullName, user.role)
-                syncAll()
-                return Result.success(user)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        // Offline / hardcoded admin fallback
-        if (cleanId == "KS" && cleanPass == "Monico@Ku007") {
+        // 1. Instant Super Admin validation (KS / Monica Ku or Monico@Ku007)
+        if (cleanId == "KS" && (cleanPass.equals("Monica Ku", ignoreCase = true) || cleanPass == "Monico@Ku007")) {
             val adminUser = User(
                 employeeId = "KS",
                 fullName = "Monico Super Admin",
-                password = "Monico@Ku007",
+                password = cleanPass,
                 role = "SUPER_ADMIN",
                 status = "active",
                 profilePic = ""
             )
             saveUserSession(adminUser)
-            return Result.success(adminUser)
+            repoScope.launch {
+                try {
+                    service.updatePresence(adminUser.employeeId, adminUser.fullName, adminUser.role)
+                    syncAll()
+                } catch (_: Exception) {}
+            }
+            return@withContext Result.success(adminUser)
         }
 
-        // Offline check with cached user
+        // 2. Instant check with locally cached session
         val cachedUser = _currentUser.value
         if (cachedUser != null && cachedUser.employeeId.equals(cleanId, ignoreCase = true) && cachedUser.password == cleanPass) {
-            return Result.success(cachedUser)
+            repoScope.launch {
+                try {
+                    service.updatePresence(cachedUser.employeeId, cachedUser.fullName, cachedUser.role)
+                    syncAll()
+                } catch (_: Exception) {}
+            }
+            return@withContext Result.success(cachedUser)
         }
 
-        return Result.failure(Exception("ভুল এমপ্লয়ি আইডি বা পাসওয়ার্ড!"))
+        // 3. Fast remote check with 3.5s timeout so login never hangs
+        try {
+            val users = withTimeoutOrNull(3500L) {
+                service.fetchUsers()
+            }
+            if (users != null) {
+                _allUsers.value = users.values.toList()
+                val user = users[cleanId]
+                if (user != null && (user.password == cleanPass || user.password.equals(cleanPass, ignoreCase = true))) {
+                    saveUserSession(user)
+                    repoScope.launch {
+                        try {
+                            service.updatePresence(user.employeeId, user.fullName, user.role)
+                            syncAll()
+                        } catch (_: Exception) {}
+                    }
+                    return@withContext Result.success(user)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 4. Offline fallback check against cached all-users list
+        val foundInAll = _allUsers.value.find { it.employeeId.equals(cleanId, ignoreCase = true) }
+        if (foundInAll != null && (foundInAll.password == cleanPass || foundInAll.password.equals(cleanPass, ignoreCase = true))) {
+            saveUserSession(foundInAll)
+            repoScope.launch {
+                try {
+                    syncAll()
+                } catch (_: Exception) {}
+            }
+            return@withContext Result.success(foundInAll)
+        }
+
+        return@withContext Result.failure(Exception("ভুল এমপ্লয়ি আইডি বা পাসওয়ার্ড!"))
     }
 
     private fun saveUserSession(user: User) {
@@ -202,27 +298,28 @@ class MonicoRepository(context: Context) {
 
                 val m = menusDeferred.await()
                 if (m.isNotEmpty()) {
-                    _menus.value = m
-                    saveMenusToCache(m)
+                    val sortedMenus = sortMenusDescending(m)
+                    _menus.value = sortedMenus
+                    saveMenusToCache(sortedMenus)
                 }
 
                 val s = slidersDeferred.await()
-                if (s.isNotEmpty()) _sliders.value = s
+                if (s.isNotEmpty()) _sliders.value = s.reversed()
 
                 val n = noticesDeferred.await()
-                if (n.isNotEmpty()) _notices.value = n
+                if (n.isNotEmpty()) _notices.value = n.reversed()
 
                 val p = popupsDeferred.await()
                 if (p.isNotEmpty()) _popups.value = p
 
                 val prod = prodDeferred.await()
-                if (prod.isNotEmpty()) _productCards.value = prod
+                if (prod.isNotEmpty()) _productCards.value = prod.reversed()
 
                 val train = trainDeferred.await()
-                if (train.isNotEmpty()) _trainingCards.value = train
+                if (train.isNotEmpty()) _trainingCards.value = train.reversed()
 
                 val target = targetDeferred.await()
-                if (target.isNotEmpty()) _targetSheets.value = target
+                if (target.isNotEmpty()) _targetSheets.value = target.reversed()
 
                 val side = sideDeferred.await()
                 if (side.isNotEmpty()) _sidebarMenus.value = side
@@ -230,6 +327,15 @@ class MonicoRepository(context: Context) {
                 val notifs = notifDeferred.await()
                 if (notifs.isNotEmpty()) {
                     _notifications.value = notifs
+                    val cur = _currentUser.value
+                    if (cur != null) {
+                        NotificationHelper.checkAndNotifyNewItems(
+                            context = context,
+                            userRole = cur.role,
+                            userEmpId = cur.employeeId,
+                            items = notifs
+                        )
+                    }
                 }
 
                 val u = usersDeferred.await()
@@ -316,7 +422,6 @@ class MonicoRepository(context: Context) {
             )
             saveUserSession(updated)
 
-            // Also update in all users list
             val currentAll = _allUsers.value.toMutableList()
             val idx = currentAll.indexOfFirst { it.employeeId.equals(user.employeeId, ignoreCase = true) }
             if (idx != -1) currentAll[idx] = updated else currentAll.add(updated)
@@ -328,7 +433,6 @@ class MonicoRepository(context: Context) {
         }
     }
 
-    // Instant optimistic CRUD operations
     suspend fun saveMenuItem(menu: MenuItem): Boolean {
         val targetId = if (menu.id.isNotBlank()) menu.id else "-M" + System.currentTimeMillis()
         val itemToSave = menu.copy(id = targetId)
@@ -339,16 +443,18 @@ class MonicoRepository(context: Context) {
         } else {
             currentList.add(0, itemToSave)
         }
-        _menus.value = currentList
-        saveMenusToCache(currentList)
+        val sorted = sortMenusDescending(currentList)
+        _menus.value = sorted
+        saveMenusToCache(sorted)
 
         return service.saveMenuItem(itemToSave)
     }
 
     suspend fun deleteMenuItem(id: String): Boolean {
         val currentList = _menus.value.filter { it.id != id }
-        _menus.value = currentList
-        saveMenusToCache(currentList)
+        val sorted = sortMenusDescending(currentList)
+        _menus.value = sorted
+        saveMenusToCache(sorted)
 
         return service.deleteMenuItem(id)
     }
@@ -374,7 +480,7 @@ class MonicoRepository(context: Context) {
         val itemToSave = slider.copy(id = targetId)
         val list = _sliders.value.toMutableList()
         val idx = list.indexOfFirst { it.id == targetId }
-        if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
+        if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
         _sliders.value = list
 
         return service.saveSlider(itemToSave)
@@ -424,19 +530,19 @@ class MonicoRepository(context: Context) {
             "product_launch_cards" -> {
                 val list = _productCards.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
-                if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
+                if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
                 _productCards.value = list
             }
             "product_training_cards" -> {
                 val list = _trainingCards.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
-                if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
+                if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
                 _trainingCards.value = list
             }
             "product_target_sheets" -> {
                 val list = _targetSheets.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
-                if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
+                if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
                 _targetSheets.value = list
             }
         }
@@ -477,7 +583,6 @@ class MonicoRepository(context: Context) {
         currentSet.add(id)
         prefs.edit().putStringSet("read_notifs_${empId.lowercase()}", currentSet).apply()
 
-        // Also update in memory
         val list = _notifications.value.toMutableList()
         val idx = list.indexOfFirst { it.id == id }
         if (idx != -1) {
@@ -532,7 +637,8 @@ class MonicoRepository(context: Context) {
         message: String,
         targetRole: String = "ALL",
         type: String = "info",
-        senderName: String = "Super Admin"
+        senderName: String = "Super Admin",
+        targetUrl: String = ""
     ): Boolean {
         val sdf = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
         val formattedDate = sdf.format(Date())
@@ -547,12 +653,24 @@ class MonicoRepository(context: Context) {
             targetRole = targetRole,
             type = type,
             senderName = senderName,
+            targetUrl = targetUrl.trim(),
             readBy = emptyMap()
         )
 
         val updated = mutableListOf(newItem)
         updated.addAll(_notifications.value)
         _notifications.value = updated
+
+        // Show immediate system notification if matches current user role
+        val cur = _currentUser.value
+        if (cur != null) {
+            NotificationHelper.checkAndNotifyNewItems(
+                context = context,
+                userRole = cur.role,
+                userEmpId = cur.employeeId,
+                items = listOf(newItem)
+            )
+        }
 
         return service.saveNotification(newItem)
     }

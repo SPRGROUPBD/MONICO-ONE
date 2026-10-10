@@ -460,14 +460,15 @@ fun AdminPanelScreen(
     if (showSendNotificationDialog) {
         SendNotificationDialog(
             onDismiss = { showSendNotificationDialog = false },
-            onSend = { title, message, targetRole, type ->
+            onSend = { title, message, targetRole, type, targetUrl ->
                 scope.launch {
                     val success = repository.sendNotification(
                         title = title,
                         message = message,
                         targetRole = targetRole,
                         type = type,
-                        senderName = "Super Admin"
+                        senderName = "Super Admin",
+                        targetUrl = targetUrl
                     )
                     showSendNotificationDialog = false
                     if (success) {

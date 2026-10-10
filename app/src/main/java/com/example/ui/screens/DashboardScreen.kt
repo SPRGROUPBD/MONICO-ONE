@@ -54,7 +54,8 @@ fun DashboardScreen(
     onToggleDarkMode: () -> Unit,
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit,
-    onOpenAdminPanel: () -> Unit
+    onOpenAdminPanel: () -> Unit,
+    initialShowNotifications: Boolean = false
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -74,7 +75,7 @@ fun DashboardScreen(
     val isSyncing by repository.isSyncing.collectAsState()
 
     var showProfileDialog by remember { mutableStateOf(false) }
-    var showNotificationsDialog by remember { mutableStateOf(false) }
+    var showNotificationsDialog by remember { mutableStateOf(initialShowNotifications) }
     var activePopupNotice by remember { mutableStateOf<PopupNotice?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
@@ -178,15 +179,38 @@ fun DashboardScreen(
         }
     }
 
-    val pinnedMenus = remember(filteredMenus) {
-        filteredMenus.filter { it.isPinned }
+    // Z to A and 30-29-28-27 sorting helper
+    val sortDescendingZtoA: (List<MenuItem>) -> List<MenuItem> = remember {
+        { list ->
+            list.sortedWith(Comparator { a, b ->
+                if (a.isPinned != b.isPinned) {
+                    return@Comparator if (a.isPinned) -1 else 1
+                }
+                val aDigits = a.date.filter { it.isDigit() }.toIntOrNull()
+                val bDigits = b.date.filter { it.isDigit() }.toIntOrNull()
+                if (aDigits != null && bDigits != null && aDigits != bDigits) {
+                    return@Comparator bDigits.compareTo(aDigits) // 30, 29, 28, 27 descending
+                }
+                if (aDigits != null && bDigits == null) return@Comparator -1
+                if (aDigits == null && bDigits != null) return@Comparator 1
+
+                val titleCmp = b.title.compareTo(a.title, ignoreCase = true)
+                if (titleCmp != 0) return@Comparator titleCmp
+
+                b.id.compareTo(a.id)
+            })
+        }
     }
 
-    val grid1Menus = remember(filteredMenus) { filteredMenus.filter { it.group == "grid1" } }
-    val grid2Menus = remember(filteredMenus) { filteredMenus.filter { it.group == "grid2" } }
-    val grid3Menus = remember(filteredMenus) { filteredMenus.filter { it.group == "grid3" } }
-    val grid4Menus = remember(filteredMenus) { filteredMenus.filter { it.group == "grid4" } }
-    val grid5Menus = remember(filteredMenus) { filteredMenus.filter { it.group == "grid5" } }
+    val pinnedMenus = remember(filteredMenus) {
+        sortDescendingZtoA(filteredMenus.filter { it.isPinned })
+    }
+
+    val grid1Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid1" }) }
+    val grid2Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid2" }) }
+    val grid3Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid3" }) }
+    val grid4Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid4" }) }
+    val grid5Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid5" }) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -800,17 +824,19 @@ fun DashboardScreen(
                     readNotificationIds = repository.getReadNotificationIds(emp)
                 }
             },
-            onSendNotification = { title, message, targetRole, type ->
+            onSendNotification = { title, message, targetRole, type, targetUrl ->
                 scope.launch {
                     repository.sendNotification(
                         title = title,
                         message = message,
                         targetRole = targetRole,
                         type = type,
-                        senderName = currentUser?.fullName ?: "Super Admin"
+                        senderName = currentUser?.fullName ?: "Super Admin",
+                        targetUrl = targetUrl
                     )
                 }
-            }
+            },
+            onOpenUrl = onOpenUrl
         )
     }
 }
