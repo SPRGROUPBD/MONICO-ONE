@@ -66,8 +66,8 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             var lastBackPressedTime by remember { mutableLongStateOf(0L) }
 
-            // Handle 2-tap back press to close app on Dashboard or Login
-            BackHandler(enabled = !showSplash && (currentUser == null || currentScreen is ScreenState.Dashboard)) {
+            // Handle 2-tap back press to close app ONLY on root Dashboard or Login (and not when modal viewer is open)
+            BackHandler(enabled = !showSplash && !isImageViewerOpen && (currentUser == null || currentScreen is ScreenState.Dashboard)) {
                 val now = System.currentTimeMillis()
                 if (now - lastBackPressedTime < 2000L) {
                     (context as? Activity)?.finish()
@@ -77,8 +77,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Dismiss image viewer if open on back press
+            BackHandler(enabled = isImageViewerOpen) {
+                isImageViewerOpen = false
+            }
+
             // Handle back press from sub-screens
-            BackHandler(enabled = !showSplash && currentUser != null && currentScreen !is ScreenState.Dashboard) {
+            BackHandler(enabled = !showSplash && !isImageViewerOpen && currentUser != null && currentScreen !is ScreenState.Dashboard) {
                 currentScreen = ScreenState.Dashboard
             }
 

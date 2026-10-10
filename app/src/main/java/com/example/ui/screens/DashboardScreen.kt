@@ -3,6 +3,7 @@ package com.example.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -667,7 +668,7 @@ fun DashboardScreen(
                             items(trainingCards) { card ->
                                 ContentCardItem(
                                     card = card,
-                                    onClick = { handleContentCardClick(card, onOpenUrl, onOpenImageViewer) }
+                                    onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }
                                 )
                             }
                         }
@@ -691,7 +692,7 @@ fun DashboardScreen(
                             items(productCards) { card ->
                                 ContentCardItem(
                                     card = card,
-                                    onClick = { handleContentCardClick(card, onOpenUrl, onOpenImageViewer) }
+                                    onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }
                                 )
                             }
                         }
@@ -715,7 +716,7 @@ fun DashboardScreen(
                             items(targetSheets) { card ->
                                 ContentCardItem(
                                     card = card,
-                                    onClick = { handleContentCardClick(card, onOpenUrl, onOpenImageViewer) }
+                                    onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }
                                 )
                             }
                         }
@@ -865,9 +866,15 @@ private fun handleMenuCardClick(
         onOpenImageViewer(item.title, allImages)
     } else if (item.url.isNotBlank()) {
         val effective = resolveGoUrl(item.url)
-        onOpenUrl(item.title, effective)
+        if (isPdfFile(effective)) {
+            onOpenImageViewer(item.title, listOf(effective))
+        } else {
+            onOpenUrl(item.title, effective)
+        }
     } else if (item.icon.isNotBlank() && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
         onOpenImageViewer(item.title, listOf(item.icon))
+    } else {
+        Toast.makeText(context, "${item.title}: কোনো ফাইল বা লিংক যুক্ত নেই", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -892,6 +899,7 @@ private fun resolveGoUrl(url: String): String {
 
 private fun handleContentCardClick(
     card: ContentCard,
+    context: Context,
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
@@ -919,6 +927,8 @@ private fun handleContentCardClick(
         onOpenImageViewer(card.title, validImgs)
     } else if (card.url.isNotBlank()) {
         onOpenUrl(card.title, card.url)
+    } else {
+        Toast.makeText(context, "${card.title}: কোনো ফাইল যুক্ত নেই", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -1227,12 +1237,12 @@ private fun PrimaryMenuItemCard(
     val hasSeen = item.seenBy[currentEmpId] == true
 
     Card(
+        onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .fillMaxWidth()
-            .height(105.dp)
-            .clickable { onClick() },
+            .height(105.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -1321,12 +1331,12 @@ private fun MenuItemCard(
     val hasImagePreview = isImageCard && imageList.isNotEmpty()
 
     Card(
+        onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .width(120.dp)
-            .height(130.dp)
-            .clickable { onClick() },
+            .height(130.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -1514,12 +1524,12 @@ private fun ContentCardItem(
     val imageList = if (card.images.isNotEmpty()) card.images else if (card.image.isNotBlank()) listOf(card.image) else emptyList()
 
     Card(
+        onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .width(120.dp)
-            .height(130.dp)
-            .clickable { onClick() },
+            .height(130.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

@@ -42,6 +42,7 @@ import com.example.ui.theme.MonicoRed
 import com.example.utils.ImageUtils
 import com.example.utils.PdfUtils
 import kotlinx.coroutines.Dispatchers
+import androidx.activity.compose.BackHandler
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -51,6 +52,8 @@ fun ImageViewerDialog(
     images: List<String>,
     onDismiss: () -> Unit
 ) {
+    BackHandler { onDismiss() }
+
     if (images.isEmpty()) return
 
     val context = LocalContext.current
@@ -232,19 +235,7 @@ fun ImageViewerDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(vertical = 80.dp)
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, zoom, _ ->
-                            scale = (scale * zoom).coerceIn(1f, 5f)
-                            if (scale > 1f) {
-                                offsetX += pan.x
-                                offsetY += pan.y
-                            } else {
-                                offsetX = 0f
-                                offsetY = 0f
-                            }
-                        }
-                    },
+                    .padding(vertical = 80.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (isPdf) {

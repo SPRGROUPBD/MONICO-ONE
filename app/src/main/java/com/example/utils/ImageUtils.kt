@@ -44,20 +44,20 @@ object ImageUtils {
     }
 
     /**
-     * Converts a data:image base64 string to a ByteArray so Coil can render it reliably and quickly.
+     * Converts a data:image base64 string or raw base64 to a Bitmap so Coil and Compose
+     * can render it reliably and instantly without fetcher errors.
      */
     fun resolveImageModel(data: String): Any {
         if (data.isBlank()) return ""
         val s = data.trim()
-        if (s.startsWith("data:image", ignoreCase = true)) {
-            val idx = s.indexOf("base64,")
-            if (idx != -1) {
-                val base64Str = s.substring(idx + 7)
-                return try {
-                    Base64.decode(base64Str, Base64.DEFAULT)
-                } catch (e: Exception) {
-                    s
-                }
+        if (s.startsWith("data:image", ignoreCase = true) || s.startsWith("/9j/") || s.startsWith("iVBORw")) {
+            val base64Str = if (s.contains("base64,")) s.substringAfter("base64,") else s
+            return try {
+                val bytes = Base64.decode(base64Str, Base64.DEFAULT)
+                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                bitmap ?: java.nio.ByteBuffer.wrap(bytes)
+            } catch (e: Exception) {
+                s
             }
         }
         return s

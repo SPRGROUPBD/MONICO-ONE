@@ -43,12 +43,19 @@ fun ContentViewerScreen(
     url: String,
     onBack: () -> Unit
 ) {
-    BackHandler { onBack() }
     val context = LocalContext.current
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var progress by remember { mutableIntStateOf(0) }
     var hasError by remember { mutableStateOf(false) }
+
+    BackHandler {
+        if (webViewInstance?.canGoBack() == true) {
+            webViewInstance?.goBack()
+        } else {
+            onBack()
+        }
+    }
 
     val isPdf = remember(url) {
         val lower = url.lowercase()
@@ -251,15 +258,13 @@ fun ContentViewerScreen(
 
                             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                                 super.onReceivedError(view, request, error)
-                                if (request?.isForMainFrame == true) {
-                                    hasError = true
-                                    isLoading = false
-                                }
-                            }
-
-                            override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
-                                super.onReceivedHttpError(view, request, errorResponse)
-                                if (request?.isForMainFrame == true && (errorResponse?.statusCode ?: 200) >= 400) {
+                                val errorCode = error?.errorCode ?: 0
+                                // Only show full-screen error on fatal connection/network failures for the main frame
+                                if (request?.isForMainFrame == true && 
+                                    (errorCode == WebViewClient.ERROR_HOST_LOOKUP || 
+                                     errorCode == WebViewClient.ERROR_CONNECT || 
+                                     errorCode == WebViewClient.ERROR_TIMEOUT || 
+                                     errorCode == WebViewClient.ERROR_FAILED_SSL_HANDSHAKE)) {
                                     hasError = true
                                     isLoading = false
                                 }
@@ -268,6 +273,8 @@ fun ContentViewerScreen(
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                 val reqUrl = request?.url?.toString() ?: ""
                                 if (reqUrl.startsWith("go:")) {
+                                    val resolved = resolveGoUrl(reqUrl)
+                                    view?.loadUrl(resolved)
                                     return true
                                 }
                                 if (!reqUrl.startsWith("http://") && !reqUrl.startsWith("https://")) {
@@ -297,6 +304,9 @@ fun ContentViewerScreen(
                         loadUrl(effectiveUrl)
                         webViewInstance = this
                     }
+                },
+                update = { webView ->
+                    webViewInstance = webView
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -369,6 +379,25 @@ fun ContentViewerScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+private fun resolveGoUrl(url: String): String {
+    val clean = url.trim()
+    return when (clean) {
+        "go:order" -> "http://103.153.241.44/monicoapp"
+        "go:Tour" -> "https://sprgroupbd.github.io/SmartManager/monicoone.html"
+        "go:delivery" -> "https://sprgroupbd.github.io/SmartManager/depo_bill.html"
+        "go:bill" -> "https://sprgroupbd.github.io/SmartManager/admin"
+        "go:att1" -> "https://sprgroupbd.github.io/SmartManager/att.html"
+        "go:dcc" -> "https://sprgroupbd.github.io/SmartManager/dcs.html"
+        else -> {
+            if (clean.startsWith("go:")) {
+                "https://sprgroupbd.github.io/SmartManager/" + clean.removePrefix("go:").trim()
+            } else {
+                clean
             }
         }
     }
