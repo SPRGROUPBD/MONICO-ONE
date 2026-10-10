@@ -174,8 +174,8 @@ fun LoginScreen(
                     )
                     OutlinedTextField(
                         value = employeeId,
-                        onValueChange = { employeeId = it.uppercase() },
-                        placeholder = { Text("যেমন: KS বা MPO-01") },
+                        onValueChange = { employeeId = it },
+                        placeholder = { Text("যেমন: KS বা KS003 বা 6") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Badge,
@@ -235,7 +235,7 @@ fun LoginScreen(
                         keyboardActions = KeyboardActions(
                             onDone = {
                                 if (employeeId.isNotBlank() && password.isNotBlank()) {
-                                    onLogin(employeeId, password)
+                                    onLogin(employeeId.trim(), password.trim())
                                 }
                             }
                         ),
@@ -255,7 +255,7 @@ fun LoginScreen(
                             validationError = "অনুগ্রহ করে এমপ্লয়ি আইডি ও পাসওয়ার্ড লিখুন"
                         } else {
                             validationError = null
-                            onLogin(employeeId, password)
+                            onLogin(employeeId.trim(), password.trim())
                         }
                     },
                     enabled = !isLoading,

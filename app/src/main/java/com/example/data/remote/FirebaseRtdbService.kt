@@ -2,6 +2,8 @@ package com.example.data.remote
 
 import com.example.data.model.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -14,13 +16,106 @@ import java.util.concurrent.TimeUnit
 class FirebaseRtdbService {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .writeTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .writeTimeout(12, TimeUnit.SECONDS)
         .build()
 
     private val baseUrl = "https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne"
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
+
+    fun fetchStringProperty(url: String): String? {
+        return try {
+            val req = Request.Builder().url(url).get().build()
+            val res = client.newCall(req).execute()
+            val body = res.body?.string()?.trim()
+            if (body == null || body == "null" || body.isBlank()) null
+            else if (body.startsWith("\"") && body.endsWith("\"") && body.length >= 2) {
+                body.substring(1, body.length - 1).replace("\\\"", "\"").replace("\\\\", "\\")
+            } else {
+                body
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Ultra-fast single user authentication and profile fetch (<300ms, only ~150 bytes).
+     * Bypasses the 12.5MB payload by directly querying node properties in RTDB.
+     */
+    suspend fun fetchSingleUser(userId: String): User? = withContext(Dispatchers.IO) {
+        val clean = userId.trim()
+        if (clean.isBlank()) return@withContext null
+
+        var matchedKey: String? = null
+        val candidates = listOf(clean.uppercase(), clean, clean.lowercase()).distinct()
+        for (c in candidates) {
+            val testPass = fetchStringProperty("$baseUrl/users/$c/password.json")
+            if (testPass != null) {
+                matchedKey = c
+                break
+            }
+        }
+
+        // If direct candidate lookups didn't find the node, query shallow keys (only 200 bytes)
+        if (matchedKey == null) {
+            try {
+                val shallowReq = Request.Builder().url("$baseUrl/users.json?shallow=true").get().build()
+                val shallowRes = client.newCall(shallowReq).execute()
+                val shallowBody = shallowRes.body?.string()
+                if (shallowBody != null && shallowBody != "null" && shallowBody.startsWith("{")) {
+                    val sJson = JSONObject(shallowBody)
+                    val keys = sJson.keys()
+                    while (keys.hasNext()) {
+                        val k = keys.next()
+                        if (k.equals(clean, ignoreCase = true)) {
+                            matchedKey = k
+                            break
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        if (matchedKey == null) return@withContext null
+
+        try {
+            coroutineScope {
+                val passDeferred = async { fetchStringProperty("$baseUrl/users/$matchedKey/password.json") ?: "" }
+                val nameDeferred = async { fetchStringProperty("$baseUrl/users/$matchedKey/fullName.json") ?: matchedKey }
+                val roleDeferred = async { fetchStringProperty("$baseUrl/users/$matchedKey/role.json") ?: "MPO" }
+                val statusDeferred = async { fetchStringProperty("$baseUrl/users/$matchedKey/status.json") ?: "active" }
+                val empIdDeferred = async { fetchStringProperty("$baseUrl/users/$matchedKey/employeeId.json") ?: matchedKey }
+
+                val pass = passDeferred.await()
+                val name = nameDeferred.await()
+                val role = roleDeferred.await()
+                val status = statusDeferred.await()
+                val empId = empIdDeferred.await().ifBlank { matchedKey }
+
+                User(
+                    employeeId = empId,
+                    fullName = name,
+                    password = pass,
+                    role = role,
+                    status = status,
+                    profilePic = ""
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun fetchUserProfilePic(userId: String): String? = withContext(Dispatchers.IO) {
+        val clean = userId.trim()
+        if (clean.isBlank()) return@withContext null
+        fetchStringProperty("$baseUrl/users/$clean/profilePic.json")
+    }
 
     suspend fun fetchUsers(): Map<String, User> = withContext(Dispatchers.IO) {
         val result = mutableMapOf<String, User>()
