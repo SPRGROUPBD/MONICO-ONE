@@ -1591,7 +1591,9 @@
                     fetch(`${BASE_URL}/notifications.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/product_launch_cards.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/training_cards.json`).then(r => r.json()).catch(() => null),
-                    fetch(`${BASE_URL}/target_sheets.json`).then(r => r.json()).catch(() => null)
+                    fetch(`${BASE_URL}/target_sheets.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/product_training_cards.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/product_target_sheets.json`).then(r => r.json()).catch(() => null)
                 ]);
 
                 // 1. Sidebar Menus
@@ -1653,15 +1655,37 @@
                     state.notifications.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
                 }
 
-                // 8. Cards
+                // 8. Cards (Product Launch, Training, Targets)
                 state.cards.product_launch_cards = [];
                 if (prodRes) Object.keys(prodRes).forEach(k => prodRes[k] && state.cards.product_launch_cards.push({ id: k, ...prodRes[k] }));
 
+                // Training Cards (merge legacy product_training_cards with training_cards)
                 state.cards.training_cards = [];
-                if (trainRes) Object.keys(trainRes).forEach(k => trainRes[k] && state.cards.training_cards.push({ id: k, ...trainRes[k] }));
+                if (legacyTrainRes) Object.keys(legacyTrainRes).forEach(k => legacyTrainRes[k] && state.cards.training_cards.push({ id: k, ...legacyTrainRes[k] }));
+                if (trainRes) Object.keys(trainRes).forEach(k => {
+                    if (trainRes[k]) {
+                        const exIdx = state.cards.training_cards.findIndex(it => it.id === k);
+                        if (exIdx !== -1) {
+                            state.cards.training_cards[exIdx] = { id: k, ...trainRes[k] };
+                        } else {
+                            state.cards.training_cards.push({ id: k, ...trainRes[k] });
+                        }
+                    }
+                });
 
+                // Target Sheets (merge legacy product_target_sheets with target_sheets)
                 state.cards.target_sheets = [];
-                if (targetRes) Object.keys(targetRes).forEach(k => targetRes[k] && state.cards.target_sheets.push({ id: k, ...targetRes[k] }));
+                if (legacyTargetRes) Object.keys(legacyTargetRes).forEach(k => legacyTargetRes[k] && state.cards.target_sheets.push({ id: k, ...legacyTargetRes[k] }));
+                if (targetRes) Object.keys(targetRes).forEach(k => {
+                    if (targetRes[k]) {
+                        const exIdx = state.cards.target_sheets.findIndex(it => it.id === k);
+                        if (exIdx !== -1) {
+                            state.cards.target_sheets[exIdx] = { id: k, ...targetRes[k] };
+                        } else {
+                            state.cards.target_sheets.push({ id: k, ...targetRes[k] });
+                        }
+                    }
+                });
 
                 // Update UI Counters
                 updateCounters();
@@ -2521,7 +2545,42 @@
             tbody.innerHTML = html;
         }
 
-        function handleCardFilesUpload(event) {
+        function compressImage(file, maxWidth = 1080, quality = 0.75) {
+            return new Promise((resolve) => {
+                if (!file || !file.type.startsWith('image/')) {
+                    resolve(null);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > maxWidth) {
+                            h = Math.round((h * maxWidth) / w);
+                            w = maxWidth;
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = function() {
+                        resolve(e.target.result);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.onerror = function() {
+                    resolve(null);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleCardFilesUpload(event) {
             const files = event.target.files;
             if (!files || !files.length) return;
             const previews = document.getElementById('card-files-previews');
@@ -2530,15 +2589,15 @@
             const mainImg = document.getElementById('card-image');
             let existing = textarea.value.trim() ? textarea.value.trim().split('\n').filter(Boolean) : [];
 
-            Array.from(files).forEach((file) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const b64 = e.target.result;
-                    if (!existing.includes(b64)) {
-                        existing.push(b64);
-                        textarea.value = existing.join('\n');
-                        if (!mainImg.value) mainImg.value = b64;
-                    }
+            document.getElementById('card-files-info').innerText = `প্রসেস করা হচ্ছে... (${files.length}টি ফাইল)`;
+
+            for (let i = 0; i < files.length; i++) {
+                const b64 = await compressImage(files[i]);
+                if (b64 && !existing.includes(b64)) {
+                    existing.push(b64);
+                    textarea.value = existing.join('\n');
+                    if (!mainImg.value) mainImg.value = b64;
+
                     const thumb = document.createElement('img');
                     thumb.src = b64;
                     thumb.className = 'img-thumbnail';
@@ -2546,10 +2605,9 @@
                     thumb.style.height = '55px';
                     thumb.style.objectFit = 'cover';
                     previews.appendChild(thumb);
-                };
-                reader.readAsDataURL(file);
-            });
-            document.getElementById('card-files-info').innerText = `${files.length}টি ছবি নির্বাচন করা হয়েছে`;
+                }
+            }
+            document.getElementById('card-files-info').innerText = `${files.length}টি ছবি সফলভাবে প্রসেস করা হয়েছে`;
         }
 
         function openAddCardModal() {
@@ -2592,7 +2650,7 @@
             const id = document.getElementById('card-id').value.trim();
             const title = document.getElementById('card-title').value.trim();
             const url = document.getElementById('card-url').value.trim();
-            const image = document.getElementById('card-image').value.trim();
+            let image = document.getElementById('card-image').value.trim();
             const imagesRaw = document.getElementById('card-images').value.trim();
 
             if (!title) {
@@ -2601,6 +2659,12 @@
             }
 
             const images = imagesRaw ? imagesRaw.split('\n').map(s => s.trim()).filter(s => s) : [];
+            if (!image && images.length > 0) {
+                image = images[0];
+            } else if (image && !images.includes(image)) {
+                images.unshift(image);
+            }
+
             const payload = { title, url, image, images };
             const targetId = id || ('-C' + Date.now());
 
@@ -2627,6 +2691,12 @@
 
             try {
                 const res = await fetch(`${BASE_URL}/${state.currentCardType}/${id}.json`, { method: 'DELETE' });
+                // Clean up from legacy table as well if training or target
+                if (state.currentCardType === 'training_cards') {
+                    await fetch(`${BASE_URL}/product_training_cards/${id}.json`, { method: 'DELETE' }).catch(() => null);
+                } else if (state.currentCardType === 'target_sheets') {
+                    await fetch(`${BASE_URL}/product_target_sheets/${id}.json`, { method: 'DELETE' }).catch(() => null);
+                }
                 if (res.ok) {
                     showToast('কার্ড মুছে ফেলা হয়েছে!');
                     fetchAllData();
@@ -2665,17 +2735,18 @@
             tbody.innerHTML = html;
         }
 
-        function handleSliderFileUpload(event) {
+        async function handleSliderFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const base64 = e.target.result;
+            document.getElementById('slider-file-info').innerText = 'ছবি প্রসেস করা হচ্ছে...';
+            const base64 = await compressImage(file, 1200, 0.75);
+            if (base64) {
                 document.getElementById('slider-image').value = base64;
-                document.getElementById('slider-file-info').innerText = `সিলেক্টেড: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+                document.getElementById('slider-file-info').innerText = `সিলেক্টেড ও কমপ্রেসড: ${file.name}`;
                 updateSliderPreview();
-            };
-            reader.readAsDataURL(file);
+            } else {
+                document.getElementById('slider-file-info').innerText = 'ছবি লোড করতে ব্যর্থ!';
+            }
         }
 
         function updateSliderPreview() {
@@ -2885,17 +2956,18 @@
             tbody.innerHTML = html;
         }
 
-        function handlePopupFileUpload(event) {
+        async function handlePopupFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const base64 = e.target.result;
+            document.getElementById('pop-file-info').innerText = 'ছবি প্রসেস করা হচ্ছে...';
+            const base64 = await compressImage(file, 1000, 0.75);
+            if (base64) {
                 document.getElementById('pop-image').value = base64;
-                document.getElementById('pop-file-info').innerText = `সিলেক্টেড: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+                document.getElementById('pop-file-info').innerText = `সিলেক্টেড ও কমপ্রেসড: ${file.name}`;
                 updatePopupPreview();
-            };
-            reader.readAsDataURL(file);
+            } else {
+                document.getElementById('pop-file-info').innerText = 'ছবি লোড করতে ব্যর্থ!';
+            }
         }
 
         function updatePopupPreview() {

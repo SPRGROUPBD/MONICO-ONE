@@ -997,20 +997,23 @@ private fun handleContentCardClick(
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
-    // All content cards (training, products, target sheets) are images
     val validImgs = mutableListOf<String>()
     card.images.forEach { if (it.isNotBlank()) validImgs.add(it) }
     if (validImgs.isEmpty() && card.image.isNotBlank()) {
         validImgs.add(card.image)
     }
-    if (validImgs.isEmpty() && card.url.isNotBlank()) {
-        validImgs.add(card.url)
-    }
 
     if (validImgs.isNotEmpty()) {
         onOpenImageViewer(card.title, validImgs)
+    } else if (card.url.isNotBlank()) {
+        val u = card.url.trim().lowercase()
+        if (u.endsWith(".png") || u.endsWith(".jpg") || u.endsWith(".jpeg") || u.endsWith(".webp") || u.startsWith("data:image")) {
+            onOpenImageViewer(card.title, listOf(card.url.trim()))
+        } else {
+            onOpenUrl(card.title, card.url.trim())
+        }
     } else {
-        Toast.makeText(context, "${card.title}: কোনো ছবি যুক্ত নেই", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "${card.title}: কোনো ছবি বা লিংক যুক্ত নেই", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -1746,14 +1749,20 @@ private fun ContentCardItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
+                    val isPdf = card.url.lowercase().endsWith(".pdf")
+                    val isLink = card.url.isNotBlank() && imageList.isEmpty()
+                    val badgeIcon = if (isPdf) Icons.Default.Description else if (isLink) Icons.Default.Link else Icons.Default.Image
+                    val badgeTint = if (isPdf) Color(0xFFEF4444) else if (isLink) Color(0xFF10B981) else Color(0xFF38BDF8)
+                    val badgeText = if (isPdf) "PDF" else if (isLink) "LINK" else if (imageList.size > 1) "${imageList.size} Pages" else "IMAGE"
+
                     Icon(
-                        imageVector = Icons.Default.Image,
-                        contentDescription = "Image",
-                        tint = Color(0xFF38BDF8),
+                        imageVector = badgeIcon,
+                        contentDescription = badgeText,
+                        tint = badgeTint,
                         modifier = Modifier.size(11.dp)
                     )
                     Text(
-                        text = if (imageList.size > 1) "${imageList.size} Pages" else "IMAGE",
+                        text = badgeText,
                         fontSize = 8.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Bold

@@ -293,28 +293,54 @@ class FirebaseRtdbService {
             val body = res.body?.string() ?: return@withContext list
             if (body == "null" || body.isBlank()) return@withContext list
 
-            val json = JSONObject(body)
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val obj = json.optJSONObject(key) ?: continue
-                val imgList = mutableListOf<String>()
-                val imgArr = obj.optJSONArray("images")
-                if (imgArr != null) {
-                    for (i in 0 until imgArr.length()) {
-                        val s = imgArr.optString(i)
-                        if (!s.isNullOrBlank()) imgList.add(s)
+            val trimmed = body.trim()
+            if (trimmed.startsWith("[")) {
+                val arr = JSONArray(trimmed)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    val imgList = mutableListOf<String>()
+                    val imgArr = obj.optJSONArray("images")
+                    if (imgArr != null) {
+                        for (j in 0 until imgArr.length()) {
+                            val s = imgArr.optString(j)
+                            if (!s.isNullOrBlank()) imgList.add(s)
+                        }
                     }
-                }
-                list.add(
-                    ContentCard(
-                        id = key,
-                        title = obj.optString("title", ""),
-                        url = obj.optString("url", ""),
-                        images = imgList,
-                        image = obj.optString("image", "")
+                    val cardId = obj.optString("id", i.toString())
+                    list.add(
+                        ContentCard(
+                            id = cardId,
+                            title = obj.optString("title", ""),
+                            url = obj.optString("url", ""),
+                            images = imgList,
+                            image = obj.optString("image", "")
+                        )
                     )
-                )
+                }
+            } else {
+                val json = JSONObject(trimmed)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val obj = json.optJSONObject(key) ?: continue
+                    val imgList = mutableListOf<String>()
+                    val imgArr = obj.optJSONArray("images")
+                    if (imgArr != null) {
+                        for (i in 0 until imgArr.length()) {
+                            val s = imgArr.optString(i)
+                            if (!s.isNullOrBlank()) imgList.add(s)
+                        }
+                    }
+                    list.add(
+                        ContentCard(
+                            id = key,
+                            title = obj.optString("title", ""),
+                            url = obj.optString("url", ""),
+                            images = imgList,
+                            image = obj.optString("image", "")
+                        )
+                    )
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

@@ -369,8 +369,22 @@ class MonicoRepository(private val context: Context) {
                 val noticesDeferred = async { service.fetchNotices() }
                 val popupsDeferred = async { service.fetchPopups() }
                 val prodDeferred = async { service.fetchCards("product_launch_cards") }
-                val trainDeferred = async { service.fetchCards("product_training_cards") }
-                val targetDeferred = async { service.fetchCards("product_target_sheets") }
+                val trainDeferred = async {
+                    val list1 = service.fetchCards("training_cards")
+                    val list2 = service.fetchCards("product_training_cards")
+                    val map = LinkedHashMap<String, ContentCard>()
+                    list2.forEach { map[it.id] = it }
+                    list1.forEach { map[it.id] = it }
+                    map.values.toList()
+                }
+                val targetDeferred = async {
+                    val list1 = service.fetchCards("target_sheets")
+                    val list2 = service.fetchCards("product_target_sheets")
+                    val map = LinkedHashMap<String, ContentCard>()
+                    list2.forEach { map[it.id] = it }
+                    list1.forEach { map[it.id] = it }
+                    map.values.toList()
+                }
                 val sideDeferred = async { service.fetchSidebarMenus() }
                 val notifDeferred = async { service.fetchNotifications() }
 
@@ -391,13 +405,13 @@ class MonicoRepository(private val context: Context) {
                 if (p.isNotEmpty()) _popups.value = p
 
                 val prod = prodDeferred.await()
-                if (prod.isNotEmpty()) _productCards.value = prod.reversed()
+                _productCards.value = prod.reversed()
 
                 val train = trainDeferred.await()
-                if (train.isNotEmpty()) _trainingCards.value = train.reversed()
+                _trainingCards.value = train.reversed()
 
                 val target = targetDeferred.await()
-                if (target.isNotEmpty()) _targetSheets.value = target.reversed()
+                _targetSheets.value = target.reversed()
 
                 val side = sideDeferred.await()
                 if (side.isNotEmpty()) _sidebarMenus.value = side
@@ -609,38 +623,54 @@ class MonicoRepository(private val context: Context) {
     }
 
     suspend fun saveCard(path: String, card: ContentCard): Boolean {
+        val cleanPath = when (path) {
+            "product_training_cards" -> "training_cards"
+            "product_target_sheets" -> "target_sheets"
+            else -> path
+        }
         val targetId = if (card.id.isNotBlank()) card.id else "-C" + System.currentTimeMillis()
         val itemToSave = card.copy(id = targetId)
-        when (path) {
+        when (cleanPath) {
             "product_launch_cards" -> {
                 val list = _productCards.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
                 if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
                 _productCards.value = list
             }
-            "product_training_cards" -> {
+            "training_cards" -> {
                 val list = _trainingCards.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
                 if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
                 _trainingCards.value = list
             }
-            "product_target_sheets" -> {
+            "target_sheets" -> {
                 val list = _targetSheets.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
                 if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
                 _targetSheets.value = list
             }
         }
-        return service.saveContentCard(path, itemToSave)
+        return service.saveContentCard(cleanPath, itemToSave)
     }
 
     suspend fun deleteCard(path: String, id: String): Boolean {
-        when (path) {
-            "product_launch_cards" -> _productCards.value = _productCards.value.filter { it.id != id }
-            "product_training_cards" -> _trainingCards.value = _trainingCards.value.filter { it.id != id }
-            "product_target_sheets" -> _targetSheets.value = _targetSheets.value.filter { it.id != id }
+        val cleanPath = when (path) {
+            "product_training_cards" -> "training_cards"
+            "product_target_sheets" -> "target_sheets"
+            else -> path
         }
-        return service.deleteContentCard(path, id)
+        when (cleanPath) {
+            "product_launch_cards" -> _productCards.value = _productCards.value.filter { it.id != id }
+            "training_cards" -> _trainingCards.value = _trainingCards.value.filter { it.id != id }
+            "target_sheets" -> _targetSheets.value = _targetSheets.value.filter { it.id != id }
+        }
+        val ok = service.deleteContentCard(cleanPath, id)
+        if (cleanPath == "training_cards") {
+            service.deleteContentCard("product_training_cards", id)
+        } else if (cleanPath == "target_sheets") {
+            service.deleteContentCard("product_target_sheets", id)
+        }
+        return ok
     }
 
     suspend fun saveUser(user: User): Boolean {

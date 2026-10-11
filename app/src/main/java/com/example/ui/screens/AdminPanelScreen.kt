@@ -1532,11 +1532,19 @@ private fun CardEditDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var cardPath by remember { mutableStateOf(initialPath) }
+    var cardPath by remember {
+        mutableStateOf(
+            when (initialPath) {
+                "product_training_cards" -> "training_cards"
+                "product_target_sheets" -> "target_sheets"
+                else -> initialPath
+            }
+        )
+    }
     val cardPathOptions = listOf(
         "product_launch_cards" to "নতুন পণ্য (New Product Launch)",
-        "product_training_cards" to "প্রোডাক্ট ট্রেনিং (Product Training)",
-        "product_target_sheets" to "টার্গেট শিট (Target Sheet)"
+        "training_cards" to "প্রোডাক্ট ট্রেনিং (Product Training)",
+        "target_sheets" to "টার্গেট শিট (Target Sheet)"
     )
     var cardPathMenuOpen by remember { mutableStateOf(false) }
 
@@ -2682,10 +2690,10 @@ private fun AdminCardsTab(
         items(trainings, key = { "pt_${it.id}" }) { c ->
             CardRowItem(c) {
                 Row {
-                    IconButton(onClick = { onEdit("product_training_cards", c) }) {
+                    IconButton(onClick = { onEdit("training_cards", c) }) {
                         Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
                     }
-                    IconButton(onClick = { onDelete("product_training_cards", c.id) }) {
+                    IconButton(onClick = { onDelete("training_cards", c.id) }) {
                         Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
                     }
                 }
@@ -2699,10 +2707,10 @@ private fun AdminCardsTab(
         items(targets, key = { "ts_${it.id}" }) { c ->
             CardRowItem(c) {
                 Row {
-                    IconButton(onClick = { onEdit("product_target_sheets", c) }) {
+                    IconButton(onClick = { onEdit("target_sheets", c) }) {
                         Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
                     }
-                    IconButton(onClick = { onDelete("product_target_sheets", c.id) }) {
+                    IconButton(onClick = { onDelete("target_sheets", c.id) }) {
                         Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
                     }
                 }
