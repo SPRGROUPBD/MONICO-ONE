@@ -342,14 +342,15 @@ class FirebaseRtdbService {
                         url = obj.optString("url", ""),
                         icon = obj.optString("icon", "fa-link"),
                         status = obj.optString("status", "active"),
-                        allowedRole = obj.optString("allowedRole", "SUPER_ADMIN,DIC")
+                        allowedRole = obj.optString("allowedRole", "SUPER_ADMIN,DIC"),
+                        order = obj.optInt("order", 0)
                     )
                 )
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        list
+        list.sortedWith(compareBy<SidebarMenuItem> { it.order }.thenBy { it.name })
     }
 
     suspend fun markMenuSeen(menuId: String, employeeId: String) = withContext(Dispatchers.IO) {
@@ -601,6 +602,7 @@ class FirebaseRtdbService {
                 .put("icon", menu.icon)
                 .put("status", menu.status)
                 .put("allowedRole", menu.allowedRole)
+                .put("order", menu.order)
             val targetUrl = if (menu.id.isNotEmpty()) "$baseUrl/sidebar_menus/${menu.id}.json" else "$baseUrl/sidebar_menus.json"
             val req = if (menu.id.isNotEmpty()) {
                 Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
@@ -608,6 +610,26 @@ class FirebaseRtdbService {
                 Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
             }
             client.newCall(req).execute().isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    suspend fun reorderSidebarMenus(menus: List<SidebarMenuItem>): Boolean = withContext(Dispatchers.IO) {
+        try {
+            coroutineScope {
+                menus.mapIndexed { idx, item ->
+                    async {
+                        val patchJson = JSONObject().put("order", idx).toString()
+                        val req = Request.Builder()
+                            .url("$baseUrl/sidebar_menus/${item.id}.json")
+                            .patch(patchJson.toRequestBody(jsonMedia))
+                            .build()
+                        client.newCall(req).execute().isSuccessful
+                    }
+                }.all { it.await() }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             false

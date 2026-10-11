@@ -59,7 +59,8 @@ data class SidebarMenuItem(
     val url: String = "",
     val icon: String = "fa-link",
     val status: String = "active",
-    val allowedRole: String = "SUPER_ADMIN,DIC"
+    val allowedRole: String = "SUPER_ADMIN,DIC",
+    val order: Int = 0
 )
 
 data class AdvertisementItem(

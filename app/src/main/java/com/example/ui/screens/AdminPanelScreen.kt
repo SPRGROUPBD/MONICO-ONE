@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -217,6 +218,28 @@ fun AdminPanelScreen(
                                 scope.launch {
                                     repository.deleteSidebarMenu(id)
                                     snackbarHostState.showSnackbar("সাইডবার মেনু মুছে ফেলা হয়েছে।")
+                                }
+                            }
+                        },
+                        onMoveUp = { index ->
+                            if (index > 0) {
+                                val currentList = sidebarMenus.toMutableList()
+                                val item = currentList.removeAt(index)
+                                currentList.add(index - 1, item)
+                                scope.launch {
+                                    repository.reorderSidebarMenus(currentList)
+                                    snackbarHostState.showSnackbar("সাইডবার মেনু উপরে নেওয়া হয়েছে।")
+                                }
+                            }
+                        },
+                        onMoveDown = { index ->
+                            if (index < sidebarMenus.size - 1) {
+                                val currentList = sidebarMenus.toMutableList()
+                                val item = currentList.removeAt(index)
+                                currentList.add(index + 1, item)
+                                scope.launch {
+                                    repository.reorderSidebarMenus(currentList)
+                                    snackbarHostState.showSnackbar("সাইডবার মেনু নিচে নেওয়া হয়েছে।")
                                 }
                             }
                         }
@@ -970,6 +993,7 @@ private fun SidebarEditDialog(
     var icon by remember { mutableStateOf(item?.icon ?: "fa-globe") }
     var allowedRole by remember { mutableStateOf(item?.allowedRole ?: "SUPER_ADMIN,DIC") }
     var status by remember { mutableStateOf(item?.status ?: "active") }
+    var orderText by remember { mutableStateOf((item?.order ?: 0).toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1008,6 +1032,14 @@ private fun SidebarEditDialog(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
+                OutlinedTextField(
+                    value = orderText,
+                    onValueChange = { orderText = it },
+                    label = { Text("ক্রমিক নম্বর / অর্ডার (0, 1, 2...)") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
@@ -1021,7 +1053,8 @@ private fun SidebarEditDialog(
                                 url = url,
                                 icon = icon,
                                 allowedRole = allowedRole,
-                                status = status
+                                status = status,
+                                order = orderText.toIntOrNull() ?: (item?.order ?: 0)
                             )
                         )
                     }
@@ -2055,7 +2088,9 @@ private fun MenuItemAdminCard(
 private fun AdminSidebarMenusTab(
     sidebarMenus: List<SidebarMenuItem>,
     onEdit: (SidebarMenuItem) -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    onMoveUp: (Int) -> Unit = {},
+    onMoveDown: (Int) -> Unit = {}
 ) {
     if (sidebarMenus.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -2067,7 +2102,7 @@ private fun AdminSidebarMenusTab(
         modifier = Modifier.fillMaxSize().padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(sidebarMenus, key = { it.id }) { sm ->
+        itemsIndexed(sidebarMenus, key = { _, it -> it.id }) { index, sm ->
             Card(
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -2078,16 +2113,64 @@ private fun AdminSidebarMenusTab(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(sm.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(sm.url, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
-                        Text("Role: ${sm.allowedRole} | Status: ${sm.status}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MonicoBlue.copy(alpha = 0.15f),
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "${index + 1}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = MonicoBlue
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(sm.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(sm.url, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                            Text("Role: ${sm.allowedRole} | Status: ${sm.status} | Order: ${sm.order}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { onEdit(sm) }) {
+                        IconButton(
+                            onClick = { onMoveUp(index) },
+                            enabled = index > 0,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = "উপরে নিন",
+                                tint = if (index > 0) MonicoBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
+                        }
+                        IconButton(
+                            onClick = { onMoveDown(index) },
+                            enabled = index < sidebarMenus.size - 1,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "নিচে নিন",
+                                tint = if (index < sidebarMenus.size - 1) MonicoBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
+                        }
+                        IconButton(
+                            onClick = { onEdit(sm) },
+                            modifier = Modifier.size(36.dp)
+                        ) {
                             Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
                         }
-                        IconButton(onClick = { onDelete(sm.id) }) {
+                        IconButton(
+                            onClick = { onDelete(sm.id) },
+                            modifier = Modifier.size(36.dp)
+                        ) {
                             Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
                         }
                     }

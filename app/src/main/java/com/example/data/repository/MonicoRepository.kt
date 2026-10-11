@@ -539,13 +539,20 @@ class MonicoRepository(private val context: Context) {
 
     suspend fun saveSidebarMenu(item: SidebarMenuItem): Boolean {
         val targetId = if (item.id.isNotBlank()) item.id else "-SM" + System.currentTimeMillis()
-        val itemToSave = item.copy(id = targetId)
+        val defaultOrder = if (item.order != 0) item.order else _sidebarMenus.value.size
+        val itemToSave = item.copy(id = targetId, order = defaultOrder)
         val list = _sidebarMenus.value.toMutableList()
         val idx = list.indexOfFirst { it.id == targetId }
         if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
-        _sidebarMenus.value = list
+        _sidebarMenus.value = list.sortedWith(compareBy<SidebarMenuItem> { it.order }.thenBy { it.name })
 
         return service.saveSidebarMenu(itemToSave)
+    }
+
+    suspend fun reorderSidebarMenus(newList: List<SidebarMenuItem>): Boolean {
+        val updated = newList.mapIndexed { index, item -> item.copy(order = index) }
+        _sidebarMenus.value = updated
+        return service.reorderSidebarMenus(updated)
     }
 
     suspend fun deleteSidebarMenu(id: String): Boolean {

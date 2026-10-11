@@ -15,8 +15,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
@@ -222,9 +224,15 @@ fun DashboardScreen(
                     drawerContainerColor = MaterialTheme.colorScheme.surface,
                     modifier = Modifier.width(300.dp)
                 ) {
+                    val drawerScrollState = rememberScrollState()
+                    val activeSortedSidebarMenus = remember(sidebarMenus) {
+                        sidebarMenus.filter { it.status == "active" }
+                            .sortedWith(compareBy<SidebarMenuItem> { it.order }.thenBy { it.name })
+                    }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .verticalScroll(drawerScrollState)
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -266,7 +274,7 @@ fun DashboardScreen(
 
                         Text("সাইডবার লিংক ও পোর্টাল", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
-                        sidebarMenus.filter { it.status == "active" }.forEach { sm ->
+                        activeSortedSidebarMenus.forEach { sm ->
                             NavigationDrawerItem(
                                 icon = { Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue) },
                                 label = { Text(sm.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -280,7 +288,7 @@ fun DashboardScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.height(24.dp))
                         Text(
                             text = "Version 1.0.0 (Mobile Firebase)\n© 2026 Monico One",
                             fontSize = 10.sp,
