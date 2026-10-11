@@ -17,12 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
@@ -461,38 +456,44 @@ fun ProfileDialog(
     }
 
     if (showPhotoSourceDialog) {
+        var profilePicUrlInput by remember { mutableStateOf(if (currentPic.startsWith("http")) currentPic else "") }
         AlertDialog(
             onDismissRequest = { showPhotoSourceDialog = false },
             title = { Text("প্রোফাইল ছবি পরিবর্তন", fontWeight = FontWeight.Bold) },
-            text = { Text("ছবি তোলার জন্য সরাসরি ক্যামেরা ব্যবহার করুন অথবা গ্যালারি/ফাইল থেকে বেছে নিন।") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("ছবির সরাসরি ইন্টারনেট লিংক (Image URL) দিন:")
+                    OutlinedTextField(
+                        value = profilePicUrlInput,
+                        onValueChange = { profilePicUrlInput = it },
+                        label = { Text("ছবির লিংক (URL)") },
+                        placeholder = { Text("https://example.com/avatar.jpg") },
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
             confirmButton = {
                 Button(
                     onClick = {
-                        showPhotoSourceDialog = false
-                        val hasCam = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                        if (hasCam) {
-                            cameraLauncher.launch(null)
-                        } else {
-                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        val trimmed = profilePicUrlInput.trim()
+                        if (trimmed.isNotBlank()) {
+                            currentPic = trimmed
+                            onUpdateProfile(user.fullName, "", trimmed)
                         }
+                        showPhotoSourceDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue)
                 ) {
-                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("ক্যামেরা (Camera)")
+                    Text("লিংক সেভ করুন")
                 }
             },
             dismissButton = {
-                OutlinedButton(
-                    onClick = {
-                        showPhotoSourceDialog = false
-                        photoPickerLauncher.launch("image/*")
-                    }
-                ) {
-                    Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("গ্যালারি/ফাইল")
+                TextButton(onClick = { showPhotoSourceDialog = false }) {
+                    Text("বাতিল")
                 }
             }
         )

@@ -279,39 +279,54 @@ fun ImageViewerDialog(
                 val containerWidth = constraints.maxWidth.toFloat()
                 val containerHeight = constraints.maxHeight.toFloat()
 
-                // Interactive Content Area with gesture detectors
+                // Interactive Content Area with robust pinch-to-zoom, pan, and double-tap gestures
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(activePageIndex, isPdf) {
                             detectTapGestures(
-                                onDoubleTap = {
+                                onDoubleTap = { tapOffset ->
                                     if (scale > 1.2f) {
                                         scale = 1f
                                         offsetX = 0f
                                         offsetY = 0f
                                     } else {
                                         scale = 2.5f
-                                        offsetX = 0f
-                                        offsetY = 0f
+                                        // Center zoom around tap location
+                                        val centerX = containerWidth / 2f
+                                        val centerY = containerHeight / 2f
+                                        val maxPanX = (containerWidth * 1.5f) / 2f
+                                        val maxPanY = (containerHeight * 1.5f) / 2f
+                                        offsetX = ((centerX - tapOffset.x) * 1.5f).coerceIn(-maxPanX, maxPanX)
+                                        offsetY = ((centerY - tapOffset.y) * 1.5f).coerceIn(-maxPanY, maxPanY)
                                     }
                                 }
                             )
                         }
                         .pointerInput(activePageIndex, isPdf) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                val newScale = (scale * zoom).coerceIn(1f, 7f)
-                                scale = newScale
-                                if (newScale > 1.02f) {
-                                    val maxPanX = (containerWidth * (newScale - 1f)) / 2f
-                                    val maxPanY = (containerHeight * (newScale - 1f)) / 2f
-                                    offsetX = (offsetX + pan.x).coerceIn(-maxPanX, maxPanX)
-                                    offsetY = (offsetY + pan.y).coerceIn(-maxPanY, maxPanY)
+                            detectTransformGestures(panZoomLock = false) { centroid, pan, zoom, _ ->
+                                val oldScale = scale
+                                val targetScale = (scale * zoom).coerceIn(1f, 8f)
+                                scale = targetScale
+                                if (targetScale > 1.01f) {
+                                    val maxPanX = (containerWidth * (targetScale - 1f)) / 2f
+                                    val maxPanY = (containerHeight * (targetScale - 1f)) / 2f
+                                    // Adjust offset for zoom centered at centroid plus pan
+                                    val newOffsetX = offsetX * (targetScale / oldScale) + pan.x
+                                    val newOffsetY = offsetY * (targetScale / oldScale) + pan.y
+                                    offsetX = newOffsetX.coerceIn(-maxPanX, maxPanX)
+                                    offsetY = newOffsetY.coerceIn(-maxPanY, maxPanY)
                                 } else {
                                     offsetX = 0f
                                     offsetY = 0f
                                 }
                             }
+                        }
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            translationX = offsetX
+                            translationY = offsetY
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -335,12 +350,6 @@ fun ImageViewerDialog(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(8.dp)
-                                        .graphicsLayer {
-                                            scaleX = scale
-                                            scaleY = scale
-                                            translationX = offsetX
-                                            translationY = offsetY
-                                        }
                                 )
                             }
                         } else {
@@ -433,14 +442,7 @@ fun ImageViewerDialog(
                                     }
                                 }
                             },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                    translationX = offsetX
-                                    translationY = offsetY
-                                }
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
                 }

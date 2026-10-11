@@ -709,114 +709,83 @@ private fun MenuEditDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // FILE UPLOAD SECTION (PDF & Images)
+                    // URL INPUT SECTION (PDF & Image URL - No device upload / base64 required)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("ডিভাইস থেকে ফাইল আপলোড:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("ফাইল / ইমেজ URL লিংক:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
-                            // PDF Upload Button
-                            Button(
-                                onClick = { pdfPickerLauncher.launch("application/pdf") },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MonicoRed),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("ডিভাইস থেকে PDF আপলোড করুন", fontSize = 12.sp)
-                            }
-
-                            // Show attached PDF indicator
-                            if (attachedPdfData.isNotBlank()) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MonicoRed.copy(alpha = 0.15f),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(20.dp))
-                                            Text(attachedPdfName.ifBlank { "PDF ফাইল সংযুক্ত" }, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MonicoRed)
-                                        }
-                                        IconButton(
-                                            onClick = {
-                                                attachedPdfData = ""
-                                                attachedPdfName = ""
-                                            },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(Icons.Default.Close, contentDescription = "Remove PDF", tint = MonicoRed, modifier = Modifier.size(16.dp))
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Image Upload Button (For multi-page bonus/circular/bill)
-                            if (selectedGrid != "grid5") {
-                                Button(
-                                    onClick = { photoPickerLauncher.launch("image/*") },
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("ডিভাইস থেকে ছবি বেছে নিন (সর্বোচ্চ ৫ পেজ)", fontSize = 12.sp)
-                                }
-
-                                if (deviceImages.isNotEmpty()) {
-                                    Text("নির্বাচিত পেজসমূহ (${deviceImages.size}টি):", fontSize = 10.sp, color = MonicoGreen, fontWeight = FontWeight.Bold)
-                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        items(deviceImages) { imgBase64 ->
-                                            Box(modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp))) {
-                                                AsyncImage(
-                                                    model = ImageUtils.resolveImageModel(imgBase64),
-                                                    contentDescription = null,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
-                                                IconButton(
-                                                    onClick = { deviceImages = deviceImages - imgBase64 },
-                                                    modifier = Modifier.size(20.dp).align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.6f))
-                                                ) {
-                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(14.dp))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // External URL optional field
+                            // PDF URL or Main Web Link
                             OutlinedTextField(
                                 value = externalUrl,
                                 onValueChange = { externalUrl = it },
-                                label = { Text("বা অনলাইন ওয়েব/ফাইল লিংক (ঐচ্ছিক)") },
-                                placeholder = { Text("https://example.com/file.pdf") },
+                                label = { Text("PDF বা ফাইল URL লিংক (Direct Link)") },
+                                placeholder = { Text("https://example.com/document.pdf") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(18.dp))
+                                },
                                 singleLine = true,
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.fillMaxWidth()
                             )
 
-                            if (isProcessingFile) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            // Image URLs (Multiple image URLs separated by comma or new line)
+                            var imageUrlInput by remember { mutableStateOf("") }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = imageUrlInput,
+                                    onValueChange = { imageUrlInput = it },
+                                    label = { Text("ছবি URL যোগ করুন (Image URL)") },
+                                    placeholder = { Text("https://example.com/photo.jpg") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(18.dp))
+                                    },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = {
+                                        val trimmed = imageUrlInput.trim()
+                                        if (trimmed.isNotBlank() && !deviceImages.contains(trimmed)) {
+                                            deviceImages = (deviceImages + trimmed).take(10)
+                                            imageUrlInput = ""
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
+                                    contentPadding = PaddingValues(horizontal = 12.dp)
                                 ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                    Text("ফাইল প্রসেসিং হচ্ছে...", fontSize = 11.sp, color = MonicoBlue)
+                                    Text("যোগ", fontSize = 11.sp)
+                                }
+                            }
+
+                            if (deviceImages.isNotEmpty()) {
+                                Text("সংযুক্ত ছবির লিংকসমূহ (${deviceImages.size}টি):", fontSize = 10.sp, color = MonicoGreen, fontWeight = FontWeight.Bold)
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    items(deviceImages) { imgUrl ->
+                                        Box(modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp))) {
+                                            AsyncImage(
+                                                model = ImageUtils.resolveImageModel(imgUrl),
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            IconButton(
+                                                onClick = { deviceImages = deviceImages - imgUrl },
+                                                modifier = Modifier.size(20.dp).align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.6f))
+                                            ) {
+                                                Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(14.dp))
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -949,14 +918,14 @@ private fun MenuEditDialog(
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
-                        // Compute final URL: if PDF attached, use attachedPdfData; else if externalUrl is non-blank, use externalUrl; else if deviceImages has images, use first image
+                        // Compute final URL: if externalUrl is non-blank, use externalUrl; else if deviceImages has images, use first image; else fallback to existing attachedPdfData
                         val finalUrl = when {
-                            attachedPdfData.isNotBlank() -> attachedPdfData
-                            externalUrl.isNotBlank() -> externalUrl
-                            deviceImages.isNotEmpty() -> deviceImages[0]
+                            externalUrl.isNotBlank() -> externalUrl.trim()
+                            deviceImages.isNotEmpty() -> deviceImages[0].trim()
+                            attachedPdfData.isNotBlank() -> attachedPdfData.trim()
                             else -> ""
                         }
-                        val finalIcon = if (selectedGrid == "grid5" || PdfUtils.isPdf(finalUrl)) "fa-file-pdf" else if (deviceImages.isNotEmpty()) deviceImages[0] else icon
+                        val finalIcon = if (selectedGrid == "grid5" || PdfUtils.isPdf(finalUrl)) "fa-file-pdf" else if (deviceImages.isNotEmpty()) deviceImages[0].trim() else icon
 
                         val finalRole = when {
                             selectedRoleSet.isEmpty() -> "ALL"
@@ -1102,19 +1071,16 @@ private fun SliderEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Button(
-                    onClick = { sliderPickerLauncher.launch("image/*") },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue)
-                ) {
-                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("ডিভাইস থেকে স্লাইডার ছবি নিন")
-                }
-
-                if (isProcessing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                }
+                OutlinedTextField(
+                    value = image,
+                    onValueChange = { image = it },
+                    label = { Text("ছবির সরাসরি লিংক (Image URL)") },
+                    placeholder = { Text("https://example.com/banner.jpg") },
+                    leadingIcon = {
+                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 if (image.isNotBlank()) {
                     Box(modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(10.dp))) {
@@ -1125,15 +1091,6 @@ private fun SliderEditDialog(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                }
-
-                if (!image.startsWith("data:")) {
-                    OutlinedTextField(
-                        value = image,
-                        onValueChange = { image = it },
-                        label = { Text("বা ছবির লিংক (URL)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             }
         },
@@ -1288,19 +1245,16 @@ private fun PopupEditDialog(
                     fontWeight = FontWeight.Medium
                 )
 
-                Button(
-                    onClick = { popupPickerLauncher.launch("image/*") },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue)
-                ) {
-                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("ডিভাইস থেকে পপআপ ছবি নিন")
-                }
-
-                if (isProcessing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                }
+                OutlinedTextField(
+                    value = image,
+                    onValueChange = { image = it },
+                    label = { Text("পপআপ ছবির সরাসরি লিংক (Image URL)") },
+                    placeholder = { Text("https://example.com/popup.jpg") },
+                    leadingIcon = {
+                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 if (image.isNotBlank()) {
                     Box(modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(8.dp))) {
@@ -1443,35 +1397,38 @@ private fun CardEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Direct PDF / Image URL inputs
+                var urlInputText by remember { mutableStateOf("") }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    OutlinedTextField(
+                        value = urlInputText,
+                        onValueChange = { urlInputText = it },
+                        label = { Text("ছবি বা PDF লিংক যোগ করুন (URL)") },
+                        placeholder = { Text("https://example.com/item.jpg বা .pdf") },
+                        leadingIcon = {
+                            Icon(Icons.Default.AddLink, contentDescription = null, tint = MonicoBlue)
+                        },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
                     Button(
-                        onClick = { cardPhotoPicker.launch("image/*") },
+                        onClick = {
+                            val trimmed = urlInputText.trim()
+                            if (trimmed.isNotBlank() && !cardImages.contains(trimmed)) {
+                                cardImages = cardImages + trimmed
+                                urlInputText = ""
+                            }
+                        },
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
-                        modifier = Modifier.weight(1f)
+                        contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
-                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("ছবি নিন", fontSize = 11.sp)
+                        Text("যোগ", fontSize = 11.sp)
                     }
-
-                    Button(
-                        onClick = { cardPdfPicker.launch("application/pdf") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MonicoRed),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("PDF নিন", fontSize = 11.sp)
-                    }
-                }
-
-                if (isProcessing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
                 }
 
                 if (cardImages.isNotEmpty()) {
@@ -1624,19 +1581,16 @@ private fun UserEditDialog(
                     }
                 }
 
-                Button(
-                    onClick = { userPhotoPicker.launch("image/*") },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MonicoGreen)
-                ) {
-                    Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("ডিভাইস থেকে প্রোফাইল ছবি নিন")
-                }
-
-                if (isProcessing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                }
+                OutlinedTextField(
+                    value = profilePic,
+                    onValueChange = { profilePic = it },
+                    label = { Text("প্রোফাইল ছবির লিংক (Image URL)") },
+                    placeholder = { Text("https://example.com/photo.jpg") },
+                    leadingIcon = {
+                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MonicoGreen)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 if (profilePic.isNotBlank()) {
                     Box(modifier = Modifier.size(60.dp).clip(CircleShape).border(2.dp, MonicoGreen, CircleShape)) {
