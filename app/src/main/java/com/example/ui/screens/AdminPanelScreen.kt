@@ -1269,13 +1269,26 @@ private fun SliderEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // 1. Device Image Picker Button
+                OutlinedButton(
+                    onClick = { sliderPickerLauncher.launch("image/*") },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoBlue)
+                ) {
+                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(if (isProcessing) "প্রসেসিং হচ্ছে..." else "১. ডিভাইস থেকে ছবি আপলোড করুন", fontSize = 12.sp)
+                }
+
+                // 2. Direct Image URL Input
                 OutlinedTextField(
                     value = image,
                     onValueChange = { image = it },
-                    label = { Text("ছবির সরাসরি লিংক (Image URL)") },
+                    label = { Text("২. অথবা ছবির সরাসরি লিংক (Image URL)") },
                     placeholder = { Text("https://example.com/banner.jpg") },
                     leadingIcon = {
-                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue)
+                        Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1443,13 +1456,26 @@ private fun PopupEditDialog(
                     fontWeight = FontWeight.Medium
                 )
 
+                // 1. Device Image Picker Button
+                OutlinedButton(
+                    onClick = { popupPickerLauncher.launch("image/*") },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoBlue)
+                ) {
+                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(if (isProcessing) "প্রসেসিং হচ্ছে..." else "১. ডিভাইস থেকে পপআপ ছবি আপলোড করুন", fontSize = 12.sp)
+                }
+
+                // 2. Direct Image URL Input
                 OutlinedTextField(
                     value = image,
                     onValueChange = { image = it },
-                    label = { Text("পপআপ ছবির সরাসরি লিংক (Image URL)") },
+                    label = { Text("২. অথবা পপআপ ছবির সরাসরি লিংক (Image URL)") },
                     placeholder = { Text("https://example.com/popup.jpg") },
                     leadingIcon = {
-                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue)
+                        Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1595,7 +1621,34 @@ private fun CardEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Direct PDF / Image URL inputs
+                // 1. Device Image & PDF Picker Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { cardPhotoPicker.launch("image/*") },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoBlue)
+                    ) {
+                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (isProcessing) "প্রসেসিং..." else "ছবি আপলোড", fontSize = 11.sp)
+                    }
+                    OutlinedButton(
+                        onClick = { cardPdfPicker.launch("application/pdf") },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoRed)
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (isProcessing) "প্রসেসিং..." else "PDF আপলোড", fontSize = 11.sp)
+                    }
+                }
+
+                // 2. Direct PDF / Image URL inputs
                 var urlInputText by remember { mutableStateOf("") }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1605,7 +1658,7 @@ private fun CardEditDialog(
                     OutlinedTextField(
                         value = urlInputText,
                         onValueChange = { urlInputText = it },
-                        label = { Text("ছবি বা PDF লিংক যোগ করুন (URL)") },
+                        label = { Text("অথবা ছবি/PDF লিংক দিন (URL)") },
                         placeholder = { Text("https://example.com/item.jpg বা .pdf") },
                         leadingIcon = {
                             Icon(Icons.Default.AddLink, contentDescription = null, tint = MonicoBlue)

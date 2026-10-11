@@ -892,9 +892,16 @@ private fun handleMenuCardClick(
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
     // 1. GRID 1: PRIMARY MENUS (DAILY WORK) - STRICTLY URL/LINK IN WEBVIEW OR BROWSER
-    val isGrid1 = item.group == "grid1" || item.group == "grid-1" || item.group == "grid_1" || item.group.equals("primary", ignoreCase = true) || item.url.startsWith("go:")
+    val isGrid1 = item.group == "grid1" || item.group == "grid-1" || item.group == "grid_1" || 
+        item.group.equals("primary", ignoreCase = true) || item.url.startsWith("go:") ||
+        item.title.contains("order", ignoreCase = true) || item.title.contains("অর্ডার", ignoreCase = true)
+
     if (isGrid1) {
-        val targetUrl = if (item.url.isNotBlank()) item.url else item.images.firstOrNull() ?: ""
+        val targetUrl = when {
+            item.url.isNotBlank() -> item.url
+            item.images.isNotEmpty() && !isImageFile(item.images.first()) -> item.images.first()
+            else -> ""
+        }
         val resolved = resolveGoUrl(targetUrl)
         if (resolved.isNotBlank()) {
             onOpenUrl(item.title, resolved)
@@ -923,9 +930,30 @@ private fun handleMenuCardClick(
         return
     }
 
-    // 3. GRIDS 2, 3, 4: BONUS SHEETS, CIRCULARS, SALARY BILLS - IMAGES ONLY
+    // 3. IF URL IS A DIRECT WEB PORTAL / SYSTEM COMMAND AND NOT AN IMAGE
+    val trimmedUrl = item.url.trim()
+    if (trimmedUrl.isNotBlank() && !isPdfFile(trimmedUrl) && !isImageUrl(trimmedUrl) && 
+        (trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://") || trimmedUrl.startsWith("go:"))) {
+        onOpenUrl(item.title, resolveGoUrl(trimmedUrl))
+        return
+    }
+
+    // 4. GRIDS 2, 3, 4: BONUS SHEETS, CIRCULARS, SALARY BILLS - IMAGES ONLY
     val allImages = mutableListOf<String>()
-    item.images.forEach { if (it.isNotBlank()) allImages.add(it) }
+    item.images.forEach { img ->
+        val trimmed = img.trim()
+        if (trimmed.isNotBlank()) {
+            if (!isImageUrl(trimmed) && (trimmed.startsWith("http://") || trimmed.startsWith("https://")) && !trimmed.contains("base64")) {
+                // If a non-image URL ended up in images, open URL directly instead of failing in image viewer
+                if (allImages.isEmpty() && item.images.size == 1) {
+                    onOpenUrl(item.title, resolveGoUrl(trimmed))
+                    return
+                }
+            } else {
+                allImages.add(trimmed)
+            }
+        }
+    }
 
     if (allImages.isEmpty()) {
         if (item.url.isNotBlank() && isImageUrl(item.url)) {

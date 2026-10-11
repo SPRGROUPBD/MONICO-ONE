@@ -1282,8 +1282,18 @@
                         <input type="text" class="form-control" id="slider-title" placeholder="যেমন: নতুন প্রোডাক্ট লঞ্চ">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">ছবির ডিরেক্ট URL (Image Link) *</label>
-                        <input type="url" class="form-control" id="slider-image" placeholder="https://..." required>
+                        <label class="form-label small fw-semibold text-primary">
+                            <i class="fa-solid fa-cloud-arrow-up me-1"></i> ১. পিসি থেকে ছবি আপলোড করুন (Choose Image File):
+                        </label>
+                        <input type="file" class="form-control border-primary" id="slider-image-file" accept="image/*" onchange="handleSliderFileUpload(event)">
+                        <div id="slider-file-info" class="mt-1 small text-muted"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">২. অথবা ছবির সরাসরি লিংক (Image URL) *:</label>
+                        <input type="url" class="form-control" id="slider-image" placeholder="https://..." oninput="updateSliderPreview()">
+                    </div>
+                    <div id="slider-preview-box" class="mb-3 text-center" style="display: none;">
+                        <img id="slider-preview-img" src="" class="img-fluid rounded border shadow-sm" style="max-height: 140px;">
                     </div>
                 </div>
                 <div class="modal-footer border-0">
@@ -1352,8 +1362,18 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">ছবির URL (ঐচ্ছিক)</label>
-                        <input type="url" class="form-control" id="pop-image" placeholder="https://...">
+                        <label class="form-label small fw-semibold text-warning text-dark">
+                            <i class="fa-solid fa-cloud-arrow-up me-1"></i> ১. পিসি থেকে পপআপ ছবি আপলোড করুন (Upload Image):
+                        </label>
+                        <input type="file" class="form-control border-warning" id="pop-image-file" accept="image/*" onchange="handlePopupFileUpload(event)">
+                        <div id="pop-file-info" class="mt-1 small text-muted"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">২. অথবা ছবির সরাসরি URL লিংক (ঐচ্ছিক):</label>
+                        <input type="url" class="form-control" id="pop-image" placeholder="https://..." oninput="updatePopupPreview()">
+                    </div>
+                    <div id="pop-preview-box" class="mb-3 text-center" style="display: none;">
+                        <img id="pop-preview-img" src="" class="img-fluid rounded border shadow-sm" style="max-height: 120px;">
                     </div>
                 </div>
                 <div class="modal-footer border-0">
@@ -1383,11 +1403,19 @@
                         <input type="url" class="form-control" id="card-url" placeholder="https://...">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">প্রধান ছবির URL</label>
+                        <label class="form-label small fw-semibold text-success">
+                            <i class="fa-solid fa-cloud-arrow-up me-1"></i> ১. পিসি থেকে ছবি আপলোড করুন (Upload Image Files):
+                        </label>
+                        <input type="file" class="form-control border-success" id="card-image-files" accept="image/*" multiple onchange="handleCardFilesUpload(event)">
+                        <div id="card-files-info" class="mt-1 small text-muted">একাধিক ছবি এক সাথে সিলেক্ট করতে পারেন</div>
+                        <div id="card-files-previews" class="d-flex gap-2 flex-wrap mt-2"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">২. অথবা প্রধান ছবির সরাসরি লিংক (Image URL):</label>
                         <input type="url" class="form-control" id="card-image" placeholder="https://...">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">অতিরিক্ত ছবির লিংকসমূহ (প্রতি লাইনে একটি)</label>
+                        <label class="form-label small fw-semibold">৩. অতিরিক্ত ছবির লিংকসমূহ (প্রতি লাইনে একটি):</label>
                         <textarea class="form-control" id="card-images" rows="2" placeholder="https://..."></textarea>
                     </div>
                 </div>
@@ -2493,6 +2521,37 @@
             tbody.innerHTML = html;
         }
 
+        function handleCardFilesUpload(event) {
+            const files = event.target.files;
+            if (!files || !files.length) return;
+            const previews = document.getElementById('card-files-previews');
+            previews.innerHTML = '';
+            const textarea = document.getElementById('card-images');
+            const mainImg = document.getElementById('card-image');
+            let existing = textarea.value.trim() ? textarea.value.trim().split('\n').filter(Boolean) : [];
+
+            Array.from(files).forEach((file) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const b64 = e.target.result;
+                    if (!existing.includes(b64)) {
+                        existing.push(b64);
+                        textarea.value = existing.join('\n');
+                        if (!mainImg.value) mainImg.value = b64;
+                    }
+                    const thumb = document.createElement('img');
+                    thumb.src = b64;
+                    thumb.className = 'img-thumbnail';
+                    thumb.style.width = '55px';
+                    thumb.style.height = '55px';
+                    thumb.style.objectFit = 'cover';
+                    previews.appendChild(thumb);
+                };
+                reader.readAsDataURL(file);
+            });
+            document.getElementById('card-files-info').innerText = `${files.length}টি ছবি নির্বাচন করা হয়েছে`;
+        }
+
         function openAddCardModal() {
             document.getElementById('modalCardTitle').innerText = 'নতুন কার্ড যোগ করুন';
             document.getElementById('card-id').value = '';
@@ -2500,6 +2559,12 @@
             document.getElementById('card-url').value = '';
             document.getElementById('card-image').value = '';
             document.getElementById('card-images').value = '';
+            const fi = document.getElementById('card-image-files');
+            if (fi) fi.value = '';
+            const prev = document.getElementById('card-files-previews');
+            if (prev) prev.innerHTML = '';
+            const inf = document.getElementById('card-files-info');
+            if (inf) inf.innerText = '';
             modals.card.show();
         }
 
@@ -2514,6 +2579,12 @@
             document.getElementById('card-url').value = c.url || '';
             document.getElementById('card-image').value = c.image || '';
             document.getElementById('card-images').value = (c.images || []).join('\n');
+            const fi = document.getElementById('card-image-files');
+            if (fi) fi.value = '';
+            const prev = document.getElementById('card-files-previews');
+            if (prev) prev.innerHTML = '';
+            const inf = document.getElementById('card-files-info');
+            if (inf) inf.innerText = '';
             modals.card.show();
         }
 
@@ -2594,11 +2665,41 @@
             tbody.innerHTML = html;
         }
 
+        function handleSliderFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                document.getElementById('slider-image').value = base64;
+                document.getElementById('slider-file-info').innerText = `সিলেক্টেড: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+                updateSliderPreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateSliderPreview() {
+            const val = document.getElementById('slider-image').value.trim();
+            const box = document.getElementById('slider-preview-box');
+            const img = document.getElementById('slider-preview-img');
+            if (val && box && img) {
+                img.src = val;
+                box.style.display = 'block';
+            } else if (box) {
+                box.style.display = 'none';
+            }
+        }
+
         function openAddSliderModal() {
             document.getElementById('modalSliderTitle').innerText = 'নতুন স্লাইডার ব্যানার যোগ';
             document.getElementById('slider-id').value = '';
             document.getElementById('slider-title').value = '';
             document.getElementById('slider-image').value = '';
+            const fi = document.getElementById('slider-image-file');
+            if (fi) fi.value = '';
+            const inf = document.getElementById('slider-file-info');
+            if (inf) inf.innerText = '';
+            updateSliderPreview();
             modals.slider.show();
         }
 
@@ -2610,6 +2711,11 @@
             document.getElementById('slider-id').value = s.id;
             document.getElementById('slider-title').value = s.title || '';
             document.getElementById('slider-image').value = s.image || '';
+            const fi = document.getElementById('slider-image-file');
+            if (fi) fi.value = '';
+            const inf = document.getElementById('slider-file-info');
+            if (inf) inf.innerText = '';
+            updateSliderPreview();
             modals.slider.show();
         }
 
@@ -2779,6 +2885,31 @@
             tbody.innerHTML = html;
         }
 
+        function handlePopupFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                document.getElementById('pop-image').value = base64;
+                document.getElementById('pop-file-info').innerText = `সিলেক্টেড: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+                updatePopupPreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updatePopupPreview() {
+            const val = document.getElementById('pop-image').value.trim();
+            const box = document.getElementById('pop-preview-box');
+            const img = document.getElementById('pop-preview-img');
+            if (val && box && img) {
+                img.src = val;
+                box.style.display = 'block';
+            } else if (box) {
+                box.style.display = 'none';
+            }
+        }
+
         function openAddPopupModal() {
             document.getElementById('modalPopupTitle').innerText = 'নতুন পপআপ নোটিশ যোগ';
             document.getElementById('pop-id').value = '';
@@ -2787,6 +2918,11 @@
             document.getElementById('pop-type').value = 'general';
             document.getElementById('pop-status').value = 'active';
             document.getElementById('pop-image').value = '';
+            const fi = document.getElementById('pop-image-file');
+            if (fi) fi.value = '';
+            const inf = document.getElementById('pop-file-info');
+            if (inf) inf.innerText = '';
+            updatePopupPreview();
             modals.popup.show();
         }
 
@@ -2801,6 +2937,11 @@
             document.getElementById('pop-type').value = p.type || 'general';
             document.getElementById('pop-status').value = p.status || 'active';
             document.getElementById('pop-image').value = p.image || '';
+            const fi = document.getElementById('pop-image-file');
+            if (fi) fi.value = '';
+            const inf = document.getElementById('pop-file-info');
+            if (inf) inf.innerText = '';
+            updatePopupPreview();
             modals.popup.show();
         }
 
