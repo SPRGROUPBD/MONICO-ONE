@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -732,80 +733,161 @@ private fun MenuEditDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // URL INPUT SECTION (PDF & Image URL - No device upload / base64 required)
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("ফাইল / ইমেজ URL লিংক:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    if (selectedGrid == "grid5") {
+                        // ONLY GRID 5: SALES REPORT PDF
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MonicoRed.copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, MonicoRed.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(20.dp))
+                                    Text("সেলস রিপোর্ট PDF আপলোড (শুধুমাত্র PDF):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MonicoRed)
+                                }
+                                Text("গ্রিড ৫-এর ফাইলগুলো শুধুমাত্র সেলস রিপোর্ট PDF হিসেবে ওপেন হবে।", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-                            // PDF URL or Main Web Link
-                            OutlinedTextField(
-                                value = externalUrl,
-                                onValueChange = { externalUrl = it },
-                                label = { Text("PDF বা ফাইল URL লিংক (Direct Link)") },
-                                placeholder = { Text("https://example.com/document.pdf") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(18.dp))
-                                },
-                                singleLine = true,
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                                // Device PDF Picker Button
+                                OutlinedButton(
+                                    onClick = { pdfPickerLauncher.launch("application/pdf") },
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoRed)
+                                ) {
+                                    Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(if (attachedPdfData.isNotBlank()) "নতুন PDF নির্বাচন করুন" else "ডিভাইস থেকে সেলস রিপোর্ট PDF পছন্দ করুন", fontSize = 12.sp)
+                                }
 
-                            // Image URLs (Multiple image URLs separated by comma or new line)
-                            var imageUrlInput by remember { mutableStateOf("") }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                                if (attachedPdfData.isNotBlank()) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.surface,
+                                        border = BorderStroke(1.dp, MonicoRed.copy(alpha = 0.4f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                attachedPdfName.ifBlank { "সংযুক্ত PDF ডকুমেন্ট" },
+                                                fontSize = 11.sp,
+                                                maxLines = 1,
+                                                modifier = Modifier.weight(1f),
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    attachedPdfData = ""
+                                                    attachedPdfName = ""
+                                                },
+                                                modifier = Modifier.size(22.dp)
+                                            ) {
+                                                Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Gray, modifier = Modifier.size(14.dp))
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Direct PDF Web Link
+                                Text("অথবা সরাসরি PDF ওয়েব লিংক দিন:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                 OutlinedTextField(
-                                    value = imageUrlInput,
-                                    onValueChange = { imageUrlInput = it },
-                                    label = { Text("ছবি URL যোগ করুন (Image URL)") },
-                                    placeholder = { Text("https://example.com/photo.jpg") },
+                                    value = externalUrl,
+                                    onValueChange = { externalUrl = it },
+                                    label = { Text("PDF ওয়েব লিংক (https://...pdf)") },
+                                    placeholder = { Text("https://example.com/daily_sales_report.pdf") },
                                     leadingIcon = {
-                                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.Link, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(18.dp))
                                     },
                                     singleLine = true,
                                     shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.fillMaxWidth()
                                 )
-                                Button(
-                                    onClick = {
-                                        val trimmed = imageUrlInput.trim()
-                                        if (trimmed.isNotBlank() && !deviceImages.contains(trimmed)) {
-                                            deviceImages = (deviceImages + trimmed).take(10)
-                                            imageUrlInput = ""
-                                        }
-                                    },
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
-                                    contentPadding = PaddingValues(horizontal = 12.dp)
-                                ) {
-                                    Text("যোগ", fontSize = 11.sp)
-                                }
                             }
+                        }
+                    } else {
+                        // GRIDS 1, 2, 3, 4: IMAGES ONLY
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MonicoBlue.copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, MonicoBlue.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(20.dp))
+                                    Text("ছবি সংযুক্তি (শুধুমাত্র ছবি ফাইল):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MonicoBlue)
+                                }
+                                Text("সার্কুলার, বোনাস শিট ও নোটিশ ছবি হিসেবে প্রদর্শিত হবে।", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-                            if (deviceImages.isNotEmpty()) {
-                                Text("সংযুক্ত ছবির লিংকসমূহ (${deviceImages.size}টি):", fontSize = 10.sp, color = MonicoGreen, fontWeight = FontWeight.Bold)
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    items(deviceImages) { imgUrl ->
-                                        Box(modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp))) {
-                                            AsyncImage(
-                                                model = ImageUtils.resolveImageModel(imgUrl),
-                                                contentDescription = null,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-                                            IconButton(
-                                                onClick = { deviceImages = deviceImages - imgUrl },
-                                                modifier = Modifier.size(20.dp).align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.6f))
-                                            ) {
-                                                Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(14.dp))
+                                // Device Image Picker Button
+                                OutlinedButton(
+                                    onClick = { photoPickerLauncher.launch("image/*") },
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoBlue)
+                                ) {
+                                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("ডিভাইস থেকে ছবি আপলোড করুন (${deviceImages.size}/10)", fontSize = 12.sp)
+                                }
+
+                                // Image URLs
+                                var imageUrlInput by remember { mutableStateOf("") }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = imageUrlInput,
+                                        onValueChange = { imageUrlInput = it },
+                                        label = { Text("ছবি URL যোগ করুন (Image URL)") },
+                                        placeholder = { Text("https://example.com/photo.jpg") },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(18.dp))
+                                        },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Button(
+                                        onClick = {
+                                            val trimmed = imageUrlInput.trim()
+                                            if (trimmed.isNotBlank() && !deviceImages.contains(trimmed)) {
+                                                deviceImages = (deviceImages + trimmed).take(10)
+                                                imageUrlInput = ""
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
+                                        contentPadding = PaddingValues(horizontal = 12.dp)
+                                    ) {
+                                        Text("যোগ", fontSize = 11.sp)
+                                    }
+                                }
+
+                                if (deviceImages.isNotEmpty()) {
+                                    Text("সংযুক্ত ছবির লিংকসমূহ (${deviceImages.size}টি):", fontSize = 10.sp, color = MonicoGreen, fontWeight = FontWeight.Bold)
+                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        items(deviceImages) { imgUrl ->
+                                            Box(modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp))) {
+                                                AsyncImage(
+                                                    model = ImageUtils.resolveImageModel(imgUrl),
+                                                    contentDescription = null,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                                IconButton(
+                                                    onClick = { deviceImages = deviceImages - imgUrl },
+                                                    modifier = Modifier.size(20.dp).align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.6f))
+                                                ) {
+                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(14.dp))
+                                                }
                                             }
                                         }
                                     }

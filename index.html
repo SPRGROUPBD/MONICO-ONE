@@ -918,9 +918,18 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">অনুমোদিত রোল (Allowed Role)</label>
-                        <input type="text" class="form-control" id="sm-role" value="SUPER_ADMIN,DIC">
-                        <small class="text-muted" style="font-size: 11px;">কমা দিয়ে একাধিক রোল দিতে পারেন (যেমন: SUPER_ADMIN,DIC,MPO)</small>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-semibold m-0">অনুমোদিত রোল (Allowed Role):</label>
+                            <span class="badge bg-secondary" id="sm-role-badge">SUPER_ADMIN,DIC</span>
+                        </div>
+                        <input type="hidden" id="sm-role" value="SUPER_ADMIN,DIC">
+                        <div class="d-flex gap-2 mb-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSidebarRole('SUPER_ADMIN,DIC')">SUPER_ADMIN,DIC</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSidebarRole('SUPER_ADMIN')">SUPER_ADMIN Only</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSidebarRole('AM,TM,RSM')">Supervisor</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSidebarRole('PALL')">Everyone</button>
+                        </div>
+                        <input type="text" class="form-control form-control-sm" id="sm-role-custom" placeholder="কাস্টম রোল লিখুন" oninput="document.getElementById('sm-role').value = this.value; document.getElementById('sm-role-badge').innerText = this.value;">
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">স্ট্যাটাস</label>
@@ -943,43 +952,79 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-info bg-opacity-10 border-0">
-                    <h6 class="modal-title fw-bold" id="modalMenuTitle">নতুন মেনু ফাইল / PDF যোগ</h6>
+                    <h6 class="modal-title fw-bold" id="modalMenuTitle">নতুন মেনু ফাইল যোগ</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
                     <input type="hidden" id="menu-id">
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-5">
                             <label class="form-label small fw-semibold">গ্রিড সিলেকশন *</label>
                             <select class="form-select" id="menu-group" onchange="onMenuGroupChanged()">
-                                <option value="grid1">Grid 1 (সার্কুলার / নোটিশ - ছবি)</option>
-                                <option value="grid2">Grid 2 (বোনাস শিট - ছবি)</option>
-                                <option value="grid3">Grid 3 (হেড অফিস সার্কুলার - ছবি)</option>
-                                <option value="grid4">Grid 4 (প্রোডাক্ট / টিএ বিল - ছবি)</option>
-                                <option value="grid5">Grid 5 (দৈনিক সেলস রিপোর্ট - শুধুই PDF)</option>
+                                <option value="grid1">GRID 1: Primary Menus (Daily Work - ছবি)</option>
+                                <option value="grid2">GRID 2: Flat Bonus Sheet (ছবি)</option>
+                                <option value="grid3">GRID 3: Head Office Circular (ছবি)</option>
+                                <option value="grid4">GRID 4: Salary TA Bill (ছবি)</option>
+                                <option value="grid5">GRID 5: Sales Report (PDF - শুধুমাত্র PDF আপলোড)</option>
                             </select>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-7">
                             <label class="form-label small fw-semibold">ফাইলের শিরোনাম (Title) *</label>
                             <input type="text" class="form-control" id="menu-title" placeholder="যেমন: March 2026 Sales Report বা Bonus Sheet" required>
                         </div>
 
+                        <!-- 1. DEDICATED PDF UPLOAD BOX FOR GRID 5 ONLY -->
                         <div class="col-12" id="box-pdf-input" style="display: none;">
-                            <div class="alert alert-danger py-2 small mb-2">
-                                <i class="fa-solid fa-file-pdf me-1"></i> <strong>শুধুই PDF:</strong> গ্রিড ৫ (সেলস রিপোর্ট) শুধুমাত্র PDF ফরম্যাটে প্রদর্শিত হবে।
+                            <div class="alert alert-danger py-2 small mb-2 d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-file-pdf fa-lg text-danger"></i>
+                                <div>
+                                    <strong>GRID 5 (সেলস রিপোর্ট) - শুধুমাত্র PDF আপলোড:</strong><br>
+                                    সেলস রিপোর্ট শুধুমাত্র PDF ফরম্যাটে অ্যাপে প্রদর্শিত হবে। নিচের বাটন থেকে পিসির PDF ফাইল সিলেক্ট করুন অথবা সরাসরি লিংক দিন।
+                                </div>
                             </div>
-                            <label class="form-label small fw-semibold">সেলস রিপোর্ট PDF সরাসরি লিংক (Direct PDF URL) *</label>
-                            <input type="url" class="form-control border-danger" id="menu-url" placeholder="https://example.com/daily_sales_report.pdf">
-                            <small class="text-muted" style="font-size: 11px;">PDF ফাইল ড্রাইভ বা ওয়েব লিংকের ডিরেক্ট URL দিন (অবশ্যই .pdf হতে হবে)</small>
+                            <div class="card p-3 border-danger bg-light">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-danger">
+                                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> ১. পিসি থেকে সরাসরি PDF ফাইল আপলোড করুন (Choose PDF File):
+                                    </label>
+                                    <input type="file" class="form-control border-danger" id="menu-pdf-file" accept=".pdf,application/pdf" onchange="handlePdfFileUpload(event)">
+                                    <div id="pdf-file-info" class="mt-1 small"></div>
+                                </div>
+                                <div class="mb-1">
+                                    <label class="form-label small fw-bold text-muted">
+                                        ২. অথবা সরাসরি PDF ওয়েব লিংক দিন (Direct Web Link URL):
+                                    </label>
+                                    <input type="url" class="form-control" id="menu-url" placeholder="https://example.com/daily_sales_report.pdf">
+                                    <small class="text-muted" style="font-size: 11px;">ড্রাইভ বা ওয়েব সার্ভারের সরাসরি .pdf লিংক থাকলে এখানে দিতে পারেন।</small>
+                                </div>
+                            </div>
                         </div>
 
+                        <!-- 2. IMAGE UPLOAD BOX FOR GRIDS 1, 2, 3, 4 ONLY -->
                         <div class="col-12" id="box-image-input">
-                            <div class="alert alert-primary py-2 small mb-2">
-                                <i class="fa-solid fa-image me-1"></i> <strong>শুধুই ছবি (Images):</strong> গ্রিড ১, ২, ৩ ও ৪ এর ফাইলসমূহ ছবি (Image) হিসেবে প্রদর্শিত হবে।
+                            <div class="alert alert-primary py-2 small mb-2 d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-image fa-lg text-primary"></i>
+                                <div>
+                                    <strong>গ্রিড ১, ২, ৩ ও ৪ - শুধুমাত্র ছবি (Images):</strong><br>
+                                    সমস্ত সার্কুলার, বোনাস শিট ও নোটিশ ছবি হিসেবে প্রদর্শিত হবে।
+                                </div>
                             </div>
-                            <label class="form-label small fw-semibold">ছবি সমূহের URL (Image URLs - প্রতি লাইনে একটি) *</label>
-                            <textarea class="form-control border-primary" id="menu-images" rows="3" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"></textarea>
-                            <small class="text-muted" style="font-size: 11px;">একাধিক পৃষ্ঠা থাকলে প্রতি লাইনে একটি করে ছবির লিংক দিন</small>
+                            <div class="card p-3 border-primary bg-light">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-primary">
+                                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> ১. পিসি থেকে সরাসরি ছবি আপলোড করুন (Upload Images from PC):
+                                    </label>
+                                    <input type="file" class="form-control border-primary" id="menu-image-files" accept="image/*" multiple onchange="handleImageFilesUpload(event)">
+                                    <div id="image-files-info" class="mt-1 small text-muted">একাধিক ছবি এক সাথে সিলেক্ট করতে পারেন</div>
+                                    <div id="image-files-previews" class="d-flex gap-2 flex-wrap mt-2"></div>
+                                </div>
+                                <div class="mb-1">
+                                    <label class="form-label small fw-bold text-muted">
+                                        ২. অথবা ছবির সরাসরি URL লিংকসমূহ (প্রতি লাইনে একটি):
+                                    </label>
+                                    <textarea class="form-control" id="menu-images" rows="3" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg" oninput="renderImagePreviewsFromText()"></textarea>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="col-md-4">
@@ -988,21 +1033,104 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">মাস (Month)</label>
-                            <input type="text" class="form-control" id="menu-month" placeholder="MARCH">
+                            <input type="text" class="form-control" id="menu-month" placeholder="March">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">কালার কোড</label>
                             <input type="text" class="form-control" id="menu-color" placeholder="#0284c7" value="#0284c7">
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">রোল অ্যাক্সেস</label>
-                            <input type="text" class="form-control" id="menu-role" value="PALL" placeholder="PALL, SUPER_ADMIN, AM, TM, RSM">
+                        <!-- 3. ROLE & USER GROUP ACCESS LEVEL (EXACTLY MATCHING APP) -->
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-bold m-0 text-dark">
+                                    <i class="fa-solid fa-shield-halved text-primary me-1"></i> Role & User Group Access Level (অনুমোদিত রোল অ্যাক্সেস):
+                                </label>
+                                <div>
+                                    <span class="text-muted small me-1">নির্বাচিত রোল:</span>
+                                    <span class="badge bg-primary px-2 py-1" id="role-summary-badge">ALL</span>
+                                </div>
+                            </div>
+                            <input type="hidden" id="menu-role" value="PALL">
+
+                            <div class="card p-3 bg-light border">
+                                <!-- Quick Presets -->
+                                <div class="d-flex gap-2 mb-3">
+                                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold flex-fill" onclick="setRolePreset('EVERYONE')">
+                                        <i class="fa-solid fa-users me-1"></i> Everyone (সবাই)
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-info fw-bold flex-fill" onclick="setRolePreset('SUPERVISOR')">
+                                        <i class="fa-solid fa-user-tie me-1"></i> Supervisor (AM, TM, RSM)
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold" onclick="setRolePreset('CLEAR')">
+                                        <i class="fa-solid fa-xmark me-1"></i> Clear (ক্লিয়ার)
+                                    </button>
+                                </div>
+
+                                <!-- Supervisor Group with AM, TM, RSM -->
+                                <div class="card p-2 mb-2 bg-white border">
+                                    <div class="form-check fw-bold text-primary mb-1">
+                                        <input class="form-check-input" type="checkbox" id="role-cb-supervisor-all" onchange="toggleSupervisorAll(this.checked)">
+                                        <label class="form-check-label" for="role-cb-supervisor-all">
+                                            Supervisor (AM, TM, RSM)
+                                        </label>
+                                    </div>
+                                    <div class="d-flex gap-3 ps-4 flex-wrap">
+                                        <div class="form-check">
+                                            <input class="form-check-input role-item-cb" type="checkbox" id="role-cb-AM" value="AM" onchange="toggleRole('AM')">
+                                            <label class="form-check-label small" for="role-cb-AM">AM (Area Manager)</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input role-item-cb" type="checkbox" id="role-cb-TM" value="TM" onchange="toggleRole('TM')">
+                                            <label class="form-check-label small" for="role-cb-TM">TM (Territory Manager)</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input role-item-cb" type="checkbox" id="role-cb-RSM" value="RSM" onchange="toggleRole('RSM')">
+                                            <label class="form-check-label small" for="role-cb-RSM">RSM (Regional Sales Manager)</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Individual Roles: MPO, DA, ADIC, DIC, SUPER_ADMIN -->
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <div class="form-check bg-white p-2 ps-4 rounded border">
+                                            <input class="form-check-input role-item-cb" type="checkbox" id="role-cb-MPO" value="MPO" onchange="toggleRole('MPO')">
+                                            <label class="form-check-label small fw-semibold" for="role-cb-MPO">MPO (Medical Promotion Officer)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check bg-white p-2 ps-4 rounded border">
+                                            <input class="form-check-input role-item-cb" type="checkbox" id="role-cb-DA" value="DA" onchange="toggleRole('DA')">
+                                            <label class="form-check-label small fw-semibold" for="role-cb-DA">DA (Delivery Assistant)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check bg-white p-2 ps-4 rounded border">
+                                            <input class="form-check-input role-item-cb" type="checkbox" id="role-cb-ADIC" value="ADIC" onchange="toggleRole('ADIC')">
+                                            <label class="form-check-label small fw-semibold" for="role-cb-ADIC">ADIC (Assistant Depot In-Charge)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check bg-white p-2 ps-4 rounded border">
+                                            <input class="form-check-input role-item-cb" type="checkbox" id="role-cb-DIC" value="DIC" onchange="toggleRole('DIC')">
+                                            <label class="form-check-label small fw-semibold" for="role-cb-DIC">DIC (Depot In-Charge)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-check bg-white p-2 ps-4 rounded border">
+                                            <input class="form-check-input role-item-cb" type="checkbox" id="role-cb-SUPER_ADMIN" value="SUPER_ADMIN" onchange="toggleRole('SUPER_ADMIN')">
+                                            <label class="form-check-label small fw-bold text-danger" for="role-cb-SUPER_ADMIN">SUPER_ADMIN (Super Admin - সম্পূর্ণ নিয়ন্ত্রণ)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6 d-flex align-items-center gap-4 mt-4">
+
+                        <div class="col-12 d-flex align-items-center gap-4 mt-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="menu-pinned">
-                                <label class="form-check-label small fw-semibold" for="menu-pinned">পিন্ড ফাইল (Pinned)</label>
+                                <label class="form-check-label small fw-semibold" for="menu-pinned">এই ফাইলটি পিন করুন (Fast Access Pinned)</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="menu-active" checked>
@@ -1685,7 +1813,7 @@
                     </td>
                     <td>${isGrid5Pdf ? '-' : `<span class="badge bg-light text-dark border">${imgCount || (hasUrl ? 1 : 0)}টি ছবি</span>`}</td>
                     <td class="small text-muted">${escapeHtml(m.date || '')} ${m.month ? `(${escapeHtml(m.month)})` : ''}</td>
-                    <td><span class="badge bg-light text-secondary border">${escapeHtml(m.allowedRole || 'PALL')}</span></td>
+                    <td>${formatRoleBadge(m.allowedRole)}</td>
                     <td>${m.isPinned ? '<i class="fa-solid fa-thumbtack text-warning"></i>' : '-'}</td>
                     <td><span class="badge badge-status ${isActive ? 'badge-active' : 'badge-inactive'}">${isActive ? 'Active' : 'Inactive'}</span></td>
                     <td class="text-end">
@@ -1698,11 +1826,243 @@
             tbody.innerHTML = html;
         }
 
+        // ==================== ROLE ACCESS LOGIC (MATCHING APP) ====================
+        const ALL_ROLES = ["SUPER_ADMIN", "MPO", "AM", "TM", "RSM", "DA", "ADIC", "DIC"];
+        const SUPERVISOR_ROLES = ["AM", "TM", "RSM"];
+
+        function formatRoleBadge(roleStr) {
+            const r = (roleStr || 'ALL').trim().toUpperCase();
+            if (!r || r === 'ALL' || r === 'PALL' || r === 'PALL+SALL' || r === 'EVERYONE') {
+                return '<span class="badge bg-success bg-opacity-10 text-success border border-success"><i class="fa-solid fa-users me-1"></i>Everyone</span>';
+            }
+            if (r === 'SUPERVISOR') {
+                return '<span class="badge bg-info bg-opacity-10 text-info border border-info"><i class="fa-solid fa-user-tie me-1"></i>Supervisor</span>';
+            }
+            if (r === 'SUPER_ADMIN') {
+                return '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger"><i class="fa-solid fa-user-shield me-1"></i>Super Admin</span>';
+            }
+            return `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary">${escapeHtml(roleStr)}</span>`;
+        }
+
+        function setSidebarRole(role) {
+            document.getElementById('sm-role').value = role;
+            document.getElementById('sm-role-badge').innerText = role;
+            document.getElementById('sm-role-custom').value = role;
+        }
+
+        function applyRolesToCheckboxes(roleString) {
+            const r = (roleString || 'ALL').trim().toUpperCase();
+            let selected = [];
+            if (!r || r === 'ALL' || r === 'EVERYONE' || r === 'PALL' || r === 'PALL+SALL') {
+                selected = [...ALL_ROLES];
+            } else if (r === 'SUPERVISOR') {
+                selected = [...SUPERVISOR_ROLES];
+            } else {
+                const parts = r.split(/[,+]/).map(s => s.trim().toUpperCase()).filter(Boolean);
+                selected = ALL_ROLES.filter(role => parts.includes(role));
+            }
+
+            ALL_ROLES.forEach(role => {
+                const cb = document.getElementById('role-cb-' + role);
+                if (cb) cb.checked = selected.includes(role);
+            });
+
+            updateSupervisorCheckbox();
+            updateRoleSummaryUI();
+        }
+
+        function updateSupervisorCheckbox() {
+            const supCb = document.getElementById('role-cb-supervisor-all');
+            if (!supCb) return;
+            const allSupChecked = SUPERVISOR_ROLES.every(r => {
+                const cb = document.getElementById('role-cb-' + r);
+                return cb && cb.checked;
+            });
+            supCb.checked = allSupChecked;
+        }
+
+        function toggleSupervisorAll(checked) {
+            SUPERVISOR_ROLES.forEach(r => {
+                const cb = document.getElementById('role-cb-' + r);
+                if (cb) cb.checked = checked;
+            });
+            updateRoleSummaryUI();
+        }
+
+        function toggleRole(role) {
+            updateSupervisorCheckbox();
+            updateRoleSummaryUI();
+        }
+
+        function setRolePreset(preset) {
+            if (preset === 'EVERYONE') {
+                ALL_ROLES.forEach(r => {
+                    const cb = document.getElementById('role-cb-' + r);
+                    if (cb) cb.checked = true;
+                });
+            } else if (preset === 'SUPERVISOR') {
+                ALL_ROLES.forEach(r => {
+                    const cb = document.getElementById('role-cb-' + r);
+                    if (cb) cb.checked = SUPERVISOR_ROLES.includes(r);
+                });
+            } else if (preset === 'CLEAR') {
+                ALL_ROLES.forEach(r => {
+                    const cb = document.getElementById('role-cb-' + r);
+                    if (cb) cb.checked = false;
+                });
+            }
+            updateSupervisorCheckbox();
+            updateRoleSummaryUI();
+        }
+
+        function updateRoleSummaryUI() {
+            const checkedRoles = ALL_ROLES.filter(r => {
+                const cb = document.getElementById('role-cb-' + r);
+                return cb && cb.checked;
+            });
+
+            let roleStr = '';
+            let badgeText = '';
+
+            if (checkedRoles.length === 0) {
+                roleStr = 'NONE';
+                badgeText = 'কোনো রোল নেই';
+            } else if (checkedRoles.length === ALL_ROLES.length) {
+                roleStr = 'ALL';
+                badgeText = 'Everyone (সবাই)';
+            } else if (checkedRoles.length === 3 && SUPERVISOR_ROLES.every(r => checkedRoles.includes(r))) {
+                roleStr = 'SUPERVISOR';
+                badgeText = 'Supervisor (AM, TM, RSM)';
+            } else {
+                roleStr = checkedRoles.join(',');
+                badgeText = checkedRoles.join(', ');
+            }
+
+            const badge = document.getElementById('role-summary-badge');
+            if (badge) badge.innerText = badgeText;
+            const hidden = document.getElementById('menu-role');
+            if (hidden) hidden.value = roleStr;
+        }
+
+        // ==================== PDF & IMAGE UPLOAD HANDLERS ====================
+        function handlePdfFileUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+                showToast('দয়া করে একটি সঠিক PDF ফাইল সিলেক্ট করুন!', true);
+                event.target.value = '';
+                return;
+            }
+
+            const info = document.getElementById('pdf-file-info');
+            const sizeKb = Math.round(file.size / 1024);
+            if (info) {
+                info.innerHTML = `<span class="badge bg-danger"><i class="fa-solid fa-file-pdf me-1"></i> ${escapeHtml(file.name)} (${sizeKb} KB) - প্রস্তুত করা হচ্ছে...</span>`;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+                document.getElementById('menu-url').value = base64Data;
+                if (info) {
+                    info.innerHTML = `
+                        <div class="alert alert-success py-1 px-2 d-flex justify-content-between align-items-center mt-1 mb-0">
+                            <div><i class="fa-solid fa-circle-check text-success me-1"></i> <strong>${escapeHtml(file.name)}</strong> (${sizeKb} KB) রেডি!</div>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="clearSelectedPdf()">মুছুন</button>
+                        </div>
+                    `;
+                }
+                showToast(`PDF লোড সম্পন্ন: ${file.name}`);
+            };
+            reader.onerror = function() {
+                showToast('PDF ফাইল পড়তে ত্রুটি হয়েছে!', true);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearSelectedPdf() {
+            const fileInput = document.getElementById('menu-pdf-file');
+            if (fileInput) fileInput.value = '';
+            const urlInput = document.getElementById('menu-url');
+            if (urlInput) urlInput.value = '';
+            const info = document.getElementById('pdf-file-info');
+            if (info) info.innerHTML = '';
+        }
+
+        function handleImageFilesUpload(event) {
+            const files = event.target.files;
+            if (!files || !files.length) return;
+
+            const textarea = document.getElementById('menu-images');
+            let currentUrls = textarea.value.trim() ? textarea.value.trim().split('\n').map(s => s.trim()).filter(Boolean) : [];
+
+            let countLoaded = 0;
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64 = e.target.result;
+                    if (!currentUrls.includes(base64)) {
+                        currentUrls.push(base64);
+                    }
+                    countLoaded++;
+                    if (countLoaded === files.length) {
+                        textarea.value = currentUrls.join('\n');
+                        renderImagePreviews();
+                        showToast(`${files.length}টি ছবি লোড হয়েছে!`);
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderImagePreviewsFromText() {
+            renderImagePreviews();
+        }
+
+        function renderImagePreviews() {
+            const textarea = document.getElementById('menu-images');
+            const container = document.getElementById('image-files-previews');
+            if (!container || !textarea) return;
+
+            const urls = textarea.value.trim() ? textarea.value.trim().split('\n').map(s => s.trim()).filter(Boolean) : [];
+            if (!urls.length) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            urls.forEach((u, idx) => {
+                html += `
+                    <div class="position-relative d-inline-block border rounded overflow-hidden" style="width: 70px; height: 70px;">
+                        <img src="${escapeHtml(u)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://placehold.co/70x70?text=IMG'">
+                        <button type="button" class="btn btn-sm btn-danger p-0 position-absolute top-0 end-0 rounded-circle" style="width: 18px; height: 18px; font-size: 10px; line-height: 1;" onclick="removeImageAt(${idx})">×</button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function removeImageAt(idx) {
+            const textarea = document.getElementById('menu-images');
+            if (!textarea) return;
+            let urls = textarea.value.trim() ? textarea.value.trim().split('\n').map(s => s.trim()).filter(Boolean) : [];
+            urls.splice(idx, 1);
+            textarea.value = urls.join('\n');
+            renderImagePreviews();
+        }
+
+        // ==================== MENU MODAL & CRITICAL GRID 5 ISOLATION ====================
         function onMenuGroupChanged() {
             const group = document.getElementById('menu-group').value;
             const isGrid5 = group === 'grid5';
-            document.getElementById('box-pdf-input').style.display = isGrid5 ? 'block' : 'none';
-            document.getElementById('box-image-input').style.display = isGrid5 ? 'none' : 'block';
+            const boxPdf = document.getElementById('box-pdf-input');
+            const boxImg = document.getElementById('box-image-input');
+
+            // CRITICAL RULE: When Grid 5 (Sales Report) is selected, ONLY PDF upload appears!
+            // When Grids 1, 2, 3, 4 are selected, ONLY Image upload appears!
+            if (boxPdf) boxPdf.style.display = isGrid5 ? 'block' : 'none';
+            if (boxImg) boxImg.style.display = isGrid5 ? 'none' : 'block';
         }
 
         function openAddMenuModal() {
@@ -1715,9 +2075,18 @@
             document.getElementById('menu-date').value = new Date().toISOString().split('T')[0];
             document.getElementById('menu-month').value = new Date().toLocaleString('en-US', { month: 'short' }).toUpperCase();
             document.getElementById('menu-color').value = '#0284c7';
-            document.getElementById('menu-role').value = 'PALL';
             document.getElementById('menu-pinned').checked = false;
             document.getElementById('menu-active').checked = true;
+
+            clearSelectedPdf();
+            const imgInput = document.getElementById('menu-image-files');
+            if (imgInput) imgInput.value = '';
+            const imgPreview = document.getElementById('image-files-previews');
+            if (imgPreview) imgPreview.innerHTML = '';
+
+            // Default roles to Everyone (ALL)
+            applyRolesToCheckboxes('ALL');
+
             onMenuGroupChanged();
             modals.menu.show();
         }
@@ -1728,16 +2097,30 @@
 
             document.getElementById('modalMenuTitle').innerText = 'মেনু ফাইল এডিট করুন';
             document.getElementById('menu-id').value = m.id;
-            document.getElementById('menu-group').value = m.group || 'grid1';
+            const group = m.group || 'grid1';
+            document.getElementById('menu-group').value = group;
             document.getElementById('menu-title').value = m.title || '';
             document.getElementById('menu-url').value = m.url || '';
             document.getElementById('menu-images').value = (m.images || []).join('\n');
             document.getElementById('menu-date').value = m.date || '';
             document.getElementById('menu-month').value = m.month || '';
             document.getElementById('menu-color').value = m.color || '#0284c7';
-            document.getElementById('menu-role').value = m.allowedRole || 'PALL';
             document.getElementById('menu-pinned').checked = !!m.isPinned;
             document.getElementById('menu-active').checked = (m.status || 'active') === 'active';
+
+            clearSelectedPdf();
+            if (group === 'grid5' && m.url) {
+                const info = document.getElementById('pdf-file-info');
+                if (info) {
+                    info.innerHTML = `<span class="badge bg-danger"><i class="fa-solid fa-file-pdf me-1"></i> বর্তমান সংরক্ষিত সেলস রিপোর্ট PDF লিংক/ফাইল</span>`;
+                }
+            } else {
+                renderImagePreviews();
+            }
+
+            // Apply existing roles
+            applyRolesToCheckboxes(m.allowedRole || 'ALL');
+
             onMenuGroupChanged();
             modals.menu.show();
         }
@@ -1748,10 +2131,10 @@
             const title = document.getElementById('menu-title').value.trim();
             const url = document.getElementById('menu-url').value.trim();
             const imagesRaw = document.getElementById('menu-images').value.trim();
-            const date = document.getElementById('menu-date').value.trim();
-            const month = document.getElementById('menu-month').value.trim();
-            const color = document.getElementById('menu-color').value.trim();
-            const allowedRole = document.getElementById('menu-role').value.trim() || 'PALL';
+            const date = document.getElementById('menu-date').value.trim() || new Date().toISOString().split('T')[0];
+            const month = document.getElementById('menu-month').value.trim() || 'March';
+            const color = document.getElementById('menu-color').value.trim() || '#0284c7';
+            const allowedRole = document.getElementById('menu-role').value.trim() || 'ALL';
             const isPinned = document.getElementById('menu-pinned').checked;
             const status = document.getElementById('menu-active').checked ? 'active' : 'inactive';
 
@@ -1766,20 +2149,28 @@
             let finalIcon = 'fa-folder';
 
             if (isGrid5) {
-                // ONLY Grid 5 is PDF
+                // STRICTLY: ONLY Grid 5 is PDF (Sales Report)
                 finalUrl = url;
                 images = [];
                 finalIcon = 'fa-file-pdf';
             } else {
-                // ALL OTHER GRIDS (1 to 4) ARE IMAGES ONLY
-                images = imagesRaw ? imagesRaw.split('\n').map(s => s.trim()).filter(s => s) : [];
-                if (url && !images.includes(url)) images.push(url);
+                // STRICTLY: ALL OTHER GRIDS (1 to 4) ARE IMAGES ONLY
+                images = imagesRaw ? imagesRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
                 finalUrl = images.length > 0 ? images[0] : '';
-                finalIcon = 'fa-image';
+                finalIcon = images.length > 0 ? images[0] : 'fa-image';
             }
 
             const payload = {
-                group, title, url: finalUrl, images, date, month, color, allowedRole, isPinned, status,
+                group,
+                title,
+                url: finalUrl,
+                images,
+                date,
+                month,
+                color,
+                allowedRole,
+                isPinned,
+                status,
                 icon: finalIcon
             };
             const targetId = id || ('-M' + Date.now());
