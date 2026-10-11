@@ -1581,56 +1581,99 @@ private fun UserEditDialog(
                     }
                 }
 
-                // Profile picture: Device upload (Base64) or Image URL
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = { userPhotoPicker.launch("image/*") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MonicoGreen),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("ডিভাইস থেকে ছবি (Base64)", fontSize = 12.sp)
-                    }
-                    if (isProcessing) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    }
-                }
-
-                OutlinedTextField(
-                    value = profilePic,
-                    onValueChange = { profilePic = it },
-                    label = { Text("প্রোফাইল ছবির লিংক বা Base64") },
-                    placeholder = { Text("https://example.com/photo.jpg") },
-                    leadingIcon = {
-                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MonicoGreen)
-                    },
+                // Profile Picture Options for Super Admin
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.fillMaxWidth()
-                )
-
-                if (profilePic.isNotBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Box(modifier = Modifier.size(60.dp).clip(CircleShape).border(2.dp, MonicoGreen, CircleShape)) {
-                            AsyncImage(
-                                model = ImageUtils.resolveImageModel(profilePic),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
                         Text(
-                            text = if (profilePic.startsWith("data:image")) "ডিভাইস থেকে ছবি আপলোড হয়েছে (Base64)" else "ছবির লিংক যুক্ত আছে",
-                            fontSize = 11.sp,
-                            color = MonicoGreen
+                            text = "প্রোফাইল ছবি (URL অথবা ডিভাইস থেকে):",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
+
+                        // Option 1: URL input (Recommended for minimal DB storage)
+                        OutlinedTextField(
+                            value = profilePic,
+                            onValueChange = { profilePic = it.trim() },
+                            label = { Text("ছবির সরাসরি লিংক (URL - ডেটাবেজ সেভিং)") },
+                            placeholder = { Text("https://example.com/photo.jpg") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Link, contentDescription = null, tint = MonicoGreen)
+                            },
+                            trailingIcon = {
+                                if (profilePic.isNotBlank()) {
+                                    IconButton(onClick = { profilePic = "" }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Text(
+                            text = "অথবা ডিভাইস থেকে আপলোড করতে চাইলে:",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        // Option 2: Device upload button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = { userPhotoPicker.launch("image/*") },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp), tint = MonicoGreen)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("ডিভাইস থেকে নির্বাচন করুন", fontSize = 11.sp)
+                            }
+                            if (isProcessing) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            }
+                        }
+
+                        // Preview indicator
+                        if (profilePic.isNotBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Box(modifier = Modifier.size(48.dp).clip(CircleShape).border(2.dp, MonicoGreen, CircleShape)) {
+                                    AsyncImage(
+                                        model = ImageUtils.resolveImageModel(profilePic),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = if (profilePic.startsWith("data:image")) "ডিভাইস থেকে ছবি লোড হয়েছে (Base64)" else "ওয়েব লিংক যুক্ত হয়েছে (URL)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MonicoGreen
+                                    )
+                                    Text(
+                                        text = if (profilePic.startsWith("data:image")) "ডাটাবেজে Base64 হিসেবে সেভ হবে" else "সরাসরি URL ব্যবহার হবে (কম ডেটা খরচ)",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
