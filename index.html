@@ -986,13 +986,50 @@
                                 <div class="row g-2">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold">আইকন কোড (Icon Code):</label>
-                                        <input type="text" class="form-control" id="menu-grid1-icon" placeholder="যেমন: fa-cart-shopping, fa-check, fa-briefcase" value="fa-folder">
-                                        <small class="text-muted" style="font-size: 11px;">FontAwesome আইকন নাম (যেমন: fa-cart-shopping, fa-briefcase, fa-file-invoice)</small>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="menu-grid1-icon" placeholder="যেমন: fa-cart-shopping, fa-briefcase" value="fa-folder" oninput="updateGrid1IconPreview()">
+                                            <span class="input-group-text bg-white" id="grid1-icon-preview">
+                                                <i class="fa-solid fa-folder fa-lg text-primary"></i>
+                                            </span>
+                                        </div>
+                                        <small class="text-muted d-block mt-1" style="font-size: 11px;">FontAwesome আইকন নাম (যেমন: fa-cart-shopping, fa-briefcase, fa-file-invoice)</small>
+                                        
+                                        <!-- Quick Icon Suggestion Badges -->
+                                        <div class="mt-2">
+                                            <small class="fw-semibold text-secondary d-block mb-1" style="font-size: 11px;">দ্রুত আইকন বাছাই করুন:</small>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-cart-shopping')"><i class="fa-solid fa-cart-shopping me-1"></i>Order Entry</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-briefcase')"><i class="fa-solid fa-briefcase me-1"></i>Work/Office</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-file-invoice')"><i class="fa-solid fa-file-invoice me-1"></i>Invoice/Bill</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-check')"><i class="fa-solid fa-check me-1"></i>DCC/Check</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-route')"><i class="fa-solid fa-route me-1"></i>Tour/Route</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-truck-fast')"><i class="fa-solid fa-truck-fast me-1"></i>Delivery</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-calendar-days')"><i class="fa-solid fa-calendar-days me-1"></i>Attendance</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-money-bill-wave')"><i class="fa-solid fa-money-bill-wave me-1"></i>Payment</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-chart-line')"><i class="fa-solid fa-chart-line me-1"></i>Report</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-hospital')"><i class="fa-solid fa-hospital me-1"></i>Medical</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-box')"><i class="fa-solid fa-box me-1"></i>Stock</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Icon('fa-globe')"><i class="fa-solid fa-globe me-1"></i>Web Link</button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold">লিংক বা কমান্ড (URL / Command):</label>
                                         <input type="text" class="form-control" id="menu-grid1-url" placeholder="যেমন: https://... বা go:order, go:dcc">
-                                        <small class="text-muted" style="font-size: 11px;">ওয়েব লিংক অথবা সিস্টেম কমান্ড (যেমন: go:order, go:bill)</small>
+                                        <small class="text-muted d-block mt-1" style="font-size: 11px;">ওয়েব লিংক অথবা সিস্টেম কমান্ড (যেমন: go:order, go:bill)</small>
+                                        
+                                        <!-- Quick Command Shortcuts -->
+                                        <div class="mt-2">
+                                            <small class="fw-semibold text-secondary d-block mb-1" style="font-size: 11px;">সিস্টেম কমান্ড শর্টকাট:</small>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Command('go:order')">go:order</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Command('go:dcc')">go:dcc</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Command('go:Tour')">go:Tour</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Command('go:delivery')">go:delivery</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Command('go:bill')">go:bill</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 11px;" onclick="selectGrid1Command('go:att1')">go:att1</button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1821,7 +1858,7 @@
             let html = '';
             list.forEach(m => {
                 const isActive = (m.status || 'active') === 'active';
-                const isGrid1 = (m.group || '') === 'grid1';
+                const isGrid1 = (m.group || '') === 'grid1' || (m.group || '') === 'grid-1' || (m.group || '') === 'grid_1';
                 const isGrid5Pdf = (m.group || '') === 'grid5';
                 const hasUrl = m.url && m.url.trim().length > 0;
                 const imgCount = (m.images && Array.isArray(m.images)) ? m.images.length : 0;
@@ -1830,6 +1867,9 @@
                 if (isGrid1) groupBadge = 'bg-info text-dark';
                 else if (isGrid5Pdf) groupBadge = 'bg-danger';
 
+                let iconClass = m.icon || 'fa-folder';
+                if (!iconClass.startsWith('fa-') && !iconClass.startsWith('fa ')) iconClass = 'fa-' + iconClass;
+
                 html += `
                 <tr>
                     <td><span class="badge ${groupBadge}">${escapeHtml(m.group || 'grid1')}</span></td>
@@ -1837,7 +1877,7 @@
                     <td>
                         ${isGrid1 ? `
                             <span class="badge bg-info bg-opacity-10 text-info border border-info mb-1"><i class="fa-solid fa-link me-1"></i> প্রাইমারি মেনু</span><br>
-                            <span class="badge bg-light text-dark border me-1"><code><i class="fa-solid ${escapeHtml(m.icon || 'fa-folder')} me-1"></i>${escapeHtml(m.icon || 'fa-folder')}</code></span>
+                            <span class="badge bg-light text-dark border me-1"><code><i class="fa-solid ${escapeHtml(iconClass)} me-1"></i>${escapeHtml(m.icon || 'fa-folder')}</code></span>
                             ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
                         ` : (isGrid5Pdf ? `
                             <span class="badge bg-danger mb-1"><i class="fa-solid fa-file-pdf me-1"></i> PDF রিপোর্ট</span><br>
@@ -2089,8 +2129,35 @@
         }
 
         // ==================== MENU MODAL & CRITICAL GRID ISOLATION ====================
+        function updateGrid1IconPreview() {
+            const iconInput = document.getElementById('menu-grid1-icon');
+            const preview = document.getElementById('grid1-icon-preview');
+            if (!iconInput || !preview) return;
+            let val = iconInput.value.trim() || 'fa-folder';
+            if (!val.startsWith('fa-') && !val.startsWith('fa ')) {
+                val = 'fa-' + val;
+            }
+            preview.innerHTML = `<i class="fa-solid ${escapeHtml(val)} fa-lg text-primary"></i>`;
+        }
+
+        function selectGrid1Icon(iconCode) {
+            const input = document.getElementById('menu-grid1-icon');
+            if (input) {
+                input.value = iconCode;
+                updateGrid1IconPreview();
+            }
+        }
+
+        function selectGrid1Command(cmd) {
+            const input = document.getElementById('menu-grid1-url');
+            if (input) {
+                input.value = cmd;
+            }
+        }
+
         function onMenuGroupChanged() {
-            const group = document.getElementById('menu-group').value;
+            let group = document.getElementById('menu-group').value;
+            if (group === 'grid-1' || group === 'grid_1') group = 'grid1';
             const isGrid1 = group === 'grid1';
             const isGrid5 = group === 'grid5';
             const boxGrid1 = document.getElementById('box-grid1-input');
@@ -2106,6 +2173,7 @@
             if (boxPdf) boxPdf.style.display = isGrid5 ? 'block' : 'none';
             if (boxImg) boxImg.style.display = (!isGrid1 && !isGrid5) ? 'block' : 'none';
             if (boxMeta) boxMeta.style.display = isGrid1 ? 'none' : 'flex';
+            if (isGrid1) updateGrid1IconPreview();
         }
 
         function openAddMenuModal() {
@@ -2133,6 +2201,7 @@
             applyRolesToCheckboxes('ALL');
 
             onMenuGroupChanged();
+            updateGrid1IconPreview();
             modals.menu.show();
         }
 
@@ -2142,7 +2211,8 @@
 
             document.getElementById('modalMenuTitle').innerText = 'মেনু ফাইল এডিট করুন';
             document.getElementById('menu-id').value = m.id;
-            const group = m.group || 'grid1';
+            let group = m.group || 'grid1';
+            if (group === 'grid-1' || group === 'grid_1') group = 'grid1';
             document.getElementById('menu-group').value = group;
             document.getElementById('menu-title').value = m.title || '';
             document.getElementById('menu-grid1-icon').value = m.icon || 'fa-folder';
@@ -2169,6 +2239,7 @@
             applyRolesToCheckboxes(m.allowedRole || 'ALL');
 
             onMenuGroupChanged();
+            updateGrid1IconPreview();
             modals.menu.show();
         }
 
@@ -2190,7 +2261,7 @@
                 return;
             }
 
-            const isGrid1 = group === 'grid1';
+            const isGrid1 = group === 'grid1' || group === 'grid-1' || group === 'grid_1';
             const isGrid5 = group === 'grid5';
             let images = [];
             let finalUrl = '';

@@ -41,6 +41,7 @@ import com.example.ui.theme.MonicoAmber
 import com.example.ui.theme.MonicoBlue
 import com.example.ui.theme.MonicoGreen
 import com.example.ui.theme.MonicoRed
+import com.example.utils.IconUtils
 import com.example.utils.ImageUtils
 import com.example.utils.PdfUtils
 import kotlinx.coroutines.Dispatchers
@@ -678,22 +679,86 @@ private fun MenuEditDialog(
                 )
 
                 if (selectedGrid == "grid1") {
-                    OutlinedTextField(
-                        value = icon,
-                        onValueChange = { icon = it },
-                        label = { Text("আইকন (যেমন: fa-cart-shopping, fa-check)") },
-                        singleLine = true,
+                    Surface(
                         shape = RoundedCornerShape(12.dp),
+                        color = MonicoBlue.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, MonicoBlue.copy(alpha = 0.3f)),
                         modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = externalUrl,
-                        onValueChange = { externalUrl = it },
-                        label = { Text("লিংক বা কমান্ড (যেমন: https://... বা go:dcc)") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(20.dp))
+                                Text("GRID 1: দৈনিক কাজের মেনু (Primary Menus)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MonicoBlue)
+                            }
+                            Text("শুধুমাত্র আইকন কোড এবং ওয়েব লিংক বা কমান্ড (URL)। কোনো ছবি আপলোড বা ইমেজ URL হবে না।", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                            // Icon Input with Live Preview
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = icon,
+                                    onValueChange = { icon = it },
+                                    label = { Text("আইকন কোড (যেমন: fa-cart-shopping, fa-briefcase)") },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(54.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MonicoBlue),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = IconUtils.getIconForName(icon),
+                                        contentDescription = "Preview",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+                            }
+
+                            // Quick Icon Selection Chips
+                            Text("দ্রুত আইকন বাছাই করুন (Quick Suggestions):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                items(IconUtils.COMMON_SUGGESTIONS) { sugg ->
+                                    FilterChip(
+                                        selected = icon.contains(sugg.code, ignoreCase = true),
+                                        onClick = { icon = sugg.code },
+                                        leadingIcon = {
+                                            Icon(sugg.icon, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        },
+                                        label = { Text(sugg.label, fontSize = 10.sp) }
+                                    )
+                                }
+                            }
+
+                            // URL / Command Input
+                            OutlinedTextField(
+                                value = externalUrl,
+                                onValueChange = { externalUrl = it },
+                                label = { Text("লিংক বা কমান্ড (যেমন: https://... বা go:order)") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            // Quick Command Chips
+                            Text("সিস্টেম কমান্ড শর্টকাট (System Commands):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                items(listOf("go:order", "go:dcc", "go:Tour", "go:delivery", "go:bill", "go:att1")) { cmd ->
+                                    SuggestionChip(
+                                        onClick = { externalUrl = cmd },
+                                        label = { Text(cmd, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 } else {
                     // Month Dropdown
                     Text("মাস (Month):", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
@@ -2089,7 +2154,7 @@ private fun MenuItemAdminCard(
     onEdit: (MenuItem) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    // ONLY Grid 5 is PDF (Sales Report)
+    val isGrid1 = m.group == "grid1" || m.group == "grid-1" || m.group == "grid_1" || m.group.equals("primary", ignoreCase = true)
     val isPdf = m.group == "grid5"
     Card(
         shape = RoundedCornerShape(14.dp),
@@ -2104,7 +2169,19 @@ private fun MenuItemAdminCard(
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (isPdf) {
+                    if (isGrid1) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MonicoBlue.copy(alpha = 0.15f),
+                            contentColor = MonicoBlue
+                        ) {
+                            Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(IconUtils.getIconForName(m.icon), contentDescription = "Primary", tint = MonicoBlue, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text("PRIMARY MENU (LINK)", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else if (isPdf) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
                             color = MonicoRed.copy(alpha = 0.15f),
@@ -2125,7 +2202,7 @@ private fun MenuItemAdminCard(
                             Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Image, contentDescription = "IMG", tint = MonicoBlue, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(2.dp))
-                                Text("IMAGE", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("IMAGE (${m.images.size}টি)", fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

@@ -43,6 +43,7 @@ import com.example.R
 import com.example.data.model.*
 import com.example.data.repository.MonicoRepository
 import com.example.ui.theme.*
+import com.example.utils.IconUtils
 import com.example.utils.ImageUtils
 import com.example.utils.PdfUtils
 import kotlinx.coroutines.delay
@@ -209,7 +210,7 @@ fun DashboardScreen(
         sortDescendingZtoA(filteredMenus.filter { it.isPinned })
     }
 
-    val grid1Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid1" }) }
+    val grid1Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid1" || it.group == "grid-1" || it.group == "grid_1" || it.group.equals("primary", ignoreCase = true) }) }
     val grid2Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid2" }) }
     val grid3Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid3" }) }
     val grid4Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid4" }) }
@@ -276,7 +277,18 @@ fun DashboardScreen(
 
                         activeSortedSidebarMenus.forEach { sm ->
                             NavigationDrawerItem(
-                                icon = { Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue) },
+                                icon = {
+                                    if (sm.icon.startsWith("http") || sm.icon.startsWith("data:")) {
+                                        AsyncImage(
+                                            model = ImageUtils.resolveImageModel(sm.icon),
+                                            contentDescription = sm.name,
+                                            modifier = Modifier.size(20.dp),
+                                            contentScale = ContentScale.Fit
+                                        )
+                                    } else {
+                                        Icon(IconUtils.getIconForName(sm.icon), contentDescription = null, tint = MonicoBlue)
+                                    }
+                                },
                                 label = { Text(sm.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                 selected = false,
                                 onClick = {
@@ -880,8 +892,10 @@ private fun handleMenuCardClick(
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
     // 1. GRID 1: PRIMARY MENUS (DAILY WORK) - STRICTLY URL/LINK IN WEBVIEW OR BROWSER
-    if (item.group == "grid1") {
-        val resolved = resolveGoUrl(item.url)
+    val isGrid1 = item.group == "grid1" || item.group == "grid-1" || item.group == "grid_1" || item.group.equals("primary", ignoreCase = true) || item.url.startsWith("go:")
+    if (isGrid1) {
+        val targetUrl = if (item.url.isNotBlank()) item.url else item.images.firstOrNull() ?: ""
+        val resolved = resolveGoUrl(targetUrl)
         if (resolved.isNotBlank()) {
             onOpenUrl(item.title, resolved)
         } else {
@@ -1315,12 +1329,21 @@ private fun PrimaryMenuItemCard(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = getIconForName(item.icon),
-                        contentDescription = item.title,
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    if (item.icon.startsWith("http") || item.icon.startsWith("data:")) {
+                        AsyncImage(
+                            model = ImageUtils.resolveImageModel(item.icon),
+                            contentDescription = item.title,
+                            modifier = Modifier.size(24.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        Icon(
+                            imageVector = IconUtils.getIconForName(item.icon),
+                            contentDescription = item.title,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -1345,7 +1368,7 @@ private fun MenuItemCard(
     onClick: () -> Unit
 ) {
     val hasSeen = item.seenBy[currentEmpId] == true
-    val isGrid1 = item.group == "grid1"
+    val isGrid1 = item.group == "grid1" || item.group == "grid-1" || item.group == "grid_1" || item.group.equals("primary", ignoreCase = true) || item.url.startsWith("go:")
     val isPdf = item.group == "grid5"
 
     val imageList = remember(item, isPdf, isGrid1) {
@@ -1411,12 +1434,21 @@ private fun MenuItemCard(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(
-                            imageVector = getIconForName(item.icon),
-                            contentDescription = item.title,
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
+                        if (item.icon.startsWith("http") || item.icon.startsWith("data:")) {
+                            AsyncImage(
+                                model = ImageUtils.resolveImageModel(item.icon),
+                                contentDescription = item.title,
+                                modifier = Modifier.size(32.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else {
+                            Icon(
+                                imageVector = IconUtils.getIconForName(item.icon),
+                                contentDescription = item.title,
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
                         Surface(
                             shape = RoundedCornerShape(4.dp),
                             color = Color.White.copy(alpha = 0.25f)
@@ -1719,17 +1751,5 @@ private fun ContentCardItem(
 }
 
 private fun getIconForName(iconName: String): androidx.compose.ui.graphics.vector.ImageVector {
-    return when {
-        iconName.contains("cart", ignoreCase = true) || iconName.contains("order", ignoreCase = true) -> Icons.Default.ShoppingCart
-        iconName.contains("dcc", ignoreCase = true) || iconName.contains("check", ignoreCase = true) -> Icons.Default.CheckCircle
-        iconName.contains("calendar", ignoreCase = true) || iconName.contains("date", ignoreCase = true) -> Icons.Default.CalendarMonth
-        iconName.contains("money", ignoreCase = true) || iconName.contains("bill", ignoreCase = true) -> Icons.Default.AttachMoney
-        iconName.contains("user", ignoreCase = true) || iconName.contains("profile", ignoreCase = true) -> Icons.Default.Person
-        iconName.contains("chart", ignoreCase = true) || iconName.contains("report", ignoreCase = true) -> Icons.Default.BarChart
-        iconName.contains("pdf", ignoreCase = true) -> Icons.Default.PictureAsPdf
-        iconName.contains("bullhorn", ignoreCase = true) || iconName.contains("bell", ignoreCase = true) -> Icons.Default.Campaign
-        iconName.contains("truck", ignoreCase = true) || iconName.contains("delivery", ignoreCase = true) -> Icons.Default.LocalShipping
-        iconName.contains("route", ignoreCase = true) || iconName.contains("tour", ignoreCase = true) -> Icons.Default.NearMe
-        else -> Icons.Default.Folder
-    }
+    return IconUtils.getIconForName(iconName)
 }
