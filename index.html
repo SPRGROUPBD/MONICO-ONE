@@ -951,28 +951,35 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">গ্রিড সিলেকশন *</label>
-                            <select class="form-select" id="menu-group">
-                                <option value="grid1">Grid 1 (সার্কুলার / নোটিশ)</option>
-                                <option value="grid2">Grid 2 (অর্ডার / সেলস)</option>
-                                <option value="grid3">Grid 3 (বোনাস শিট)</option>
-                                <option value="grid4">Grid 4 (প্রোডাক্ট ক্যাটালগ)</option>
-                                <option value="grid5">Grid 5 (রিপোর্টস)</option>
+                            <select class="form-select" id="menu-group" onchange="onMenuGroupChanged()">
+                                <option value="grid1">Grid 1 (সার্কুলার / নোটিশ - ছবি)</option>
+                                <option value="grid2">Grid 2 (বোনাস শিট - ছবি)</option>
+                                <option value="grid3">Grid 3 (হেড অফিস সার্কুলার - ছবি)</option>
+                                <option value="grid4">Grid 4 (প্রোডাক্ট / টিএ বিল - ছবি)</option>
+                                <option value="grid5">Grid 5 (দৈনিক সেলস রিপোর্ট - শুধুই PDF)</option>
                             </select>
                         </div>
                         <div class="col-md-8">
                             <label class="form-label small fw-semibold">ফাইলের শিরোনাম (Title) *</label>
-                            <input type="text" class="form-control" id="menu-title" placeholder="যেমন: March 2026 Bonus Sheet" required>
+                            <input type="text" class="form-control" id="menu-title" placeholder="যেমন: March 2026 Sales Report বা Bonus Sheet" required>
                         </div>
 
-                        <div class="col-12">
-                            <label class="form-label small fw-semibold">PDF বা ফাইল সরাসরি URL লিংক *</label>
-                            <input type="url" class="form-control" id="menu-url" placeholder="https://example.com/document.pdf">
-                            <small class="text-muted" style="font-size: 11px;">PDF ফাইল ড্রাইভ বা ওয়েব লিংকের ডিরেক্ট URL দিন</small>
+                        <div class="col-12" id="box-pdf-input" style="display: none;">
+                            <div class="alert alert-danger py-2 small mb-2">
+                                <i class="fa-solid fa-file-pdf me-1"></i> <strong>শুধুই PDF:</strong> গ্রিড ৫ (সেলস রিপোর্ট) শুধুমাত্র PDF ফরম্যাটে প্রদর্শিত হবে।
+                            </div>
+                            <label class="form-label small fw-semibold">সেলস রিপোর্ট PDF সরাসরি লিংক (Direct PDF URL) *</label>
+                            <input type="url" class="form-control border-danger" id="menu-url" placeholder="https://example.com/daily_sales_report.pdf">
+                            <small class="text-muted" style="font-size: 11px;">PDF ফাইল ড্রাইভ বা ওয়েব লিংকের ডিরেক্ট URL দিন (অবশ্যই .pdf হতে হবে)</small>
                         </div>
 
-                        <div class="col-12">
-                            <label class="form-label small fw-semibold">ছবি সমূহের URL (প্রতি লাইনে একটি)</label>
-                            <textarea class="form-control" id="menu-images" rows="2" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"></textarea>
+                        <div class="col-12" id="box-image-input">
+                            <div class="alert alert-primary py-2 small mb-2">
+                                <i class="fa-solid fa-image me-1"></i> <strong>শুধুই ছবি (Images):</strong> গ্রিড ১, ২, ৩ ও ৪ এর ফাইলসমূহ ছবি (Image) হিসেবে প্রদর্শিত হবে।
+                            </div>
+                            <label class="form-label small fw-semibold">ছবি সমূহের URL (Image URLs - প্রতি লাইনে একটি) *</label>
+                            <textarea class="form-control border-primary" id="menu-images" rows="3" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"></textarea>
+                            <small class="text-muted" style="font-size: 11px;">একাধিক পৃষ্ঠা থাকলে প্রতি লাইনে একটি করে ছবির লিংক দিন</small>
                         </div>
 
                         <div class="col-md-4">
@@ -1659,17 +1666,24 @@
             let html = '';
             list.forEach(m => {
                 const isActive = (m.status || 'active') === 'active';
+                const isGrid5Pdf = (m.group || '') === 'grid5';
                 const hasUrl = m.url && m.url.trim().length > 0;
                 const imgCount = (m.images && Array.isArray(m.images)) ? m.images.length : 0;
 
                 html += `
                 <tr>
-                    <td><span class="badge bg-secondary">${escapeHtml(m.group || 'grid1')}</span></td>
+                    <td><span class="badge ${isGrid5Pdf ? 'bg-danger' : 'bg-primary'}">${escapeHtml(m.group || 'grid1')}</span></td>
                     <td class="fw-bold">${escapeHtml(m.title || '')}</td>
                     <td>
-                        ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-info text-decoration-none small text-truncate d-inline-block" style="max-width: 180px;"><i class="fa-solid fa-file-pdf text-danger me-1"></i> ${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
+                        ${isGrid5Pdf ? `
+                            <span class="badge bg-danger mb-1"><i class="fa-solid fa-file-pdf me-1"></i> PDF রিপোর্ট</span><br>
+                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-danger small text-truncate d-inline-block" style="max-width: 180px;"><i class="fa-solid fa-link me-1"></i> ${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
+                        ` : `
+                            <span class="badge bg-primary mb-1"><i class="fa-solid fa-image me-1"></i> ছবি ফাইল (${imgCount}টি)</span><br>
+                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">গ্যালারি ছবি</span>'}
+                        `}
                     </td>
-                    <td><span class="badge bg-light text-dark border">${imgCount}টি ছবি</span></td>
+                    <td>${isGrid5Pdf ? '-' : `<span class="badge bg-light text-dark border">${imgCount || (hasUrl ? 1 : 0)}টি ছবি</span>`}</td>
                     <td class="small text-muted">${escapeHtml(m.date || '')} ${m.month ? `(${escapeHtml(m.month)})` : ''}</td>
                     <td><span class="badge bg-light text-secondary border">${escapeHtml(m.allowedRole || 'PALL')}</span></td>
                     <td>${m.isPinned ? '<i class="fa-solid fa-thumbtack text-warning"></i>' : '-'}</td>
@@ -1684,8 +1698,15 @@
             tbody.innerHTML = html;
         }
 
+        function onMenuGroupChanged() {
+            const group = document.getElementById('menu-group').value;
+            const isGrid5 = group === 'grid5';
+            document.getElementById('box-pdf-input').style.display = isGrid5 ? 'block' : 'none';
+            document.getElementById('box-image-input').style.display = isGrid5 ? 'none' : 'block';
+        }
+
         function openAddMenuModal() {
-            document.getElementById('modalMenuTitle').innerText = 'নতুন মেনু ফাইল / PDF যোগ করুন';
+            document.getElementById('modalMenuTitle').innerText = 'নতুন মেনু ফাইল যোগ করুন';
             document.getElementById('menu-id').value = '';
             document.getElementById('menu-group').value = 'grid1';
             document.getElementById('menu-title').value = '';
@@ -1697,6 +1718,7 @@
             document.getElementById('menu-role').value = 'PALL';
             document.getElementById('menu-pinned').checked = false;
             document.getElementById('menu-active').checked = true;
+            onMenuGroupChanged();
             modals.menu.show();
         }
 
@@ -1716,6 +1738,7 @@
             document.getElementById('menu-role').value = m.allowedRole || 'PALL';
             document.getElementById('menu-pinned').checked = !!m.isPinned;
             document.getElementById('menu-active').checked = (m.status || 'active') === 'active';
+            onMenuGroupChanged();
             modals.menu.show();
         }
 
@@ -1737,10 +1760,27 @@
                 return;
             }
 
-            const images = imagesRaw ? imagesRaw.split('\n').map(s => s.trim()).filter(s => s) : [];
+            const isGrid5 = group === 'grid5';
+            let images = [];
+            let finalUrl = '';
+            let finalIcon = 'fa-folder';
+
+            if (isGrid5) {
+                // ONLY Grid 5 is PDF
+                finalUrl = url;
+                images = [];
+                finalIcon = 'fa-file-pdf';
+            } else {
+                // ALL OTHER GRIDS (1 to 4) ARE IMAGES ONLY
+                images = imagesRaw ? imagesRaw.split('\n').map(s => s.trim()).filter(s => s) : [];
+                if (url && !images.includes(url)) images.push(url);
+                finalUrl = images.length > 0 ? images[0] : '';
+                finalIcon = 'fa-image';
+            }
+
             const payload = {
-                group, title, url, images, date, month, color, allowedRole, isPinned, status,
-                icon: 'fa-folder'
+                group, title, url: finalUrl, images, date, month, color, allowedRole, isPinned, status,
+                icon: finalIcon
             };
             const targetId = id || ('-M' + Date.now());
 

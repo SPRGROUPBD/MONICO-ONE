@@ -877,49 +877,45 @@ private fun handleMenuCardClick(
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
-    // 1. Check if this item is or has a PDF
-    val pdfFromImages = item.images.firstOrNull { isPdfFile(it) }
-    val isPdf = item.group == "grid5" || isPdfFile(item.url) || pdfFromImages != null || item.icon.contains("pdf", ignoreCase = true)
-
-    val pdfSource = when {
-        isPdfFile(item.url) -> item.url
-        pdfFromImages != null -> pdfFromImages
-        item.group == "grid5" && item.url.isNotBlank() -> item.url
-        item.url.isNotBlank() && isPdf -> item.url
-        else -> ""
-    }
-
-    if (isPdf && pdfSource.isNotBlank()) {
-        // Open natively in ImageViewerDialog with PdfRenderer
-        onOpenImageViewer(item.title, listOf(pdfSource))
+    // ONLY Grid 5 (Sales Report) is PDF
+    if (item.group == "grid5") {
+        val pdfUrl = when {
+            item.url.isNotBlank() -> resolveGoUrl(item.url)
+            item.images.isNotEmpty() -> item.images.first()
+            else -> ""
+        }
+        if (pdfUrl.isNotBlank()) {
+            if (pdfUrl.startsWith("http://") || pdfUrl.startsWith("https://")) {
+                onOpenUrl(item.title, pdfUrl)
+            } else {
+                onOpenImageViewer(item.title, listOf(pdfUrl))
+            }
+        } else {
+            Toast.makeText(context, "${item.title}: কোনো সেলস রিপোর্ট PDF যুক্ত নেই", Toast.LENGTH_SHORT).show()
+        }
         return
     }
 
-    // 2. Gather all potential images
+    // ALL OTHER GRIDS (Grid 1, Grid 2, Grid 3, Grid 4) ARE IMAGES ONLY
     val allImages = mutableListOf<String>()
-    item.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) allImages.add(it) }
+    item.images.forEach { if (it.isNotBlank()) allImages.add(it) }
 
     if (allImages.isEmpty()) {
-        if (item.url.isNotBlank() && !isPdfFile(item.url) && (isImageFile(item.url) || item.group != "grid1" || item.url.startsWith("data:image"))) {
-            allImages.add(item.url)
-        } else if (item.icon.isNotBlank() && !isPdfFile(item.icon) && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
-            allImages.add(item.icon)
+        if (item.url.isNotBlank()) {
+            val eff = resolveGoUrl(item.url)
+            if (eff.startsWith("http://") || eff.startsWith("https://") || eff.startsWith("data:")) {
+                allImages.add(eff)
+            }
         }
+    }
+    if (allImages.isEmpty() && item.icon.isNotBlank() && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
+        allImages.add(item.icon)
     }
 
     if (allImages.isNotEmpty()) {
         onOpenImageViewer(item.title, allImages)
-    } else if (item.url.isNotBlank()) {
-        val effective = resolveGoUrl(item.url)
-        if (isPdfFile(effective)) {
-            onOpenImageViewer(item.title, listOf(effective))
-        } else {
-            onOpenUrl(item.title, effective)
-        }
-    } else if (item.icon.isNotBlank() && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
-        onOpenImageViewer(item.title, listOf(item.icon))
     } else {
-        Toast.makeText(context, "${item.title}: কোনো ফাইল বা লিংক যুক্ত নেই", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "${item.title}: কোনো ছবি যুক্ত নেই", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -948,32 +944,20 @@ private fun handleContentCardClick(
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
-    val pdfSource = when {
-        isPdfFile(card.url) -> card.url
-        isPdfFile(card.image) -> card.image
-        card.images.any { isPdfFile(it) } -> card.images.first { isPdfFile(it) }
-        else -> null
-    }
-
-    if (pdfSource != null) {
-        onOpenImageViewer(card.title, listOf(pdfSource))
-        return
-    }
-
+    // All content cards (training, products, target sheets) are images
     val validImgs = mutableListOf<String>()
-    card.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) validImgs.add(it) }
-    if (validImgs.isEmpty() && card.image.isNotBlank() && !isPdfFile(card.image)) {
+    card.images.forEach { if (it.isNotBlank()) validImgs.add(it) }
+    if (validImgs.isEmpty() && card.image.isNotBlank()) {
         validImgs.add(card.image)
     }
+    if (validImgs.isEmpty() && card.url.isNotBlank()) {
+        validImgs.add(card.url)
+    }
 
-    if (card.url.isNotBlank() && (card.url.startsWith("http://") || card.url.startsWith("https://"))) {
-        onOpenUrl(card.title, card.url)
-    } else if (validImgs.isNotEmpty()) {
+    if (validImgs.isNotEmpty()) {
         onOpenImageViewer(card.title, validImgs)
-    } else if (card.url.isNotBlank()) {
-        onOpenUrl(card.title, card.url)
     } else {
-        Toast.makeText(context, "${card.title}: কোনো ফাইল যুক্ত নেই", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "${card.title}: কোনো ছবি যুক্ত নেই", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -1350,21 +1334,19 @@ private fun MenuItemCard(
     onClick: () -> Unit
 ) {
     val hasSeen = item.seenBy[currentEmpId] == true
-    // Explicitly determine if it's a PDF: Grid 5 is PDF group, or url/icon explicitly has .pdf
-    val isPdf = item.group == "grid5" ||
-            (item.url.isNotBlank() && isPdfFile(item.url)) ||
-            item.icon.equals("fa-file-pdf", ignoreCase = true)
+    // Explicitly determine: ONLY Grid 5 is PDF (Sales Report)
+    val isPdf = item.group == "grid5"
 
     val imageList = remember(item, isPdf) {
         if (isPdf) {
             emptyList()
         } else {
             val list = mutableListOf<String>()
-            item.images.forEach { if (it.isNotBlank() && !isPdfFile(it)) list.add(it) }
+            item.images.forEach { if (it.isNotBlank()) list.add(it) }
             if (list.isEmpty()) {
-                if (item.url.isNotBlank() && !isPdfFile(item.url) && (isImageFile(item.url) || item.group != "grid1")) {
+                if (item.url.isNotBlank()) {
                     list.add(item.url)
-                } else if (item.icon.isNotBlank() && !isPdfFile(item.icon) && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
+                } else if (item.icon.isNotBlank() && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
                     list.add(item.icon)
                 }
             }

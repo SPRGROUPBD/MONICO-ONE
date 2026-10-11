@@ -941,14 +941,25 @@ private fun MenuEditDialog(
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
-                        // Compute final URL: if externalUrl is non-blank, use externalUrl; else if deviceImages has images, use first image; else fallback to existing attachedPdfData
-                        val finalUrl = when {
-                            externalUrl.isNotBlank() -> externalUrl.trim()
-                            deviceImages.isNotEmpty() -> deviceImages[0].trim()
-                            attachedPdfData.isNotBlank() -> attachedPdfData.trim()
-                            else -> ""
+                        val isGrid5 = selectedGrid == "grid5"
+                        val finalUrl = if (isGrid5) {
+                            externalUrl.trim().ifBlank { attachedPdfData.trim() }
+                        } else {
+                            if (deviceImages.isNotEmpty()) deviceImages[0].trim() else externalUrl.trim()
                         }
-                        val finalIcon = if (selectedGrid == "grid5" || PdfUtils.isPdf(finalUrl)) "fa-file-pdf" else if (deviceImages.isNotEmpty()) deviceImages[0].trim() else icon
+
+                        val finalImages = if (isGrid5) {
+                            emptyList()
+                        } else {
+                            val list = mutableListOf<String>()
+                            list.addAll(deviceImages)
+                            if (externalUrl.isNotBlank() && !list.contains(externalUrl.trim())) {
+                                list.add(externalUrl.trim())
+                            }
+                            list
+                        }
+
+                        val finalIcon = if (isGrid5) "fa-file-pdf" else if (finalImages.isNotEmpty()) finalImages[0] else icon
 
                         val finalRole = when {
                             selectedRoleSet.isEmpty() -> "ALL"
@@ -964,7 +975,7 @@ private fun MenuEditDialog(
                                 group = selectedGrid,
                                 icon = finalIcon,
                                 url = finalUrl,
-                                images = if (selectedGrid != "grid1") deviceImages else emptyList(),
+                                images = finalImages,
                                 month = if (selectedGrid == "grid1") "" else selectedMonth,
                                 date = if (selectedGrid == "grid1") "" else dateStr,
                                 isPinned = isPinned,
@@ -1989,7 +2000,8 @@ private fun MenuItemAdminCard(
     onEdit: (MenuItem) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    val isPdf = m.group == "grid5" || PdfUtils.isPdf(m.url)
+    // ONLY Grid 5 is PDF (Sales Report)
+    val isPdf = m.group == "grid5"
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -2012,7 +2024,7 @@ private fun MenuItemAdminCard(
                             Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.PictureAsPdf, contentDescription = "PDF", tint = MonicoRed, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(2.dp))
-                                Text("PDF", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("PDF (Sales Report)", fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     } else {
@@ -2024,7 +2036,7 @@ private fun MenuItemAdminCard(
                             Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Image, contentDescription = "IMG", tint = MonicoBlue, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(2.dp))
-                                Text("IMG", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("IMAGE", fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
