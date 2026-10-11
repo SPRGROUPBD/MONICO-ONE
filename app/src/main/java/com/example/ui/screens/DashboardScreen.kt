@@ -871,13 +871,26 @@ private fun isImageFile(url: String): Boolean {
     return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp") || lower.contains("image")
 }
 
+private fun isImageUrl(url: String): Boolean = isImageFile(url)
+
 private fun handleMenuCardClick(
     item: MenuItem,
     context: Context,
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
-    // ONLY Grid 5 (Sales Report) is PDF
+    // 1. GRID 1: PRIMARY MENUS (DAILY WORK) - STRICTLY URL/LINK IN WEBVIEW OR BROWSER
+    if (item.group == "grid1") {
+        val resolved = resolveGoUrl(item.url)
+        if (resolved.isNotBlank()) {
+            onOpenUrl(item.title, resolved)
+        } else {
+            Toast.makeText(context, "${item.title}: কোনো লিংক দেওয়া নেই", Toast.LENGTH_SHORT).show()
+        }
+        return
+    }
+
+    // 2. GRID 5: SALES REPORT - STRICTLY PDF ONLY
     if (item.group == "grid5") {
         val pdfUrl = when {
             item.url.isNotBlank() -> resolveGoUrl(item.url)
@@ -896,16 +909,14 @@ private fun handleMenuCardClick(
         return
     }
 
-    // ALL OTHER GRIDS (Grid 1, Grid 2, Grid 3, Grid 4) ARE IMAGES ONLY
+    // 3. GRIDS 2, 3, 4: BONUS SHEETS, CIRCULARS, SALARY BILLS - IMAGES ONLY
     val allImages = mutableListOf<String>()
     item.images.forEach { if (it.isNotBlank()) allImages.add(it) }
 
     if (allImages.isEmpty()) {
-        if (item.url.isNotBlank()) {
+        if (item.url.isNotBlank() && isImageUrl(item.url)) {
             val eff = resolveGoUrl(item.url)
-            if (eff.startsWith("http://") || eff.startsWith("https://") || eff.startsWith("data:")) {
-                allImages.add(eff)
-            }
+            allImages.add(eff)
         }
     }
     if (allImages.isEmpty() && item.icon.isNotBlank() && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
@@ -1334,17 +1345,17 @@ private fun MenuItemCard(
     onClick: () -> Unit
 ) {
     val hasSeen = item.seenBy[currentEmpId] == true
-    // Explicitly determine: ONLY Grid 5 is PDF (Sales Report)
+    val isGrid1 = item.group == "grid1"
     val isPdf = item.group == "grid5"
 
-    val imageList = remember(item, isPdf) {
-        if (isPdf) {
+    val imageList = remember(item, isPdf, isGrid1) {
+        if (isPdf || isGrid1) {
             emptyList()
         } else {
             val list = mutableListOf<String>()
             item.images.forEach { if (it.isNotBlank()) list.add(it) }
             if (list.isEmpty()) {
-                if (item.url.isNotBlank()) {
+                if (item.url.isNotBlank() && isImageUrl(item.url)) {
                     list.add(item.url)
                 } else if (item.icon.isNotBlank() && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
                     list.add(item.icon)
@@ -1354,7 +1365,7 @@ private fun MenuItemCard(
         }
     }
 
-    val isImageCard = !isPdf
+    val isImageCard = !isPdf && !isGrid1
     val hasImagePreview = isImageCard && imageList.isNotEmpty()
 
     Card(
@@ -1384,6 +1395,42 @@ private fun MenuItemCard(
                             )
                         )
                 )
+            } else if (isGrid1) {
+                // Primary menu style with Icon
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(MonicoBlue, MonicoNavy)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = getIconForName(item.icon),
+                            contentDescription = item.title,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color.White.copy(alpha = 0.25f)
+                        ) {
+                            Text(
+                                text = "PRIMARY MENU",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             } else if (isPdf) {
                 // PDF Card styling with PDF Icon
                 Box(
@@ -1458,7 +1505,7 @@ private fun MenuItemCard(
                 }
             }
 
-            // Top-left type badge: Image icon on Image cards, PDF icon on PDF cards
+            // Top-left type badge: Link icon on Grid 1, PDF icon on PDF cards, Image icon on Image cards
             Surface(
                 shape = RoundedCornerShape(6.dp),
                 color = Color(0xCC0F172A),
@@ -1471,7 +1518,20 @@ private fun MenuItemCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    if (isPdf) {
+                    if (isGrid1) {
+                        Icon(
+                            imageVector = getIconForName(item.icon),
+                            contentDescription = "Link",
+                            tint = Color(0xFF67E8F9),
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = "LINK",
+                            fontSize = 8.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else if (isPdf) {
                         Icon(
                             imageVector = Icons.Default.PictureAsPdf,
                             contentDescription = "PDF",

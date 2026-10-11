@@ -961,7 +961,7 @@
                         <div class="col-md-5">
                             <label class="form-label small fw-semibold">গ্রিড সিলেকশন *</label>
                             <select class="form-select" id="menu-group" onchange="onMenuGroupChanged()">
-                                <option value="grid1">GRID 1: Primary Menus (Daily Work - ছবি)</option>
+                                <option value="grid1">GRID 1: Primary Menus (Daily Work - শুধুমাত্র আইকন ও লিংক)</option>
                                 <option value="grid2">GRID 2: Flat Bonus Sheet (ছবি)</option>
                                 <option value="grid3">GRID 3: Head Office Circular (ছবি)</option>
                                 <option value="grid4">GRID 4: Salary TA Bill (ছবি)</option>
@@ -970,10 +970,35 @@
                         </div>
                         <div class="col-md-7">
                             <label class="form-label small fw-semibold">ফাইলের শিরোনাম (Title) *</label>
-                            <input type="text" class="form-control" id="menu-title" placeholder="যেমন: March 2026 Sales Report বা Bonus Sheet" required>
+                            <input type="text" class="form-control" id="menu-title" placeholder="যেমন: New ORDER ENTRY বা March Bonus Sheet" required>
                         </div>
 
-                        <!-- 1. DEDICATED PDF UPLOAD BOX FOR GRID 5 ONLY -->
+                        <!-- 1. DEDICATED INPUT BOX FOR GRID 1 ONLY (ICON & URL/COMMAND ONLY - NO IMAGES) -->
+                        <div class="col-12" id="box-grid1-input" style="display: none;">
+                            <div class="alert alert-info py-2 small mb-2 d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-link fa-lg text-primary"></i>
+                                <div>
+                                    <strong>GRID 1 (দৈনিক কাজের মেনু - Primary Menus):</strong><br>
+                                    শুধুমাত্র আইকন কোড (Icon) এবং ওয়েব লিংক বা কমান্ড (URL/Command)। কোনো ছবি আপলোড বা ইমেজ URL হবে না।
+                                </div>
+                            </div>
+                            <div class="card p-3 border-info bg-light">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">আইকন কোড (Icon Code):</label>
+                                        <input type="text" class="form-control" id="menu-grid1-icon" placeholder="যেমন: fa-cart-shopping, fa-check, fa-briefcase" value="fa-folder">
+                                        <small class="text-muted" style="font-size: 11px;">FontAwesome আইকন নাম (যেমন: fa-cart-shopping, fa-briefcase, fa-file-invoice)</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">লিংক বা কমান্ড (URL / Command):</label>
+                                        <input type="text" class="form-control" id="menu-grid1-url" placeholder="যেমন: https://... বা go:order, go:dcc">
+                                        <small class="text-muted" style="font-size: 11px;">ওয়েব লিংক অথবা সিস্টেম কমান্ড (যেমন: go:order, go:bill)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. DEDICATED PDF UPLOAD BOX FOR GRID 5 ONLY -->
                         <div class="col-12" id="box-pdf-input" style="display: none;">
                             <div class="alert alert-danger py-2 small mb-2 d-flex align-items-center gap-2">
                                 <i class="fa-solid fa-file-pdf fa-lg text-danger"></i>
@@ -1000,12 +1025,12 @@
                             </div>
                         </div>
 
-                        <!-- 2. IMAGE UPLOAD BOX FOR GRIDS 1, 2, 3, 4 ONLY -->
+                        <!-- 3. IMAGE UPLOAD BOX FOR GRIDS 2, 3, 4 ONLY -->
                         <div class="col-12" id="box-image-input">
                             <div class="alert alert-primary py-2 small mb-2 d-flex align-items-center gap-2">
                                 <i class="fa-solid fa-image fa-lg text-primary"></i>
                                 <div>
-                                    <strong>গ্রিড ১, ২, ৩ ও ৪ - শুধুমাত্র ছবি (Images):</strong><br>
+                                    <strong>গ্রিড ২, ৩ ও ৪ - শুধুমাত্র ছবি (Images):</strong><br>
                                     সমস্ত সার্কুলার, বোনাস শিট ও নোটিশ ছবি হিসেবে প্রদর্শিত হবে।
                                 </div>
                             </div>
@@ -1027,17 +1052,19 @@
                             </div>
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">তারিখ (YYYY-MM-DD)</label>
-                            <input type="text" class="form-control" id="menu-date" placeholder="2026-03-25">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">মাস (Month)</label>
-                            <input type="text" class="form-control" id="menu-month" placeholder="March">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">কালার কোড</label>
-                            <input type="text" class="form-control" id="menu-color" placeholder="#0284c7" value="#0284c7">
+                        <div class="row g-3 col-12 m-0 p-0" id="box-meta-date">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">তারিখ (YYYY-MM-DD)</label>
+                                <input type="text" class="form-control" id="menu-date" placeholder="2026-03-25">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">মাস (Month)</label>
+                                <input type="text" class="form-control" id="menu-month" placeholder="March">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">কালার কোড</label>
+                                <input type="text" class="form-control" id="menu-color" placeholder="#0284c7" value="#0284c7">
+                            </div>
                         </div>
 
                         <!-- 3. ROLE & USER GROUP ACCESS LEVEL (EXACTLY MATCHING APP) -->
@@ -1794,24 +1821,33 @@
             let html = '';
             list.forEach(m => {
                 const isActive = (m.status || 'active') === 'active';
+                const isGrid1 = (m.group || '') === 'grid1';
                 const isGrid5Pdf = (m.group || '') === 'grid5';
                 const hasUrl = m.url && m.url.trim().length > 0;
                 const imgCount = (m.images && Array.isArray(m.images)) ? m.images.length : 0;
 
+                let groupBadge = 'bg-primary';
+                if (isGrid1) groupBadge = 'bg-info text-dark';
+                else if (isGrid5Pdf) groupBadge = 'bg-danger';
+
                 html += `
                 <tr>
-                    <td><span class="badge ${isGrid5Pdf ? 'bg-danger' : 'bg-primary'}">${escapeHtml(m.group || 'grid1')}</span></td>
+                    <td><span class="badge ${groupBadge}">${escapeHtml(m.group || 'grid1')}</span></td>
                     <td class="fw-bold">${escapeHtml(m.title || '')}</td>
                     <td>
-                        ${isGrid5Pdf ? `
+                        ${isGrid1 ? `
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info mb-1"><i class="fa-solid fa-link me-1"></i> প্রাইমারি মেনু</span><br>
+                            <span class="badge bg-light text-dark border me-1"><code><i class="fa-solid ${escapeHtml(m.icon || 'fa-folder')} me-1"></i>${escapeHtml(m.icon || 'fa-folder')}</code></span>
+                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
+                        ` : (isGrid5Pdf ? `
                             <span class="badge bg-danger mb-1"><i class="fa-solid fa-file-pdf me-1"></i> PDF রিপোর্ট</span><br>
                             ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-danger small text-truncate d-inline-block" style="max-width: 180px;"><i class="fa-solid fa-link me-1"></i> ${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
                         ` : `
                             <span class="badge bg-primary mb-1"><i class="fa-solid fa-image me-1"></i> ছবি ফাইল (${imgCount}টি)</span><br>
                             ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">গ্যালারি ছবি</span>'}
-                        `}
+                        `)}
                     </td>
-                    <td>${isGrid5Pdf ? '-' : `<span class="badge bg-light text-dark border">${imgCount || (hasUrl ? 1 : 0)}টি ছবি</span>`}</td>
+                    <td>${isGrid1 ? '-' : (isGrid5Pdf ? '-' : `<span class="badge bg-light text-dark border">${imgCount || (hasUrl ? 1 : 0)}টি ছবি</span>`)}</td>
                     <td class="small text-muted">${escapeHtml(m.date || '')} ${m.month ? `(${escapeHtml(m.month)})` : ''}</td>
                     <td>${formatRoleBadge(m.allowedRole)}</td>
                     <td>${m.isPinned ? '<i class="fa-solid fa-thumbtack text-warning"></i>' : '-'}</td>
@@ -2052,17 +2088,24 @@
             renderImagePreviews();
         }
 
-        // ==================== MENU MODAL & CRITICAL GRID 5 ISOLATION ====================
+        // ==================== MENU MODAL & CRITICAL GRID ISOLATION ====================
         function onMenuGroupChanged() {
             const group = document.getElementById('menu-group').value;
+            const isGrid1 = group === 'grid1';
             const isGrid5 = group === 'grid5';
+            const boxGrid1 = document.getElementById('box-grid1-input');
             const boxPdf = document.getElementById('box-pdf-input');
             const boxImg = document.getElementById('box-image-input');
+            const boxMeta = document.getElementById('box-meta-date');
 
-            // CRITICAL RULE: When Grid 5 (Sales Report) is selected, ONLY PDF upload appears!
-            // When Grids 1, 2, 3, 4 are selected, ONLY Image upload appears!
+            // CRITICAL RULES:
+            // 1. Grid 1: Primary Menus (Daily Work) -> ONLY Icon & Web Link / Command (NO IMAGES, NO PDF)
+            // 2. Grid 5: Sales Report -> ONLY PDF upload/link (NO IMAGES)
+            // 3. Grid 2, 3, 4: Bonus Sheet, Circular, TA Bill -> ONLY Image upload/links
+            if (boxGrid1) boxGrid1.style.display = isGrid1 ? 'block' : 'none';
             if (boxPdf) boxPdf.style.display = isGrid5 ? 'block' : 'none';
-            if (boxImg) boxImg.style.display = isGrid5 ? 'none' : 'block';
+            if (boxImg) boxImg.style.display = (!isGrid1 && !isGrid5) ? 'block' : 'none';
+            if (boxMeta) boxMeta.style.display = isGrid1 ? 'none' : 'flex';
         }
 
         function openAddMenuModal() {
@@ -2070,6 +2113,8 @@
             document.getElementById('menu-id').value = '';
             document.getElementById('menu-group').value = 'grid1';
             document.getElementById('menu-title').value = '';
+            document.getElementById('menu-grid1-icon').value = 'fa-folder';
+            document.getElementById('menu-grid1-url').value = '';
             document.getElementById('menu-url').value = '';
             document.getElementById('menu-images').value = '';
             document.getElementById('menu-date').value = new Date().toISOString().split('T')[0];
@@ -2100,6 +2145,8 @@
             const group = m.group || 'grid1';
             document.getElementById('menu-group').value = group;
             document.getElementById('menu-title').value = m.title || '';
+            document.getElementById('menu-grid1-icon').value = m.icon || 'fa-folder';
+            document.getElementById('menu-grid1-url').value = m.url || '';
             document.getElementById('menu-url').value = m.url || '';
             document.getElementById('menu-images').value = (m.images || []).join('\n');
             document.getElementById('menu-date').value = m.date || '';
@@ -2114,7 +2161,7 @@
                 if (info) {
                     info.innerHTML = `<span class="badge bg-danger"><i class="fa-solid fa-file-pdf me-1"></i> বর্তমান সংরক্ষিত সেলস রিপোর্ট PDF লিংক/ফাইল</span>`;
                 }
-            } else {
+            } else if (group !== 'grid1') {
                 renderImagePreviews();
             }
 
@@ -2131,8 +2178,8 @@
             const title = document.getElementById('menu-title').value.trim();
             const url = document.getElementById('menu-url').value.trim();
             const imagesRaw = document.getElementById('menu-images').value.trim();
-            const date = document.getElementById('menu-date').value.trim() || new Date().toISOString().split('T')[0];
-            const month = document.getElementById('menu-month').value.trim() || 'March';
+            let date = document.getElementById('menu-date').value.trim();
+            let month = document.getElementById('menu-month').value.trim();
             const color = document.getElementById('menu-color').value.trim() || '#0284c7';
             const allowedRole = document.getElementById('menu-role').value.trim() || 'ALL';
             const isPinned = document.getElementById('menu-pinned').checked;
@@ -2143,21 +2190,33 @@
                 return;
             }
 
+            const isGrid1 = group === 'grid1';
             const isGrid5 = group === 'grid5';
             let images = [];
             let finalUrl = '';
             let finalIcon = 'fa-folder';
 
-            if (isGrid5) {
+            if (isGrid1) {
+                // STRICTLY: Grid 1 is Primary Menu (Title, Icon, URL only - NO IMAGES)
+                finalUrl = document.getElementById('menu-grid1-url').value.trim();
+                finalIcon = document.getElementById('menu-grid1-icon').value.trim() || 'fa-folder';
+                images = [];
+                date = '';
+                month = '';
+            } else if (isGrid5) {
                 // STRICTLY: ONLY Grid 5 is PDF (Sales Report)
                 finalUrl = url;
                 images = [];
                 finalIcon = 'fa-file-pdf';
+                if (!date) date = new Date().toISOString().split('T')[0];
+                if (!month) month = 'March';
             } else {
-                // STRICTLY: ALL OTHER GRIDS (1 to 4) ARE IMAGES ONLY
+                // STRICTLY: ALL OTHER GRIDS (2, 3, 4) ARE IMAGES ONLY
                 images = imagesRaw ? imagesRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
                 finalUrl = images.length > 0 ? images[0] : '';
                 finalIcon = images.length > 0 ? images[0] : 'fa-image';
+                if (!date) date = new Date().toISOString().split('T')[0];
+                if (!month) month = 'March';
             }
 
             const payload = {

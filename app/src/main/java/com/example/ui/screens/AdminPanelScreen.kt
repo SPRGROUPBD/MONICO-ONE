@@ -1023,25 +1023,32 @@ private fun MenuEditDialog(
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
+                        val isGrid1 = selectedGrid == "grid1"
                         val isGrid5 = selectedGrid == "grid5"
-                        val finalUrl = if (isGrid5) {
-                            externalUrl.trim().ifBlank { attachedPdfData.trim() }
-                        } else {
-                            if (deviceImages.isNotEmpty()) deviceImages[0].trim() else externalUrl.trim()
+                        val finalUrl = when {
+                            isGrid1 -> externalUrl.trim()
+                            isGrid5 -> externalUrl.trim().ifBlank { attachedPdfData.trim() }
+                            else -> if (deviceImages.isNotEmpty()) deviceImages[0].trim() else externalUrl.trim()
                         }
 
-                        val finalImages = if (isGrid5) {
-                            emptyList()
-                        } else {
-                            val list = mutableListOf<String>()
-                            list.addAll(deviceImages)
-                            if (externalUrl.isNotBlank() && !list.contains(externalUrl.trim())) {
-                                list.add(externalUrl.trim())
+                        val finalImages = when {
+                            isGrid1 -> emptyList()
+                            isGrid5 -> emptyList()
+                            else -> {
+                                val list = mutableListOf<String>()
+                                list.addAll(deviceImages)
+                                if (externalUrl.isNotBlank() && !list.contains(externalUrl.trim())) {
+                                    list.add(externalUrl.trim())
+                                }
+                                list
                             }
-                            list
                         }
 
-                        val finalIcon = if (isGrid5) "fa-file-pdf" else if (finalImages.isNotEmpty()) finalImages[0] else icon
+                        val finalIcon = when {
+                            isGrid1 -> icon.ifBlank { "fa-folder" }
+                            isGrid5 -> "fa-file-pdf"
+                            else -> if (finalImages.isNotEmpty()) finalImages[0] else "fa-image"
+                        }
 
                         val finalRole = when {
                             selectedRoleSet.isEmpty() -> "ALL"
