@@ -1255,8 +1255,18 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">প্রোফাইল ছবির URL</label>
-                        <input type="url" class="form-control" id="u-pic" placeholder="https://...">
+                        <label class="form-label small fw-semibold text-primary">
+                            <i class="fa-solid fa-cloud-arrow-up me-1"></i> ১. পিসি থেকে প্রোফাইল ছবি আপলোড করুন:
+                        </label>
+                        <input type="file" class="form-control border-primary" id="u-pic-file" accept="image/*" onchange="handleUserPicUpload(event)">
+                        <div id="u-pic-file-info" class="mt-1 small text-muted"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">২. অথবা ছবির সরাসরি লিংক (Image URL):</label>
+                        <input type="url" class="form-control" id="u-pic" placeholder="https://..." oninput="updateUserPicPreview()">
+                    </div>
+                    <div id="u-pic-preview-box" class="mb-3 text-center" style="display: none;">
+                        <img id="u-pic-preview-img" src="" class="rounded-circle border shadow-sm" style="width: 70px; height: 70px; object-fit: cover;">
                     </div>
                 </div>
                 <div class="modal-footer border-0">
@@ -1581,7 +1591,7 @@
             if (icon) icon.classList.add('fa-spin');
 
             try {
-                const [sbRes, mRes, slRes, nRes, pRes, uRes, notifRes, prodRes, trainRes, targetRes] = await Promise.all([
+                const [sbRes, mRes, slRes, nRes, pRes, uRes, notifRes, prodRes, trainRes, targetRes, legacyTrainRes, legacyTargetRes] = await Promise.all([
                     fetch(`${BASE_URL}/sidebar_menus.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/menus.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/sliders.json`).then(r => r.json()).catch(() => null),
@@ -2433,6 +2443,33 @@
             tbody.innerHTML = html;
         }
 
+        async function handleUserPicUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const info = document.getElementById('u-pic-file-info');
+            info.innerText = 'ছবি প্রসেসিং হচ্ছে...';
+            const b64 = await compressImage(file, 400, 0.7);
+            if (b64) {
+                document.getElementById('u-pic').value = b64;
+                info.innerText = 'ছবি সফলভাবে তৈরি হয়েছে (' + Math.round(b64.length / 1024) + ' KB)';
+                updateUserPicPreview();
+            } else {
+                info.innerText = 'ছবি প্রসেস ব্যর্থ হয়েছে!';
+            }
+        }
+
+        function updateUserPicPreview() {
+            const url = document.getElementById('u-pic').value.trim();
+            const box = document.getElementById('u-pic-preview-box');
+            const img = document.getElementById('u-pic-preview-img');
+            if (url) {
+                img.src = url;
+                box.style.display = 'block';
+            } else {
+                box.style.display = 'none';
+            }
+        }
+
         function openAddUserModal() {
             document.getElementById('modalUserTitle').innerText = 'নতুন ইউজার একাউন্ট তৈরি';
             document.getElementById('u-empid').value = '';
@@ -2442,6 +2479,11 @@
             document.getElementById('u-role').value = 'MPO';
             document.getElementById('u-status').value = 'active';
             document.getElementById('u-pic').value = '';
+            const fi = document.getElementById('u-pic-file');
+            if (fi) fi.value = '';
+            const nfo = document.getElementById('u-pic-file-info');
+            if (nfo) nfo.innerText = '';
+            updateUserPicPreview();
             modals.user.show();
         }
 
@@ -2457,6 +2499,11 @@
             document.getElementById('u-role').value = u.role || 'MPO';
             document.getElementById('u-status').value = u.status || 'active';
             document.getElementById('u-pic').value = u.profilePic || '';
+            const fi = document.getElementById('u-pic-file');
+            if (fi) fi.value = '';
+            const nfo = document.getElementById('u-pic-file-info');
+            if (nfo) nfo.innerText = '';
+            updateUserPicPreview();
             modals.user.show();
         }
 
@@ -2674,6 +2721,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+                if (state.currentCardType === 'training_cards') {
+                    await fetch(`${BASE_URL}/product_training_cards/${targetId}.json`, { method: 'DELETE' }).catch(() => null);
+                } else if (state.currentCardType === 'target_sheets') {
+                    await fetch(`${BASE_URL}/product_target_sheets/${targetId}.json`, { method: 'DELETE' }).catch(() => null);
+                }
                 if (res.ok) {
                     showToast('কার্ড সংরক্ষিত হয়েছে!');
                     modals.card.hide();

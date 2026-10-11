@@ -67,6 +67,11 @@ class MonicoRepository(private val context: Context) {
         loadSessionFromLocal()
         loadCacheFromLocal()
         startPeriodicNotificationPolling()
+        if (_currentUser.value != null) {
+            repoScope.launch {
+                try { syncAll() } catch (_: Exception) {}
+            }
+        }
     }
 
     /**
@@ -150,6 +155,24 @@ class MonicoRepository(private val context: Context) {
                 e.printStackTrace()
             }
         }
+
+        val cachedProd = loadCardsFromCache("cache_product_cards")
+        if (cachedProd.isNotEmpty()) _productCards.value = cachedProd
+
+        val cachedTrain = loadCardsFromCache("cache_training_cards")
+        if (cachedTrain.isNotEmpty()) _trainingCards.value = cachedTrain
+
+        val cachedTarget = loadCardsFromCache("cache_target_sheets")
+        if (cachedTarget.isNotEmpty()) _targetSheets.value = cachedTarget
+
+        val cachedSliders = loadSlidersFromCache()
+        if (cachedSliders.isNotEmpty()) _sliders.value = cachedSliders
+
+        val cachedNotices = loadNoticesFromCache()
+        if (cachedNotices.isNotEmpty()) _notices.value = cachedNotices
+
+        val cachedPopups = loadPopupsFromCache()
+        if (cachedPopups.isNotEmpty()) _popups.value = cachedPopups
     }
 
     /**
@@ -396,22 +419,34 @@ class MonicoRepository(private val context: Context) {
                 }
 
                 val s = slidersDeferred.await()
-                if (s.isNotEmpty()) _sliders.value = s.reversed()
+                if (s.isNotEmpty()) {
+                    _sliders.value = s.reversed()
+                    saveSlidersToCache(_sliders.value)
+                }
 
                 val n = noticesDeferred.await()
-                if (n.isNotEmpty()) _notices.value = n.reversed()
+                if (n.isNotEmpty()) {
+                    _notices.value = n.reversed()
+                    saveNoticesToCache(_notices.value)
+                }
 
                 val p = popupsDeferred.await()
-                if (p.isNotEmpty()) _popups.value = p
+                if (p.isNotEmpty()) {
+                    _popups.value = p
+                    savePopupsToCache(_popups.value)
+                }
 
                 val prod = prodDeferred.await()
                 _productCards.value = prod.reversed()
+                saveCardsToCache("cache_product_cards", _productCards.value)
 
                 val train = trainDeferred.await()
                 _trainingCards.value = train.reversed()
+                saveCardsToCache("cache_training_cards", _trainingCards.value)
 
                 val target = targetDeferred.await()
                 _targetSheets.value = target.reversed()
+                saveCardsToCache("cache_target_sheets", _targetSheets.value)
 
                 val side = sideDeferred.await()
                 if (side.isNotEmpty()) _sidebarMenus.value = side
@@ -487,6 +522,143 @@ class MonicoRepository(private val context: Context) {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    private fun saveCardsToCache(key: String, list: List<ContentCard>) {
+        try {
+            val arr = JSONArray()
+            list.forEach { c ->
+                val obj = JSONObject()
+                    .put("id", c.id)
+                    .put("title", c.title)
+                    .put("url", c.url)
+                    .put("image", c.image)
+                val imgArr = JSONArray()
+                c.images.forEach { imgArr.put(it) }
+                obj.put("images", imgArr)
+                arr.put(obj)
+            }
+            prefs.edit().putString(key, arr.toString()).apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun loadCardsFromCache(key: String): List<ContentCard> {
+        val jsonStr = prefs.getString(key, null) ?: return emptyList()
+        val list = mutableListOf<ContentCard>()
+        try {
+            val arr = JSONArray(jsonStr)
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                val imgList = mutableListOf<String>()
+                val imgArr = obj.optJSONArray("images")
+                if (imgArr != null) {
+                    for (j in 0 until imgArr.length()) {
+                        val s = imgArr.optString(j)
+                        if (!s.isNullOrBlank()) imgList.add(s)
+                    }
+                }
+                list.add(
+                    ContentCard(
+                        id = obj.optString("id"),
+                        title = obj.optString("title"),
+                        url = obj.optString("url"),
+                        images = imgList,
+                        image = obj.optString("image")
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return list
+    }
+
+    private fun saveSlidersToCache(sliders: List<SliderItem>) {
+        try {
+            val arr = JSONArray()
+            sliders.forEach { s ->
+                arr.put(JSONObject().put("id", s.id).put("title", s.title).put("image", s.image))
+            }
+            prefs.edit().putString("cache_sliders", arr.toString()).apply()
+        } catch (_: Exception) {}
+    }
+
+    private fun loadSlidersFromCache(): List<SliderItem> {
+        val jsonStr = prefs.getString("cache_sliders", null) ?: return emptyList()
+        val list = mutableListOf<SliderItem>()
+        try {
+            val arr = JSONArray(jsonStr)
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                list.add(SliderItem(id = obj.optString("id"), title = obj.optString("title"), image = obj.optString("image")))
+            }
+        } catch (_: Exception) {}
+        return list
+    }
+
+    private fun saveNoticesToCache(notices: List<NoticeItem>) {
+        try {
+            val arr = JSONArray()
+            notices.forEach { n ->
+                arr.put(JSONObject().put("id", n.id).put("text", n.text))
+            }
+            prefs.edit().putString("cache_notices", arr.toString()).apply()
+        } catch (_: Exception) {}
+    }
+
+    private fun loadNoticesFromCache(): List<NoticeItem> {
+        val jsonStr = prefs.getString("cache_notices", null) ?: return emptyList()
+        val list = mutableListOf<NoticeItem>()
+        try {
+            val arr = JSONArray(jsonStr)
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                list.add(NoticeItem(id = obj.optString("id"), text = obj.optString("text")))
+            }
+        } catch (_: Exception) {}
+        return list
+    }
+
+    private fun savePopupsToCache(popups: List<PopupNotice>) {
+        try {
+            val arr = JSONArray()
+            popups.forEach { p ->
+                arr.put(
+                    JSONObject()
+                        .put("id", p.id)
+                        .put("title", p.title)
+                        .put("body", p.body)
+                        .put("status", p.status)
+                        .put("type", p.type)
+                        .put("image", p.image)
+                )
+            }
+            prefs.edit().putString("cache_popups", arr.toString()).apply()
+        } catch (_: Exception) {}
+    }
+
+    private fun loadPopupsFromCache(): List<PopupNotice> {
+        val jsonStr = prefs.getString("cache_popups", null) ?: return emptyList()
+        val list = mutableListOf<PopupNotice>()
+        try {
+            val arr = JSONArray(jsonStr)
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                list.add(
+                    PopupNotice(
+                        id = obj.optString("id"),
+                        title = obj.optString("title"),
+                        body = obj.optString("body"),
+                        status = obj.optString("status", "active"),
+                        type = obj.optString("type", "general"),
+                        image = obj.optString("image")
+                    )
+                )
+            }
+        } catch (_: Exception) {}
+        return list
     }
 
     suspend fun markMenuSeen(menuId: String) {
@@ -636,21 +808,30 @@ class MonicoRepository(private val context: Context) {
                 val idx = list.indexOfFirst { it.id == targetId }
                 if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
                 _productCards.value = list
+                saveCardsToCache("cache_product_cards", list)
             }
             "training_cards" -> {
                 val list = _trainingCards.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
                 if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
                 _trainingCards.value = list
+                saveCardsToCache("cache_training_cards", list)
             }
             "target_sheets" -> {
                 val list = _targetSheets.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
                 if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
                 _targetSheets.value = list
+                saveCardsToCache("cache_target_sheets", list)
             }
         }
-        return service.saveContentCard(cleanPath, itemToSave)
+        val ok = service.saveContentCard(cleanPath, itemToSave)
+        if (cleanPath == "training_cards") {
+            service.deleteContentCard("product_training_cards", targetId)
+        } else if (cleanPath == "target_sheets") {
+            service.deleteContentCard("product_target_sheets", targetId)
+        }
+        return ok
     }
 
     suspend fun deleteCard(path: String, id: String): Boolean {
@@ -660,9 +841,18 @@ class MonicoRepository(private val context: Context) {
             else -> path
         }
         when (cleanPath) {
-            "product_launch_cards" -> _productCards.value = _productCards.value.filter { it.id != id }
-            "training_cards" -> _trainingCards.value = _trainingCards.value.filter { it.id != id }
-            "target_sheets" -> _targetSheets.value = _targetSheets.value.filter { it.id != id }
+            "product_launch_cards" -> {
+                _productCards.value = _productCards.value.filter { it.id != id }
+                saveCardsToCache("cache_product_cards", _productCards.value)
+            }
+            "training_cards" -> {
+                _trainingCards.value = _trainingCards.value.filter { it.id != id }
+                saveCardsToCache("cache_training_cards", _trainingCards.value)
+            }
+            "target_sheets" -> {
+                _targetSheets.value = _targetSheets.value.filter { it.id != id }
+                saveCardsToCache("cache_target_sheets", _targetSheets.value)
+            }
         }
         val ok = service.deleteContentCard(cleanPath, id)
         if (cleanPath == "training_cards") {
