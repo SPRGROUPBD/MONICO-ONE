@@ -1581,10 +1581,31 @@ private fun UserEditDialog(
                     }
                 }
 
+                // Profile picture: Device upload (Base64) or Image URL
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { userPhotoPicker.launch("image/*") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MonicoGreen),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("ডিভাইস থেকে ছবি (Base64)", fontSize = 12.sp)
+                    }
+                    if (isProcessing) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    }
+                }
+
                 OutlinedTextField(
                     value = profilePic,
                     onValueChange = { profilePic = it },
-                    label = { Text("প্রোফাইল ছবির লিংক (Image URL)") },
+                    label = { Text("প্রোফাইল ছবির লিংক বা Base64") },
                     placeholder = { Text("https://example.com/photo.jpg") },
                     leadingIcon = {
                         Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MonicoGreen)
@@ -1593,12 +1614,22 @@ private fun UserEditDialog(
                 )
 
                 if (profilePic.isNotBlank()) {
-                    Box(modifier = Modifier.size(60.dp).clip(CircleShape).border(2.dp, MonicoGreen, CircleShape)) {
-                        AsyncImage(
-                            model = ImageUtils.resolveImageModel(profilePic),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(modifier = Modifier.size(60.dp).clip(CircleShape).border(2.dp, MonicoGreen, CircleShape)) {
+                            AsyncImage(
+                                model = ImageUtils.resolveImageModel(profilePic),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Text(
+                            text = if (profilePic.startsWith("data:image")) "ডিভাইস থেকে ছবি আপলোড হয়েছে (Base64)" else "ছবির লিংক যুক্ত আছে",
+                            fontSize = 11.sp,
+                            color = MonicoGreen
                         )
                     }
                 }

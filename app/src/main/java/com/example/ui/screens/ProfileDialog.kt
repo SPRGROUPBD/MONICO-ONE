@@ -457,40 +457,97 @@ fun ProfileDialog(
 
     if (showPhotoSourceDialog) {
         var profilePicUrlInput by remember { mutableStateOf(if (currentPic.startsWith("http")) currentPic else "") }
+        var showUrlInputMode by remember { mutableStateOf(false) }
+
         AlertDialog(
             onDismissRequest = { showPhotoSourceDialog = false },
-            title = { Text("প্রোফাইল ছবি পরিবর্তন", fontWeight = FontWeight.Bold) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MonicoBlue)
+                    Text("প্রোফাইল ছবি পরিবর্তন", fontWeight = FontWeight.Bold)
+                }
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("ছবির সরাসরি ইন্টারনেট লিংক (Image URL) দিন:")
-                    OutlinedTextField(
-                        value = profilePicUrlInput,
-                        onValueChange = { profilePicUrlInput = it },
-                        label = { Text("ছবির লিংক (URL)") },
-                        placeholder = { Text("https://example.com/avatar.jpg") },
-                        singleLine = true,
-                        leadingIcon = {
-                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val trimmed = profilePicUrlInput.trim()
-                        if (trimmed.isNotBlank()) {
-                            currentPic = trimmed
-                            onUpdateProfile(user.fullName, "", trimmed)
-                        }
-                        showPhotoSourceDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("লিংক সেভ করুন")
+                    Text(
+                        "আপনার ডিভাইস (গ্যালারি বা ক্যামেরা) থেকে সরাসরি ছবি আপলোড করুন অথবা ছবির লিঙ্ক দিন:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Option 1: Pick from Device Gallery (Base64)
+                    Button(
+                        onClick = {
+                            showPhotoSourceDialog = false
+                            photoPickerLauncher.launch("image/*")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("ডিভাইস গ্যালারি থেকে আপলোড")
+                    }
+
+                    // Option 2: Take Photo with Camera (Base64)
+                    OutlinedButton(
+                        onClick = {
+                            showPhotoSourceDialog = false
+                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = MonicoGreen)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("ক্যামেরা দিয়ে ছবি তুলুন")
+                    }
+
+                    // Option 3: Direct URL (Optional fallback)
+                    if (!showUrlInputMode) {
+                        TextButton(
+                            onClick = { showUrlInputMode = true },
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        ) {
+                            Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("বা ছবির ওয়েব লিংক (URL) দিন", fontSize = 12.sp)
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = profilePicUrlInput,
+                            onValueChange = { profilePicUrlInput = it },
+                            label = { Text("ছবির লিংক (URL)") },
+                            placeholder = { Text("https://example.com/avatar.jpg") },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = {
+                                val trimmed = profilePicUrlInput.trim()
+                                if (trimmed.isNotBlank()) {
+                                    currentPic = trimmed
+                                    onUpdateProfile(user.fullName, "", trimmed)
+                                }
+                                showPhotoSourceDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MonicoGreen),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("লিংক সেভ করুন")
+                        }
+                    }
                 }
             },
+            confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showPhotoSourceDialog = false }) {
                     Text("বাতিল")
