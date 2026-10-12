@@ -17,6 +17,12 @@ import java.util.Locale
 
 class MonicoRepository(private val context: Context) {
 
+    companion object {
+        private val ddmmyyRegex = Regex("""\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b""")
+        private val yymmddRegex = Regex("""\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b""")
+        private val numRegex = Regex("""\b(\d+)\b""")
+    }
+
     private val prefs: SharedPreferences = context.getSharedPreferences("monico_one_prefs", Context.MODE_PRIVATE)
     val service = FirebaseRtdbService()
 
@@ -62,11 +68,11 @@ class MonicoRepository(private val context: Context) {
     private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     init {
-        NotificationHelper.initNotificationChannel(context)
-        NotificationHelper.scheduleBackgroundSync(context)
-        loadSessionFromLocal()
-        loadCacheFromLocal()
-        startPeriodicNotificationPolling()
+        try { NotificationHelper.initNotificationChannel(context) } catch (e: Exception) { e.printStackTrace() }
+        try { NotificationHelper.scheduleBackgroundSync(context) } catch (e: Exception) { e.printStackTrace() }
+        try { loadSessionFromLocal() } catch (e: Exception) { e.printStackTrace() }
+        try { loadCacheFromLocal() } catch (e: Exception) { e.printStackTrace() }
+        try { startPeriodicNotificationPolling() } catch (e: Exception) { e.printStackTrace() }
         if (_currentUser.value != null) {
             repoScope.launch {
                 try { syncAll() } catch (_: Exception) {}
@@ -156,28 +162,36 @@ class MonicoRepository(private val context: Context) {
             }
         }
 
-        val cachedProd = loadCardsFromCache("cache_product_cards")
-        if (cachedProd.isNotEmpty()) _productCards.value = sortCardsDescending(cachedProd)
+        try {
+            val cachedProd = loadCardsFromCache("cache_product_cards")
+            if (cachedProd.isNotEmpty()) _productCards.value = sortCardsDescending(cachedProd)
+        } catch (e: Exception) { e.printStackTrace() }
 
-        val cachedTrain = loadCardsFromCache("cache_training_cards")
-        if (cachedTrain.isNotEmpty()) _trainingCards.value = sortCardsDescending(cachedTrain)
+        try {
+            val cachedTrain = loadCardsFromCache("cache_training_cards")
+            if (cachedTrain.isNotEmpty()) _trainingCards.value = sortCardsDescending(cachedTrain)
+        } catch (e: Exception) { e.printStackTrace() }
 
-        val cachedTarget = loadCardsFromCache("cache_target_sheets")
-        if (cachedTarget.isNotEmpty()) _targetSheets.value = sortCardsDescending(cachedTarget)
+        try {
+            val cachedTarget = loadCardsFromCache("cache_target_sheets")
+            if (cachedTarget.isNotEmpty()) _targetSheets.value = sortCardsDescending(cachedTarget)
+        } catch (e: Exception) { e.printStackTrace() }
 
-        val cachedSliders = loadSlidersFromCache()
-        if (cachedSliders.isNotEmpty()) _sliders.value = cachedSliders
+        try {
+            val cachedSliders = loadSlidersFromCache()
+            if (cachedSliders.isNotEmpty()) _sliders.value = cachedSliders
+        } catch (e: Exception) { e.printStackTrace() }
 
-        val cachedNotices = loadNoticesFromCache()
-        if (cachedNotices.isNotEmpty()) _notices.value = cachedNotices
+        try {
+            val cachedNotices = loadNoticesFromCache()
+            if (cachedNotices.isNotEmpty()) _notices.value = cachedNotices
+        } catch (e: Exception) { e.printStackTrace() }
 
-        val cachedPopups = loadPopupsFromCache()
-        if (cachedPopups.isNotEmpty()) _popups.value = cachedPopups
+        try {
+            val cachedPopups = loadPopupsFromCache()
+            if (cachedPopups.isNotEmpty()) _popups.value = cachedPopups
+        } catch (e: Exception) { e.printStackTrace() }
     }
-
-    private val ddmmyyRegex = Regex("""\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b""")
-    private val yymmddRegex = Regex("""\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b""")
-    private val numRegex = Regex("""\b(\d+)\b""")
 
     fun normalizeBengaliDigits(str: String): String {
         val sb = java.lang.StringBuilder(str.length)
