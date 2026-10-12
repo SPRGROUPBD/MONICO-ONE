@@ -183,38 +183,19 @@ fun DashboardScreen(
         }
     }
 
-    // Z to A and 30-29-28-27 sorting helper
-    val sortDescendingZtoA: (List<MenuItem>) -> List<MenuItem> = remember {
-        { list ->
-            list.sortedWith(Comparator { a, b ->
-                if (a.isPinned != b.isPinned) {
-                    return@Comparator if (a.isPinned) -1 else 1
-                }
-                val aDigits = a.date.filter { it.isDigit() }.toIntOrNull()
-                val bDigits = b.date.filter { it.isDigit() }.toIntOrNull()
-                if (aDigits != null && bDigits != null && aDigits != bDigits) {
-                    return@Comparator bDigits.compareTo(aDigits) // 30, 29, 28, 27 descending
-                }
-                if (aDigits != null && bDigits == null) return@Comparator -1
-                if (aDigits == null && bDigits != null) return@Comparator 1
-
-                val titleCmp = b.title.compareTo(a.title, ignoreCase = true)
-                if (titleCmp != 0) return@Comparator titleCmp
-
-                b.id.compareTo(a.id)
-            })
-        }
-    }
-
     val pinnedMenus = remember(filteredMenus) {
-        sortDescendingZtoA(filteredMenus.filter { it.isPinned })
+        repository.sortMenusDescending(filteredMenus.filter { it.isPinned })
     }
 
-    val grid1Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid1" || it.group == "grid-1" || it.group == "grid_1" || it.group.equals("primary", ignoreCase = true) }) }
-    val grid2Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid2" }) }
-    val grid3Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid3" }) }
-    val grid4Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid4" }) }
-    val grid5Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid5" }) }
+    val grid1Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid1" || it.group == "grid-1" || it.group == "grid_1" || it.group.equals("primary", ignoreCase = true) }) }
+    val grid2Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid2" }) }
+    val grid3Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid3" }) }
+    val grid4Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid4" }) }
+    val grid5Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid5" }) }
+
+    val sortedTrainingCards = remember(trainingCards) { repository.sortCardsDescending(trainingCards) }
+    val sortedProductCards = remember(productCards) { repository.sortCardsDescending(productCards) }
+    val sortedTargetSheets = remember(targetSheets) { repository.sortCardsDescending(targetSheets) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -715,12 +696,12 @@ fun DashboardScreen(
                         icon = Icons.Default.School,
                         color = MonicoPurple
                     )
-                    if (trainingCards.isNotEmpty()) {
+                    if (sortedTrainingCards.isNotEmpty()) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
-                            items(trainingCards) { card ->
+                            items(sortedTrainingCards) { card ->
                                 ContentCardItem(
                                     card = card,
                                     onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }
@@ -739,12 +720,12 @@ fun DashboardScreen(
                         icon = Icons.Default.RocketLaunch,
                         color = MonicoGreen
                     )
-                    if (productCards.isNotEmpty()) {
+                    if (sortedProductCards.isNotEmpty()) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
-                            items(productCards) { card ->
+                            items(sortedProductCards) { card ->
                                 ContentCardItem(
                                     card = card,
                                     onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }
@@ -763,12 +744,12 @@ fun DashboardScreen(
                         icon = Icons.Default.TrackChanges,
                         color = MonicoAmber
                     )
-                    if (targetSheets.isNotEmpty()) {
+                    if (sortedTargetSheets.isNotEmpty()) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
-                            items(targetSheets) { card ->
+                            items(sortedTargetSheets) { card ->
                                 ContentCardItem(
                                     card = card,
                                     onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }

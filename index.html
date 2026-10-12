@@ -1585,6 +1585,79 @@
             }
         }
 
+        // ==================== SORTING UTILITY (30-29-28-27 / Z to A) ====================
+        function normalizeBengaliDigits(str) {
+            if (!str) return '';
+            const b = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+            return String(str).replace(/[০-৯]/g, d => b.indexOf(d));
+        }
+
+        function extractDateOrNumberScore(title, dateStr) {
+            const normTitle = normalizeBengaliDigits(title || '');
+            const ddmmyyRegex = /\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b/;
+            const mTitle = normTitle.match(ddmmyyRegex);
+            if (mTitle) {
+                let day = parseInt(mTitle[1], 10);
+                let mon = parseInt(mTitle[2], 10);
+                let yr = parseInt(mTitle[3], 10);
+                if (yr > 0 && yr < 100) yr += 2000;
+                if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+                    return yr * 10000 + mon * 100 + day;
+                }
+            }
+            const yymmddRegex = /\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b/;
+            const mTitleIso = normTitle.match(yymmddRegex);
+            if (mTitleIso) {
+                let yr = parseInt(mTitleIso[1], 10);
+                let mon = parseInt(mTitleIso[2], 10);
+                let day = parseInt(mTitleIso[3], 10);
+                if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+                    return yr * 10000 + mon * 100 + day;
+                }
+            }
+            const normDate = normalizeBengaliDigits(dateStr || '');
+            const mDateDdmmyy = normDate.match(ddmmyyRegex);
+            if (mDateDdmmyy) {
+                let day = parseInt(mDateDdmmyy[1], 10);
+                let mon = parseInt(mDateDdmmyy[2], 10);
+                let yr = parseInt(mDateDdmmyy[3], 10);
+                if (yr > 0 && yr < 100) yr += 2000;
+                if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+                    return yr * 10000 + mon * 100 + day;
+                }
+            }
+            const mDateIso = normDate.match(yymmddRegex);
+            if (mDateIso) {
+                let yr = parseInt(mDateIso[1], 10);
+                let mon = parseInt(mDateIso[2], 10);
+                let day = parseInt(mDateIso[3], 10);
+                if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+                    return yr * 10000 + mon * 100 + day;
+                }
+            }
+            const numMatch = normTitle.match(/\b(\d+)\b/);
+            if (numMatch) {
+                return parseInt(numMatch[1], 10);
+            }
+            return null;
+        }
+
+        function sortDescendingZtoA(list) {
+            return list.sort((a, b) => {
+                if (a.isPinned !== b.isPinned) {
+                    return a.isPinned ? -1 : 1;
+                }
+                const sa = extractDateOrNumberScore(a.title, a.date);
+                const sb = extractDateOrNumberScore(b.title, b.date);
+                if (sa !== null && sb !== null && sa !== sb) {
+                    return sb - sa; // 30, 29, 28, 27 descending
+                }
+                if (sa !== null && sb === null) return -1;
+                if (sa === null && sb !== null) return 1;
+                return (b.title || '').localeCompare(a.title || '', undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
+
         // ==================== API FETCH ALL ====================
         async function fetchAllData(showSuccessToast = false) {
             const icon = document.getElementById('refresh-icon');
@@ -1623,6 +1696,7 @@
                         const it = mRes[k];
                         if (it) state.menus.push({ id: k, ...it });
                     });
+                    sortDescendingZtoA(state.menus);
                 }
 
                 // 3. Sliders
@@ -1668,6 +1742,7 @@
                 // 8. Cards (Product Launch, Training, Targets)
                 state.cards.product_launch_cards = [];
                 if (prodRes) Object.keys(prodRes).forEach(k => prodRes[k] && state.cards.product_launch_cards.push({ id: k, ...prodRes[k] }));
+                sortDescendingZtoA(state.cards.product_launch_cards);
 
                 // Training Cards (merge legacy product_training_cards with training_cards)
                 state.cards.training_cards = [];
@@ -1682,6 +1757,7 @@
                         }
                     }
                 });
+                sortDescendingZtoA(state.cards.training_cards);
 
                 // Target Sheets (merge legacy product_target_sheets with target_sheets)
                 state.cards.target_sheets = [];
@@ -1696,6 +1772,7 @@
                         }
                     }
                 });
+                sortDescendingZtoA(state.cards.target_sheets);
 
                 // Update UI Counters
                 updateCounters();

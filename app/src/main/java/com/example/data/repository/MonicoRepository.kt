@@ -157,13 +157,13 @@ class MonicoRepository(private val context: Context) {
         }
 
         val cachedProd = loadCardsFromCache("cache_product_cards")
-        if (cachedProd.isNotEmpty()) _productCards.value = cachedProd
+        if (cachedProd.isNotEmpty()) _productCards.value = sortCardsDescending(cachedProd)
 
         val cachedTrain = loadCardsFromCache("cache_training_cards")
-        if (cachedTrain.isNotEmpty()) _trainingCards.value = cachedTrain
+        if (cachedTrain.isNotEmpty()) _trainingCards.value = sortCardsDescending(cachedTrain)
 
         val cachedTarget = loadCardsFromCache("cache_target_sheets")
-        if (cachedTarget.isNotEmpty()) _targetSheets.value = cachedTarget
+        if (cachedTarget.isNotEmpty()) _targetSheets.value = sortCardsDescending(cachedTarget)
 
         val cachedSliders = loadSlidersFromCache()
         if (cachedSliders.isNotEmpty()) _sliders.value = cachedSliders
@@ -173,6 +173,124 @@ class MonicoRepository(private val context: Context) {
 
         val cachedPopups = loadPopupsFromCache()
         if (cachedPopups.isNotEmpty()) _popups.value = cachedPopups
+    }
+
+    private val ddmmyyRegex = Regex("""\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b""")
+    private val yymmddRegex = Regex("""\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b""")
+    private val numRegex = Regex("""\b(\d+)\b""")
+
+    fun normalizeBengaliDigits(str: String): String {
+        val sb = java.lang.StringBuilder(str.length)
+        for (i in 0 until str.length) {
+            val ch = str[i]
+            when (ch) {
+                '০' -> sb.append('0')
+                '১' -> sb.append('1')
+                '২' -> sb.append('2')
+                '৩' -> sb.append('3')
+                '৪' -> sb.append('4')
+                '৫' -> sb.append('5')
+                '৬' -> sb.append('6')
+                '৭' -> sb.append('7')
+                '৮' -> sb.append('8')
+                '৯' -> sb.append('9')
+                else -> sb.append(ch)
+            }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Extracts date as a comparable Long (YYYYMMDD) or a numeric value (e.g. day 30, 29, 28)
+     * Checks title first (where day/date like 01-10-26 or 30-10-26 is usually specified),
+     * then date field.
+     */
+    fun extractDateOrNumberScore(title: String, dateStr: String): Long? {
+        val normTitle = normalizeBengaliDigits(title)
+        val mTitle = ddmmyyRegex.find(normTitle)
+        if (mTitle != null) {
+            val day = mTitle.groupValues[1].toIntOrNull() ?: 0
+            val mon = mTitle.groupValues[2].toIntOrNull() ?: 0
+            var yr = mTitle.groupValues[3].toIntOrNull() ?: 0
+            if (yr in 1..99) yr += 2000
+            if (mon in 1..12 && day in 1..31) {
+                return yr * 10000L + mon * 100L + day
+            }
+        }
+
+        val mTitleIso = yymmddRegex.find(normTitle)
+        if (mTitleIso != null) {
+            val yr = mTitleIso.groupValues[1].toIntOrNull() ?: 0
+            val mon = mTitleIso.groupValues[2].toIntOrNull() ?: 0
+            val day = mTitleIso.groupValues[3].toIntOrNull() ?: 0
+            if (mon in 1..12 && day in 1..31) {
+                return yr * 10000L + mon * 100L + day
+            }
+        }
+
+        val normDate = normalizeBengaliDigits(dateStr)
+        val mDateDdmmyy = ddmmyyRegex.find(normDate)
+        if (mDateDdmmyy != null) {
+            val day = mDateDdmmyy.groupValues[1].toIntOrNull() ?: 0
+            val mon = mDateDdmmyy.groupValues[2].toIntOrNull() ?: 0
+            var yr = mDateDdmmyy.groupValues[3].toIntOrNull() ?: 0
+            if (yr in 1..99) yr += 2000
+            if (mon in 1..12 && day in 1..31) {
+                return yr * 10000L + mon * 100L + day
+            }
+        }
+
+        val mDateIso = yymmddRegex.find(normDate)
+        if (mDateIso != null) {
+            val yr = mDateIso.groupValues[1].toIntOrNull() ?: 0
+            val mon = mDateIso.groupValues[2].toIntOrNull() ?: 0
+            val day = mDateIso.groupValues[3].toIntOrNull() ?: 0
+            if (mon in 1..12 && day in 1..31) {
+                return yr * 10000L + mon * 100L + day
+            }
+        }
+
+        val numMatch = numRegex.find(normTitle)
+        if (numMatch != null) {
+            return numMatch.groupValues[1].toLongOrNull()
+        }
+
+        return null
+    }
+
+    /**
+     * Natural comparator for strings in descending order (Z to A, 30 to 1).
+     */
+    fun naturalCompareDescending(s1: String, s2: String): Int {
+        val n1 = normalizeBengaliDigits(s1)
+        val n2 = normalizeBengaliDigits(s2)
+
+        var i = 0
+        var j = 0
+        while (i < n1.length && j < n2.length) {
+            val c1 = n1[i]
+            val c2 = n2[j]
+
+            if (c1.isDigit() && c2.isDigit()) {
+                var start1 = i
+                while (i < n1.length && n1[i].isDigit()) i++
+                val num1 = n1.substring(start1, i).toLongOrNull() ?: 0L
+
+                var start2 = j
+                while (j < n2.length && n2[j].isDigit()) j++
+                val num2 = n2.substring(start2, j).toLongOrNull() ?: 0L
+
+                if (num1 != num2) {
+                    return num2.compareTo(num1) // Descending: 30 > 29
+                }
+            } else {
+                val cmp = c2.lowercaseChar().compareTo(c1.lowercaseChar()) // Descending: Z before A
+                if (cmp != 0) return cmp
+                i++
+                j++
+            }
+        }
+        return n2.length.compareTo(n1.length)
     }
 
     /**
@@ -185,20 +303,39 @@ class MonicoRepository(private val context: Context) {
                 return@Comparator if (a.isPinned) -1 else 1
             }
 
-            // Extract numeric day/date if present (e.g., 30, 29, 28, 27)
-            val aDigits = a.date.filter { it.isDigit() }.toIntOrNull()
-            val bDigits = b.date.filter { it.isDigit() }.toIntOrNull()
-            if (aDigits != null && bDigits != null && aDigits != bDigits) {
-                return@Comparator bDigits.compareTo(aDigits) // 30, 29, 28, 27 descending
+            val scoreA = extractDateOrNumberScore(a.title, a.date)
+            val scoreB = extractDateOrNumberScore(b.title, b.date)
+            if (scoreA != null && scoreB != null && scoreA != scoreB) {
+                return@Comparator scoreB.compareTo(scoreA) // 30, 29, 28, 27 descending
             }
-            if (aDigits != null && bDigits == null) return@Comparator -1
-            if (aDigits == null && bDigits != null) return@Comparator 1
+            if (scoreA != null && scoreB == null) return@Comparator -1
+            if (scoreA == null && scoreB != null) return@Comparator 1
 
-            // Title descending: Z to A
-            val titleCmp = b.title.compareTo(a.title, ignoreCase = true)
-            if (titleCmp != 0) return@Comparator titleCmp
+            // Natural descending: Z to A
+            val cmp = naturalCompareDescending(a.title, b.title)
+            if (cmp != 0) return@Comparator cmp
 
-            // ID descending
+            b.id.compareTo(a.id)
+        })
+    }
+
+    /**
+     * Sorts content cards (Product Training, Product Launch, Target Sheets)
+     * in reverse order: 30, 29, 28, 27 (descending by day/date) and Z to A.
+     */
+    fun sortCardsDescending(list: List<ContentCard>): List<ContentCard> {
+        return list.sortedWith(Comparator { a, b ->
+            val scoreA = extractDateOrNumberScore(a.title, "")
+            val scoreB = extractDateOrNumberScore(b.title, "")
+            if (scoreA != null && scoreB != null && scoreA != scoreB) {
+                return@Comparator scoreB.compareTo(scoreA) // 30, 29, 28, 27 descending
+            }
+            if (scoreA != null && scoreB == null) return@Comparator -1
+            if (scoreA == null && scoreB != null) return@Comparator 1
+
+            val cmp = naturalCompareDescending(a.title, b.title)
+            if (cmp != 0) return@Comparator cmp
+
             b.id.compareTo(a.id)
         })
     }
@@ -437,15 +574,15 @@ class MonicoRepository(private val context: Context) {
                 }
 
                 val prod = prodDeferred.await()
-                _productCards.value = prod.reversed()
+                _productCards.value = sortCardsDescending(prod)
                 saveCardsToCache("cache_product_cards", _productCards.value)
 
                 val train = trainDeferred.await()
-                _trainingCards.value = train.reversed()
+                _trainingCards.value = sortCardsDescending(train)
                 saveCardsToCache("cache_training_cards", _trainingCards.value)
 
                 val target = targetDeferred.await()
-                _targetSheets.value = target.reversed()
+                _targetSheets.value = sortCardsDescending(target)
                 saveCardsToCache("cache_target_sheets", _targetSheets.value)
 
                 val side = sideDeferred.await()
@@ -807,22 +944,25 @@ class MonicoRepository(private val context: Context) {
                 val list = _productCards.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
                 if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
-                _productCards.value = list
-                saveCardsToCache("cache_product_cards", list)
+                val sorted = sortCardsDescending(list)
+                _productCards.value = sorted
+                saveCardsToCache("cache_product_cards", sorted)
             }
             "training_cards" -> {
                 val list = _trainingCards.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
                 if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
-                _trainingCards.value = list
-                saveCardsToCache("cache_training_cards", list)
+                val sorted = sortCardsDescending(list)
+                _trainingCards.value = sorted
+                saveCardsToCache("cache_training_cards", sorted)
             }
             "target_sheets" -> {
                 val list = _targetSheets.value.toMutableList()
                 val idx = list.indexOfFirst { it.id == targetId }
                 if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
-                _targetSheets.value = list
-                saveCardsToCache("cache_target_sheets", list)
+                val sorted = sortCardsDescending(list)
+                _targetSheets.value = sorted
+                saveCardsToCache("cache_target_sheets", sorted)
             }
         }
         val ok = service.saveContentCard(cleanPath, itemToSave)
@@ -842,16 +982,19 @@ class MonicoRepository(private val context: Context) {
         }
         when (cleanPath) {
             "product_launch_cards" -> {
-                _productCards.value = _productCards.value.filter { it.id != id }
-                saveCardsToCache("cache_product_cards", _productCards.value)
+                val sorted = sortCardsDescending(_productCards.value.filter { it.id != id })
+                _productCards.value = sorted
+                saveCardsToCache("cache_product_cards", sorted)
             }
             "training_cards" -> {
-                _trainingCards.value = _trainingCards.value.filter { it.id != id }
-                saveCardsToCache("cache_training_cards", _trainingCards.value)
+                val sorted = sortCardsDescending(_trainingCards.value.filter { it.id != id })
+                _trainingCards.value = sorted
+                saveCardsToCache("cache_training_cards", sorted)
             }
             "target_sheets" -> {
-                _targetSheets.value = _targetSheets.value.filter { it.id != id }
-                saveCardsToCache("cache_target_sheets", _targetSheets.value)
+                val sorted = sortCardsDescending(_targetSheets.value.filter { it.id != id })
+                _targetSheets.value = sorted
+                saveCardsToCache("cache_target_sheets", sorted)
             }
         }
         val ok = service.deleteContentCard(cleanPath, id)
