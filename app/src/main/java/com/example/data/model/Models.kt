@@ -11,7 +11,7 @@ data class User(
 
 data class MenuItem(
     val id: String = "",
-    val group: String = "grid1", // grid1, grid2, grid3, grid4, grid5
+    val group: String = "grid1", // grid1, grid2, grid3, grid4, grid5, grid6
     val title: String = "",
     val icon: String = "fa-folder",
     val url: String = "",

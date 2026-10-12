@@ -174,21 +174,25 @@ object NotificationHelper {
      * Schedules periodic background sync using WorkManager so notifications arrive even when app is closed.
      */
     fun scheduleBackgroundSync(context: Context) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+        try {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
 
-        val syncRequest = PeriodicWorkRequestBuilder<NotificationSyncWorker>(
-            15, TimeUnit.MINUTES // Minimum interval allowed by Android WorkManager
-        )
-            .setConstraints(constraints)
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
-            .build()
+            val syncRequest = PeriodicWorkRequestBuilder<NotificationSyncWorker>(
+                15, TimeUnit.MINUTES // Minimum interval allowed by Android WorkManager
+            )
+                .setConstraints(constraints)
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
+                .build()
 
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
-            syncRequest
-        )
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                syncRequest
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

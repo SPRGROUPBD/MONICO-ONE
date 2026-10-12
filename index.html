@@ -605,7 +605,8 @@
                             <option value="grid2">Grid 2</option>
                             <option value="grid3">Grid 3</option>
                             <option value="grid4">Grid 4</option>
-                            <option value="grid5">Grid 5</option>
+                            <option value="grid5">Grid 5 (Sales Report)</option>
+                            <option value="grid6">Grid 6 (Stock Report)</option>
                         </select>
                         <input type="text" class="form-control form-control-sm" id="search-menus" placeholder="শিরোনাম খুঁজুন..." oninput="renderMenusTable()" style="width: 180px;">
                         <button class="btn btn-info text-white fw-bold px-3 rounded-pill" onclick="openAddMenuModal()">
@@ -966,6 +967,7 @@
                                 <option value="grid3">GRID 3: Head Office Circular (ছবি)</option>
                                 <option value="grid4">GRID 4: Salary TA Bill (ছবি)</option>
                                 <option value="grid5">GRID 5: Sales Report (PDF - শুধুমাত্র PDF আপলোড)</option>
+                                <option value="grid6">GRID 6: Stock Report (PDF - শুধুমাত্র PDF আপলোড)</option>
                             </select>
                         </div>
                         <div class="col-md-7">
@@ -1035,13 +1037,13 @@
                             </div>
                         </div>
 
-                        <!-- 2. DEDICATED PDF UPLOAD BOX FOR GRID 5 ONLY -->
+                        <!-- 2. DEDICATED PDF UPLOAD BOX FOR GRID 5 & GRID 6 -->
                         <div class="col-12" id="box-pdf-input" style="display: none;">
-                            <div class="alert alert-danger py-2 small mb-2 d-flex align-items-center gap-2">
-                                <i class="fa-solid fa-file-pdf fa-lg text-danger"></i>
-                                <div>
-                                    <strong>GRID 5 (সেলস রিপোর্ট) - শুধুমাত্র PDF আপলোড:</strong><br>
-                                    সেলস রিপোর্ট শুধুমাত্র PDF ফরম্যাটে অ্যাপে প্রদর্শিত হবে। নিচের বাটন থেকে পিসির PDF ফাইল সিলেক্ট করুন অথবা সরাসরি লিংক দিন।
+                            <div class="alert alert-danger py-2 small mb-2 d-flex align-items-center gap-2" id="pdf-alert-box">
+                                <i class="fa-solid fa-file-pdf fa-lg text-danger" id="pdf-alert-icon"></i>
+                                <div id="pdf-alert-text">
+                                    <strong>GRID 5 / 6 - শুধুমাত্র PDF আপলোড:</strong><br>
+                                    রিপোর্ট শুধুমাত্র PDF ফরম্যাটে অ্যাপে প্রদর্শিত হবে। নিচের বাটন থেকে পিসির PDF ফাইল সিলেক্ট করুন অথবা সরাসরি লিংক দিন।
                                 </div>
                             </div>
                             <div class="card p-3 border-danger bg-light">
@@ -1999,12 +2001,15 @@
                 const isActive = (m.status || 'active') === 'active';
                 const isGrid1 = (m.group || '') === 'grid1' || (m.group || '') === 'grid-1' || (m.group || '') === 'grid_1';
                 const isGrid5Pdf = (m.group || '') === 'grid5';
+                const isGrid6Pdf = (m.group || '') === 'grid6';
+                const isPdf = isGrid5Pdf || isGrid6Pdf;
                 const hasUrl = m.url && m.url.trim().length > 0;
                 const imgCount = (m.images && Array.isArray(m.images)) ? m.images.length : 0;
 
                 let groupBadge = 'bg-primary';
                 if (isGrid1) groupBadge = 'bg-info text-dark';
                 else if (isGrid5Pdf) groupBadge = 'bg-danger';
+                else if (isGrid6Pdf) groupBadge = 'bg-success';
 
                 let iconClass = m.icon || 'fa-folder';
                 if (!iconClass.startsWith('fa-') && !iconClass.startsWith('fa ')) iconClass = 'fa-' + iconClass;
@@ -2018,15 +2023,15 @@
                             <span class="badge bg-info bg-opacity-10 text-info border border-info mb-1"><i class="fa-solid fa-link me-1"></i> প্রাইমারি মেনু</span><br>
                             <span class="badge bg-light text-dark border me-1"><code><i class="fa-solid ${escapeHtml(iconClass)} me-1"></i>${escapeHtml(m.icon || 'fa-folder')}</code></span>
                             ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
-                        ` : (isGrid5Pdf ? `
-                            <span class="badge bg-danger mb-1"><i class="fa-solid fa-file-pdf me-1"></i> PDF রিপোর্ট</span><br>
-                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-danger small text-truncate d-inline-block" style="max-width: 180px;"><i class="fa-solid fa-link me-1"></i> ${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
+                        ` : (isPdf ? `
+                            <span class="badge ${isGrid6Pdf ? 'bg-success' : 'bg-danger'} mb-1"><i class="fa-solid fa-file-pdf me-1"></i> ${isGrid6Pdf ? 'স্টক রিপোর্ট PDF' : 'সেলস রিপোর্ট PDF'}</span><br>
+                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="${isGrid6Pdf ? 'text-success' : 'text-danger'} small text-truncate d-inline-block" style="max-width: 180px;"><i class="fa-solid fa-link me-1"></i> ${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
                         ` : `
                             <span class="badge bg-primary mb-1"><i class="fa-solid fa-image me-1"></i> ছবি ফাইল (${imgCount}টি)</span><br>
                             ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">গ্যালারি ছবি</span>'}
                         `)}
                     </td>
-                    <td>${isGrid1 ? '-' : (isGrid5Pdf ? '-' : `<span class="badge bg-light text-dark border">${imgCount || (hasUrl ? 1 : 0)}টি ছবি</span>`)}</td>
+                    <td>${isGrid1 ? '-' : (isPdf ? '-' : `<span class="badge bg-light text-dark border">${imgCount || (hasUrl ? 1 : 0)}টি ছবি</span>`)}</td>
                     <td class="small text-muted">${escapeHtml(m.date || '')} ${m.month ? `(${escapeHtml(m.month)})` : ''}</td>
                     <td>${formatRoleBadge(m.allowedRole)}</td>
                     <td>${m.isPinned ? '<i class="fa-solid fa-thumbtack text-warning"></i>' : '-'}</td>
@@ -2299,6 +2304,8 @@
             if (group === 'grid-1' || group === 'grid_1') group = 'grid1';
             const isGrid1 = group === 'grid1';
             const isGrid5 = group === 'grid5';
+            const isGrid6 = group === 'grid6';
+            const isPdf = isGrid5 || isGrid6;
             const boxGrid1 = document.getElementById('box-grid1-input');
             const boxPdf = document.getElementById('box-pdf-input');
             const boxImg = document.getElementById('box-image-input');
@@ -2306,12 +2313,21 @@
 
             // CRITICAL RULES:
             // 1. Grid 1: Primary Menus (Daily Work) -> ONLY Icon & Web Link / Command (NO IMAGES, NO PDF)
-            // 2. Grid 5: Sales Report -> ONLY PDF upload/link (NO IMAGES)
+            // 2. Grid 5 & 6: Sales Report & Stock Report -> ONLY PDF upload/link (NO IMAGES)
             // 3. Grid 2, 3, 4: Bonus Sheet, Circular, TA Bill -> ONLY Image upload/links
             if (boxGrid1) boxGrid1.style.display = isGrid1 ? 'block' : 'none';
-            if (boxPdf) boxPdf.style.display = isGrid5 ? 'block' : 'none';
-            if (boxImg) boxImg.style.display = (!isGrid1 && !isGrid5) ? 'block' : 'none';
+            if (boxPdf) boxPdf.style.display = isPdf ? 'block' : 'none';
+            if (boxImg) boxImg.style.display = (!isGrid1 && !isPdf) ? 'block' : 'none';
             if (boxMeta) boxMeta.style.display = isGrid1 ? 'none' : 'flex';
+
+            const alertText = document.getElementById('pdf-alert-text');
+            if (alertText) {
+                if (isGrid6) {
+                    alertText.innerHTML = '<strong>GRID 6 (স্টক রিপোর্ট) - শুধুমাত্র PDF আপলোড:</strong><br>স্টক রিপোর্ট শুধুমাত্র PDF ফরম্যাটে অ্যাপে প্রদর্শিত হবে। নিচের বাটন থেকে পিসির PDF ফাইল সিলেক্ট করুন অথবা সরাসরি লিংক দিন।';
+                } else {
+                    alertText.innerHTML = '<strong>GRID 5 (সেলস রিপোর্ট) - শুধুমাত্র PDF আপলোড:</strong><br>সেলস রিপোর্ট শুধুমাত্র PDF ফরম্যাটে অ্যাপে প্রদর্শিত হবে। নিচের বাটন থেকে পিসির PDF ফাইল সিলেক্ট করুন অথবা সরাসরি লিংক দিন।';
+                }
+            }
             if (isGrid1) updateGrid1IconPreview();
         }
 
@@ -2365,10 +2381,12 @@
             document.getElementById('menu-active').checked = (m.status || 'active') === 'active';
 
             clearSelectedPdf();
-            if (group === 'grid5' && m.url) {
+            if ((group === 'grid5' || group === 'grid6') && m.url) {
                 const info = document.getElementById('pdf-file-info');
                 if (info) {
-                    info.innerHTML = `<span class="badge bg-danger"><i class="fa-solid fa-file-pdf me-1"></i> বর্তমান সংরক্ষিত সেলস রিপোর্ট PDF লিংক/ফাইল</span>`;
+                    const label = group === 'grid6' ? 'স্টক রিপোর্ট' : 'সেলস রিপোর্ট';
+                    const badgeClass = group === 'grid6' ? 'bg-success' : 'bg-danger';
+                    info.innerHTML = `<span class="badge ${badgeClass}"><i class="fa-solid fa-file-pdf me-1"></i> বর্তমান সংরক্ষিত ${label} PDF লিংক/ফাইল</span>`;
                 }
             } else if (group !== 'grid1') {
                 renderImagePreviews();
@@ -2402,6 +2420,8 @@
 
             const isGrid1 = group === 'grid1' || group === 'grid-1' || group === 'grid_1';
             const isGrid5 = group === 'grid5';
+            const isGrid6 = group === 'grid6';
+            const isPdf = isGrid5 || isGrid6;
             let images = [];
             let finalUrl = '';
             let finalIcon = 'fa-folder';
@@ -2413,8 +2433,8 @@
                 images = [];
                 date = '';
                 month = '';
-            } else if (isGrid5) {
-                // STRICTLY: ONLY Grid 5 is PDF (Sales Report)
+            } else if (isPdf) {
+                // STRICTLY: ONLY Grid 5 (Sales Report) and Grid 6 (Stock Report) are PDF
                 finalUrl = url;
                 images = [];
                 finalIcon = 'fa-file-pdf';

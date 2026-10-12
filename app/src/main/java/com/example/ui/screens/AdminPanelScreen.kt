@@ -60,7 +60,7 @@ fun AdminPanelScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("মেনু ফাইল (Grids)", "সাইডবার মেনু", "স্লাইডার", "নোটিশ", "পপআপ", "প্রোডাক্ট/ট্রেনিং", "ইউজার", "নোটিফিকেশন")
+    val tabs = listOf("মেনু ফাইল ও সার্কুলার (Grids 1-6)", "সাইডবার মেনু", "স্লাইডার", "নোটিশ", "পপআপ", "প্রোডাক্ট/ট্রেনিং", "ইউজার", "নোটিফিকেশন")
 
     val menus by repository.menus.collectAsState()
     val sidebarMenus by repository.sidebarMenus.collectAsState()
@@ -525,7 +525,8 @@ private fun MenuEditDialog(
         "grid2" to "GRID 2: Flat Bonus Sheet",
         "grid3" to "GRID 3: Head Office Circular",
         "grid4" to "GRID 4: Salary TA Bill",
-        "grid5" to "GRID 5: Sales Report (PDF)"
+        "grid5" to "GRID 5: Sales Report (PDF)",
+        "grid6" to "GRID 6: Stock Report (PDF)"
     )
     val monthOptions = listOf(
         "January", "February", "March", "April", "May", "June",
@@ -798,48 +799,56 @@ private fun MenuEditDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    if (selectedGrid == "grid5") {
-                        // ONLY GRID 5: SALES REPORT PDF
+                    val isPdfGrid = selectedGrid == "grid5" || selectedGrid == "grid6"
+                    val isStockGrid = selectedGrid == "grid6"
+                    if (isPdfGrid) {
+                        // GRID 5: SALES REPORT PDF & GRID 6: STOCK REPORT PDF
+                        val themeColor = if (isStockGrid) Color(0xFF0D9488) else MonicoRed
+                        val reportTitle = if (isStockGrid) "স্টক রিপোর্ট" else "সেলস রিপোর্ট"
+                        val reportSubtitle = if (isStockGrid) 
+                            "গ্রিড ৬-এর ফাইলগুলো শুধুমাত্র স্টক রিপোর্ট PDF হিসেবে ওপেন হবে।"
+                        else 
+                            "গ্রিড ৫-এর ফাইলগুলো শুধুমাত্র সেলস রিপোর্ট PDF হিসেবে ওপেন হবে।"
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = MonicoRed.copy(alpha = 0.08f),
-                            border = BorderStroke(1.dp, MonicoRed.copy(alpha = 0.3f)),
+                            color = themeColor.copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, themeColor.copy(alpha = 0.3f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(20.dp))
-                                    Text("সেলস রিপোর্ট PDF আপলোড (শুধুমাত্র PDF):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MonicoRed)
+                                    Icon(if (isStockGrid) Icons.Default.Inventory else Icons.Default.PictureAsPdf, contentDescription = null, tint = themeColor, modifier = Modifier.size(20.dp))
+                                    Text("$reportTitle PDF আপলোড (শুধুমাত্র PDF):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = themeColor)
                                 }
-                                Text("গ্রিড ৫-এর ফাইলগুলো শুধুমাত্র সেলস রিপোর্ট PDF হিসেবে ওপেন হবে।", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(reportSubtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                                 // Device PDF Picker Button
                                 OutlinedButton(
                                     onClick = { pdfPickerLauncher.launch("application/pdf") },
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoRed)
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = themeColor)
                                 ) {
                                     Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(if (attachedPdfData.isNotBlank()) "নতুন PDF নির্বাচন করুন" else "ডিভাইস থেকে সেলস রিপোর্ট PDF পছন্দ করুন", fontSize = 12.sp)
+                                    Text(if (attachedPdfData.isNotBlank()) "নতুন PDF নির্বাচন করুন" else "ডিভাইস থেকে $reportTitle PDF পছন্দ করুন", fontSize = 12.sp)
                                 }
 
                                 if (attachedPdfData.isNotBlank()) {
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
                                         color = MaterialTheme.colorScheme.surface,
-                                        border = BorderStroke(1.dp, MonicoRed.copy(alpha = 0.4f)),
+                                        border = BorderStroke(1.dp, themeColor.copy(alpha = 0.4f)),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Row(
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(18.dp))
+                                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = themeColor, modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(
-                                                attachedPdfName.ifBlank { "সংযুক্ত PDF ডকুমেন্ট" },
+                                                attachedPdfName.ifBlank { "সংযুক্ত $reportTitle PDF ডকুমেন্ট" },
                                                 fontSize = 11.sp,
                                                 maxLines = 1,
                                                 modifier = Modifier.weight(1f),
@@ -864,9 +873,9 @@ private fun MenuEditDialog(
                                     value = externalUrl,
                                     onValueChange = { externalUrl = it },
                                     label = { Text("PDF ওয়েব লিংক (https://...pdf)") },
-                                    placeholder = { Text("https://example.com/daily_sales_report.pdf") },
+                                    placeholder = { Text(if (isStockGrid) "https://example.com/daily_stock_report.pdf" else "https://example.com/daily_sales_report.pdf") },
                                     leadingIcon = {
-                                        Icon(Icons.Default.Link, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.Link, contentDescription = null, tint = themeColor, modifier = Modifier.size(18.dp))
                                     },
                                     singleLine = true,
                                     shape = RoundedCornerShape(10.dp),
@@ -1089,16 +1098,16 @@ private fun MenuEditDialog(
                 onClick = {
                     if (title.isNotBlank()) {
                         val isGrid1 = selectedGrid == "grid1"
-                        val isGrid5 = selectedGrid == "grid5"
+                        val isPdf = selectedGrid == "grid5" || selectedGrid == "grid6"
                         val finalUrl = when {
                             isGrid1 -> externalUrl.trim()
-                            isGrid5 -> externalUrl.trim().ifBlank { attachedPdfData.trim() }
+                            isPdf -> externalUrl.trim().ifBlank { attachedPdfData.trim() }
                             else -> if (deviceImages.isNotEmpty()) deviceImages[0].trim() else externalUrl.trim()
                         }
 
                         val finalImages = when {
                             isGrid1 -> emptyList()
-                            isGrid5 -> emptyList()
+                            isPdf -> emptyList()
                             else -> {
                                 val list = mutableListOf<String>()
                                 list.addAll(deviceImages)
@@ -1111,7 +1120,7 @@ private fun MenuEditDialog(
 
                         val finalIcon = when {
                             isGrid1 -> icon.ifBlank { "fa-folder" }
-                            isGrid5 -> "fa-file-pdf"
+                            isPdf -> "fa-file-pdf"
                             else -> if (finalImages.isNotEmpty()) finalImages[0] else "fa-image"
                         }
 
@@ -1978,7 +1987,7 @@ private val adminGridCategories = listOf(
     AdminGridCategory("grid3", "Grid 3: Head Office Circular (সার্কুলার)", "Grid 3 (Circular)", Icons.Default.Campaign, MonicoAmber),
     AdminGridCategory("grid4", "Grid 4: Salary & TA Bill (বেতন ও বিল)", "Grid 4 (Salary TA)", Icons.Default.Payments, Color(0xFF9333EA)),
     AdminGridCategory("grid5", "Grid 5: Sales Report PDF (সেলস রিপোর্ট)", "Grid 5 (Sales PDF)", Icons.Default.PictureAsPdf, MonicoRed),
-    AdminGridCategory("grid6", "Grid 6: Product & Target Sheet (টার্গেট শিট)", "Grid 6 (Target)", Icons.Default.School, Color(0xFF00897B))
+    AdminGridCategory("grid6", "Grid 6: Stock Report PDF (স্টক রিপোর্ট)", "Grid 6 (Stock PDF)", Icons.Default.Inventory, Color(0xFF0D9488))
 )
 
 @Composable
@@ -2216,7 +2225,8 @@ private fun MenuItemAdminCard(
     onDelete: (String) -> Unit
 ) {
     val isGrid1 = m.group == "grid1" || m.group == "grid-1" || m.group == "grid_1" || m.group.equals("primary", ignoreCase = true)
-    val isPdf = m.group == "grid5"
+    val isPdf = m.group == "grid5" || m.group == "grid6"
+    val isStock = m.group == "grid6"
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -2243,15 +2253,18 @@ private fun MenuItemAdminCard(
                             }
                         }
                     } else if (isPdf) {
+                        val pdfColor = if (isStock) Color(0xFF0D9488) else MonicoRed
+                        val pdfLabel = if (isStock) "PDF (Stock Report)" else "PDF (Sales Report)"
+                        val pdfIcon = if (isStock) Icons.Default.Inventory else Icons.Default.PictureAsPdf
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = MonicoRed.copy(alpha = 0.15f),
-                            contentColor = MonicoRed
+                            color = pdfColor.copy(alpha = 0.15f),
+                            contentColor = pdfColor
                         ) {
                             Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.PictureAsPdf, contentDescription = "PDF", tint = MonicoRed, modifier = Modifier.size(12.dp))
+                                Icon(pdfIcon, contentDescription = "PDF", tint = pdfColor, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(2.dp))
-                                Text("PDF (Sales Report)", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text(pdfLabel, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     } else {

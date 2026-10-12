@@ -192,6 +192,7 @@ fun DashboardScreen(
     val grid3Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid3" }) }
     val grid4Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid4" }) }
     val grid5Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid5" }) }
+    val grid6Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid6" }) }
 
     val sortedTrainingCards = remember(trainingCards) { repository.sortCardsDescending(trainingCards) }
     val sortedProductCards = remember(productCards) { repository.sortCardsDescending(productCards) }
@@ -689,7 +690,35 @@ fun DashboardScreen(
                     }
                 }
 
-                // 10. Product Training Section
+                // 10. Grid 6: Stock Report (PDF)
+                item {
+                    SectionHeader(
+                        title = "স্টক রিপোর্ট (STOCK REPORT PDF)",
+                        icon = Icons.Default.Inventory,
+                        color = Color(0xFF0D9488)
+                    )
+                    if (grid6Menus.isNotEmpty()) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(vertical = 4.dp)
+                        ) {
+                            items(grid6Menus) { item ->
+                                MenuItemCard(
+                                    item = item,
+                                    currentEmpId = currentUser?.employeeId ?: "",
+                                    onClick = {
+                                        scope.launch { repository.markMenuSeen(item.id) }
+                                        handleMenuCardClick(item, context, onOpenUrl, onOpenImageViewer)
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        EmptySectionNotice("স্টক রিপোর্টের কোনো PDF ফাইল নেই।")
+                    }
+                }
+
+                // 11. Product Training Section
                 item {
                     SectionHeader(
                         title = "প্রোডাক্ট ট্রেনিং (PRODUCT TRAINING)",
@@ -892,8 +921,8 @@ private fun handleMenuCardClick(
         return
     }
 
-    // 2. GRID 5: SALES REPORT - STRICTLY PDF ONLY
-    if (item.group == "grid5") {
+    // 2. GRID 5 & GRID 6: SALES REPORT & STOCK REPORT - STRICTLY PDF ONLY
+    if (item.group == "grid5" || item.group == "grid6") {
         val pdfUrl = when {
             item.url.isNotBlank() -> resolveGoUrl(item.url)
             item.images.isNotEmpty() -> item.images.first()
@@ -906,7 +935,8 @@ private fun handleMenuCardClick(
                 onOpenImageViewer(item.title, listOf(pdfUrl))
             }
         } else {
-            Toast.makeText(context, "${item.title}: কোনো সেলস রিপোর্ট PDF যুক্ত নেই", Toast.LENGTH_SHORT).show()
+            val label = if (item.group == "grid6") "স্টক রিপোর্ট" else "সেলস রিপোর্ট"
+            Toast.makeText(context, "${item.title}: কোনো $label PDF যুক্ত নেই", Toast.LENGTH_SHORT).show()
         }
         return
     }
@@ -1381,7 +1411,8 @@ private fun MenuItemCard(
 ) {
     val hasSeen = item.seenBy[currentEmpId] == true
     val isGrid1 = item.group == "grid1" || item.group == "grid-1" || item.group == "grid_1" || item.group.equals("primary", ignoreCase = true) || item.url.startsWith("go:")
-    val isPdf = item.group == "grid5"
+    val isPdf = item.group == "grid5" || item.group == "grid6"
+    val isStock = item.group == "grid6"
 
     val imageList = remember(item, isPdf, isGrid1) {
         if (isPdf || isGrid1) {
@@ -1482,7 +1513,7 @@ private fun MenuItemCard(
                         .fillMaxSize()
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(Color(0xFFDC2626), Color(0xFF991B1B))
+                                colors = if (isStock) listOf(Color(0xFF0D9488), Color(0xFF0F766E)) else listOf(Color(0xFFDC2626), Color(0xFF991B1B))
                             )
                         ),
                     contentAlignment = Alignment.Center
@@ -1492,7 +1523,7 @@ private fun MenuItemCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PictureAsPdf,
+                            imageVector = if (isStock) Icons.Default.Inventory else Icons.Default.PictureAsPdf,
                             contentDescription = "PDF Icon",
                             tint = Color.White,
                             modifier = Modifier.size(34.dp)
@@ -1502,7 +1533,7 @@ private fun MenuItemCard(
                             color = Color.White.copy(alpha = 0.25f)
                         ) {
                             Text(
-                                text = "PDF REPORT",
+                                text = if (isStock) "STOCK PDF" else "SALES PDF",
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
