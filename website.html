@@ -871,45 +871,64 @@
     <!-- A. CONTENT VIEWER MODAL (PDF, DOCS, WEB, IMAGES) -->
     <div class="modal fade" id="modalViewer" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen-custom modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header border-bottom px-4 py-3">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-bottom px-3 px-md-4 py-3 bg-white">
                     <div class="d-flex align-items-center gap-2 overflow-hidden me-3">
                         <span class="badge bg-primary rounded-pill p-2" id="viewer-icon-badge">
                             <i class="fa-solid fa-file-pdf"></i>
                         </span>
                         <div>
-                            <h5 class="modal-title fw-bold m-0 text-truncate" id="viewer-modal-title" style="max-width: 60vw;">ডকুমেন্ট ভিউয়ার</h5>
+                            <h5 class="modal-title fw-bold m-0 text-truncate" id="viewer-modal-title" style="max-width: 55vw;">ডকুমেন্ট ভিউয়ার</h5>
                             <small class="text-muted" id="viewer-modal-subtitle">Monico One Interactive Document Viewer</small>
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2 ms-auto">
-                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3" id="viewer-open-external-btn" target="_blank" onclick="openCurrentUrlExternal()">
-                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> নতুন ট্যাবে খুলুন
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold d-flex align-items-center gap-1" id="viewer-open-external-btn" onclick="openCurrentUrlExternal()">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            <span class="d-none d-sm-inline" id="viewer-action-label">নতুন ট্যাবে খুলুন</span>
                         </button>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                 </div>
-                <div class="modal-body p-0 position-relative" style="background: #f1f5f9; min-height: 500px;">
+                <div class="modal-body p-0 position-relative" style="background: #0f172a; min-height: 520px;">
                     <!-- Loading Indicator -->
-                    <div id="viewer-loader" class="position-absolute top-50 start-50 translate-middle text-center">
+                    <div id="viewer-loader" class="position-absolute top-50 start-50 translate-middle text-center text-white">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="text-muted small mt-2">ডকুমেন্ট লোড হচ্ছে...</p>
+                        <p class="text-light small mt-2">ডকুমেন্ট / ছবি লোড হচ্ছে...</p>
                     </div>
 
                     <!-- Iframe for Web / PDF -->
-                    <iframe id="viewer-iframe" class="viewer-frame d-none" onload="onIframeLoaded()"></iframe>
+                    <iframe id="viewer-iframe" class="viewer-frame d-none" style="background: #ffffff;" onload="onIframeLoaded()"></iframe>
 
                     <!-- Gallery Container for Images -->
-                    <div id="viewer-gallery" class="p-3 text-center d-none" style="max-height: 75vh; overflow-y: auto;">
-                        <div id="gallery-carousel" class="carousel slide" data-bs-interval="false">
-                            <div class="carousel-inner" id="gallery-carousel-inner"></div>
-                            <button class="carousel-control-prev" type="button" data-bs-target="#gallery-carousel" data-bs-slide="prev">
-                                <span class="carousel-control-prev-icon" aria-hidden="true" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"></span>
+                    <div id="viewer-gallery" class="p-2 p-md-3 text-center d-none position-relative w-100 h-100 d-flex flex-column justify-content-between" style="min-height: 520px;">
+                        <div class="d-flex justify-content-between align-items-center px-3 py-1 mb-2 bg-dark bg-opacity-75 rounded-pill text-white small mx-auto" style="max-width: 500px; width: 100%;">
+                            <span id="gallery-counter-badge" class="fw-semibold text-warning">ছবি ১ / ১</span>
+                            <div class="d-flex gap-2 align-items-center">
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="zoomGalleryImage(1.2)" title="জুম ইন" style="width: 28px; height: 28px;">
+                                    <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="zoomGalleryImage(0.8)" title="জুম আউট" style="width: 28px; height: 28px;">
+                                    <i class="fa-solid fa-magnifying-glass-minus"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="resetGalleryZoom()" title="রিসেট" style="width: 28px; height: 28px;">
+                                    <i class="fa-solid fa-arrows-rotate"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="gallery-carousel" class="position-relative flex-grow-1 d-flex align-items-center justify-content-center overflow-hidden my-auto" style="min-height: 400px;">
+                            <div class="carousel-inner w-100" id="gallery-carousel-inner"></div>
+                            <button class="carousel-control-prev" id="gallery-prev-btn" type="button" onclick="navigateGallerySlide(-1)" style="width: 8%;">
+                                <span class="carousel-control-prev-icon p-3 bg-dark bg-opacity-75 rounded-circle shadow" aria-hidden="true"></span>
                             </button>
-                            <button class="carousel-control-next" type="button" data-bs-target="#gallery-carousel" data-bs-slide="next">
-                                <span class="carousel-control-next-icon" aria-hidden="true" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"></span>
+                            <button class="carousel-control-next" id="gallery-next-btn" type="button" onclick="navigateGallerySlide(1)" style="width: 8%;">
+                                <span class="carousel-control-next-icon p-3 bg-dark bg-opacity-75 rounded-circle shadow" aria-hidden="true"></span>
                             </button>
                         </div>
+
+                        <!-- Thumbnails strip -->
+                        <div id="gallery-thumbnails-strip" class="d-flex gap-2 justify-content-center mt-2 p-2 bg-dark bg-opacity-75 rounded-4 overflow-x-auto mx-auto" style="max-width: 90%; max-height: 80px;"></div>
                     </div>
                 </div>
             </div>
@@ -1664,14 +1683,35 @@
         }
 
         // ==================== IMAGE & CARD HELPERS ====================
+        function resolveImageUrl(url) {
+            if (!url) return '';
+            const s = String(url).trim();
+            // Convert Google Drive view/open links to direct high-res image links
+            if (s.includes('drive.google.com/file/d/')) {
+                const match = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    return `https://lh3.googleusercontent.com/d/${match[1]}`;
+                }
+            } else if (s.includes('drive.google.com') && s.includes('id=')) {
+                const match = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    return `https://lh3.googleusercontent.com/d/${match[1]}`;
+                }
+            }
+            return s;
+        }
+
         function isImageUrl(url) {
             if (!url) return false;
             const u = String(url).trim().toLowerCase();
             return u.startsWith('data:image/') ||
                    /\.(jpeg|jpg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(u) ||
                    (u.includes('firebasestorage.googleapis.com') && (u.includes('alt=media') || !u.includes('.pdf'))) ||
-                   u.includes('drive.google.com/uc?export=view') ||
+                   u.includes('drive.google.com') ||
+                   u.includes('googleusercontent.com') ||
                    u.includes('images.unsplash.com') ||
+                   u.includes('i.ibb.co') ||
+                   u.includes('imgur.com') ||
                    u.includes('placehold.co');
         }
 
@@ -1680,21 +1720,24 @@
             let list = [];
             if (Array.isArray(item.images)) {
                 item.images.forEach(img => {
-                    if (typeof img === 'string' && img.trim()) list.push(img.trim());
+                    if (typeof img === 'string' && img.trim()) {
+                        const resolved = resolveImageUrl(img.trim());
+                        if (resolved && !list.includes(resolved)) list.push(resolved);
+                    }
                 });
             } else if (typeof item.images === 'string' && item.images.trim()) {
                 item.images.split('\n').concat(item.images.split(',')).forEach(s => {
-                    const clean = s.trim();
+                    const clean = resolveImageUrl(s.trim());
                     if (clean && !list.includes(clean)) list.push(clean);
                 });
             }
             if (item.image && typeof item.image === 'string' && item.image.trim()) {
-                const mainImg = item.image.trim();
-                if (!list.includes(mainImg)) list.unshift(mainImg);
+                const mainImg = resolveImageUrl(item.image.trim());
+                if (mainImg && !list.includes(mainImg)) list.unshift(mainImg);
             }
             if (item.url && isImageUrl(item.url)) {
-                const u = item.url.trim();
-                if (!list.includes(u)) list.push(u);
+                const u = resolveImageUrl(item.url.trim());
+                if (u && !list.includes(u)) list.push(u);
             }
             return list;
         }
@@ -1737,23 +1780,27 @@
                 const hasWebLink = effectiveUrl && !isImageUrl(effectiveUrl);
 
                 html += `
-                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2 shadow-sm">
+                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2 shadow-sm position-relative" style="cursor: pointer; transition: all 0.2s;" onclick="openCardGallery('training', ${idx})">
                         <div class="d-flex align-items-center gap-3 overflow-hidden">
                             ${thumbnail ? `
-                                <div class="flex-shrink-0" style="cursor: pointer;" onclick="openCardGallery('training', ${idx})" title="ছবি বড় করে দেখুন">
-                                    <img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(t.title || 'Training')}" class="rounded-3 border shadow-sm" style="width: 52px; height: 52px; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100?text=IMG';">
+                                <div class="flex-shrink-0 position-relative rounded-3 overflow-hidden border shadow-sm" style="width: 54px; height: 54px; background: #e2e8f0;" title="ছবি বড় করে দেখুন">
+                                    <img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(t.title || 'Training')}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100?text=IMG';">
+                                    <div class="position-absolute bottom-0 end-0 bg-dark bg-opacity-75 text-white px-1 rounded-top-start" style="font-size: 9px;">
+                                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                    </div>
                                 </div>
                             ` : `
-                                <div class="flex-shrink-0 rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                                <div class="flex-shrink-0 rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center shadow-sm" style="width: 54px; height: 54px; font-size: 22px;">
                                     <i class="fa-solid fa-chalkboard-user"></i>
                                 </div>
                             `}
                             <div class="overflow-hidden">
-                                <h5 class="small fw-bold m-0 text-truncate">${escapeHtml(t.title || 'ট্রেনিং')}</h5>
+                                <h5 class="small fw-bold m-0 text-truncate text-dark">${escapeHtml(t.title || 'ট্রেনিং')}</h5>
                                 <div class="d-flex align-items-center gap-2 mt-1">
-                                    <small class="text-muted">${escapeHtml(t.date || '')} ${t.month ? `(${escapeHtml(t.month)})` : ''}</small>
+                                    ${t.date ? `<small class="text-muted">${escapeHtml(t.date)}</small>` : ''}
+                                    ${t.month ? `<small class="text-muted">(${escapeHtml(t.month)})</small>` : ''}
                                     ${imgList.length > 0 ? `
-                                        <span class="badge bg-primary-subtle text-primary border" style="font-size: 10px;">
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size: 10px;">
                                             <i class="fa-solid fa-images me-1"></i>${imgList.length}টি ছবি
                                         </span>
                                     ` : ''}
@@ -1762,17 +1809,17 @@
                         </div>
                         <div class="d-flex align-items-center gap-2 flex-shrink-0">
                             ${imgList.length > 0 ? `
-                                <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold" onclick="openCardGallery('training', ${idx})">
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold" onclick="event.stopPropagation(); openCardGallery('training', ${idx})">
                                     <i class="fa-solid fa-image me-1"></i> ছবি দেখুন
                                 </button>
                             ` : ''}
                             ${hasWebLink ? `
-                                <button class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold" onclick="handleItemClick('${escapeHtml(t.title)}', '${escapeHtml(effectiveUrl)}')">
+                                <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold" onclick="event.stopPropagation(); handleItemClick('${escapeHtml(t.title)}', '${escapeHtml(effectiveUrl)}')">
                                     <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> ওপেন
                                 </button>
                             ` : ''}
                             ${!imgList.length && !hasWebLink && effectiveUrl ? `
-                                <button class="btn btn-outline-primary btn-sm rounded-pill px-3 flex-shrink-0" onclick="handleItemClick('${escapeHtml(t.title)}', '${escapeHtml(effectiveUrl)}')">
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 flex-shrink-0" onclick="event.stopPropagation(); handleItemClick('${escapeHtml(t.title)}', '${escapeHtml(effectiveUrl)}')">
                                     <i class="fa-solid fa-eye me-1"></i> ওপেন
                                 </button>
                             ` : ''}
@@ -1805,23 +1852,27 @@
                 const hasWebLink = effectiveUrl && !isImageUrl(effectiveUrl);
 
                 html += `
-                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2 shadow-sm">
+                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2 shadow-sm position-relative" style="cursor: pointer; transition: all 0.2s;" onclick="openCardGallery('target', ${idx})">
                         <div class="d-flex align-items-center gap-3 overflow-hidden">
                             ${thumbnail ? `
-                                <div class="flex-shrink-0" style="cursor: pointer;" onclick="openCardGallery('target', ${idx})" title="ছবি বড় করে দেখুন">
-                                    <img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(ts.title || 'Target Sheet')}" class="rounded-3 border shadow-sm" style="width: 52px; height: 52px; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100?text=IMG';">
+                                <div class="flex-shrink-0 position-relative rounded-3 overflow-hidden border shadow-sm" style="width: 54px; height: 54px; background: #e2e8f0;" title="ছবি বড় করে দেখুন">
+                                    <img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(ts.title || 'Target Sheet')}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100?text=IMG';">
+                                    <div class="position-absolute bottom-0 end-0 bg-dark bg-opacity-75 text-white px-1 rounded-top-start" style="font-size: 9px;">
+                                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                    </div>
                                 </div>
                             ` : `
-                                <div class="flex-shrink-0 rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                                <div class="flex-shrink-0 rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center shadow-sm" style="width: 54px; height: 54px; font-size: 22px;">
                                     <i class="fa-solid fa-bullseye"></i>
                                 </div>
                             `}
                             <div class="overflow-hidden">
-                                <h5 class="small fw-bold m-0 text-truncate">${escapeHtml(ts.title || 'টার্গেট শীট')}</h5>
+                                <h5 class="small fw-bold m-0 text-truncate text-dark">${escapeHtml(ts.title || 'টার্গেট শীট')}</h5>
                                 <div class="d-flex align-items-center gap-2 mt-1">
-                                    <small class="text-muted">${escapeHtml(ts.date || '')} ${ts.month ? `(${escapeHtml(ts.month)})` : ''}</small>
+                                    ${ts.date ? `<small class="text-muted">${escapeHtml(ts.date)}</small>` : ''}
+                                    ${ts.month ? `<small class="text-muted">(${escapeHtml(ts.month)})</small>` : ''}
                                     ${imgList.length > 0 ? `
-                                        <span class="badge bg-warning-subtle text-warning border" style="font-size: 10px;">
+                                        <span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-25" style="font-size: 10px;">
                                             <i class="fa-solid fa-images me-1"></i>${imgList.length}টি ছবি
                                         </span>
                                     ` : ''}
@@ -1830,17 +1881,17 @@
                         </div>
                         <div class="d-flex align-items-center gap-2 flex-shrink-0">
                             ${imgList.length > 0 ? `
-                                <button class="btn btn-outline-warning btn-sm rounded-pill px-3 fw-semibold text-dark" onclick="openCardGallery('target', ${idx})">
+                                <button type="button" class="btn btn-outline-warning btn-sm rounded-pill px-3 fw-semibold text-dark" onclick="event.stopPropagation(); openCardGallery('target', ${idx})">
                                     <i class="fa-solid fa-image me-1"></i> ছবি দেখুন
                                 </button>
                             ` : ''}
                             ${hasWebLink ? `
-                                <button class="btn btn-warning btn-sm rounded-pill px-3 fw-semibold text-dark" onclick="handleItemClick('${escapeHtml(ts.title)}', '${escapeHtml(effectiveUrl)}')">
+                                <button type="button" class="btn btn-warning btn-sm rounded-pill px-3 fw-semibold text-dark" onclick="event.stopPropagation(); handleItemClick('${escapeHtml(ts.title)}', '${escapeHtml(effectiveUrl)}')">
                                     <i class="fa-solid fa-file-excel me-1"></i> দেখুন
                                 </button>
                             ` : ''}
                             ${!imgList.length && !hasWebLink && effectiveUrl ? `
-                                <button class="btn btn-outline-warning btn-sm rounded-pill px-3 flex-shrink-0" onclick="handleItemClick('${escapeHtml(ts.title)}', '${escapeHtml(effectiveUrl)}')">
+                                <button type="button" class="btn btn-outline-warning btn-sm rounded-pill px-3 flex-shrink-0" onclick="event.stopPropagation(); handleItemClick('${escapeHtml(ts.title)}', '${escapeHtml(effectiveUrl)}')">
                                     <i class="fa-solid fa-file-excel me-1"></i> দেখুন
                                 </button>
                             ` : ''}
@@ -1894,6 +1945,10 @@
         }
 
         // ==================== DOCUMENT & CONTENT VIEWER ====================
+        let activeGalleryImages = [];
+        let activeGalleryIndex = 0;
+        let currentGalleryZoom = 1;
+
         function handleItemClick(title, url) {
             if (!url) return;
 
@@ -1906,6 +1961,7 @@
             portalState.currentViewerUrl = url;
             document.getElementById('viewer-modal-title').innerText = title;
             document.getElementById('viewer-modal-subtitle').innerText = url;
+            document.getElementById('viewer-action-label').innerText = 'নতুন ট্যাবে খুলুন';
 
             const isPdf = url.toLowerCase().includes('.pdf');
             const iconBadge = document.getElementById('viewer-icon-badge');
@@ -1934,43 +1990,194 @@
             document.getElementById('viewer-iframe').classList.remove('d-none');
         }
 
-        function openGalleryViewer(title, images) {
+        function openGalleryViewer(title, images, startIndex = 0) {
             if (!images || !images.length) return;
 
-            portalState.currentViewerUrl = images[0] || '';
-            document.getElementById('viewer-modal-title').innerText = title;
-            document.getElementById('viewer-modal-subtitle').innerText = `${images.length}টি ছবি উপলব্ধ`;
+            activeGalleryImages = images.map(img => resolveImageUrl(img)).filter(Boolean);
+            if (!activeGalleryImages.length) {
+                showToast('কোনো বৈধ ছবি পাওয়া যায়নি!', true);
+                return;
+            }
+
+            activeGalleryIndex = Math.max(0, Math.min(startIndex, activeGalleryImages.length - 1));
+            currentGalleryZoom = 1;
+            portalState.currentViewerUrl = activeGalleryImages[activeGalleryIndex];
+
+            document.getElementById('viewer-modal-title').innerText = title || 'ছবি গ্যালারি';
+            document.getElementById('viewer-modal-subtitle').innerText = `${activeGalleryImages.length}টি ছবি উপলব্ধ`;
             document.getElementById('viewer-icon-badge').innerHTML = '<i class="fa-solid fa-images"></i>';
+            document.getElementById('viewer-action-label').innerText = 'ডাউনলোড / দেখুন';
 
             const iframe = document.getElementById('viewer-iframe');
             const gallery = document.getElementById('viewer-gallery');
             const loader = document.getElementById('viewer-loader');
             const carouselInner = document.getElementById('gallery-carousel-inner');
+            const thumbsStrip = document.getElementById('gallery-thumbnails-strip');
+            const prevBtn = document.getElementById('gallery-prev-btn');
+            const nextBtn = document.getElementById('gallery-next-btn');
 
+            iframe.src = '';
             iframe.classList.add('d-none');
             loader.classList.add('d-none');
             gallery.classList.remove('d-none');
 
-            let html = '';
-            images.forEach((img, idx) => {
-                const isActive = idx === 0 ? 'active' : '';
-                html += `
-                    <div class="carousel-item ${isActive}">
-                        <img src="${escapeHtml(img)}" class="d-block mx-auto rounded-3 shadow" style="max-height: 70vh; max-width: 100%; object-fit: contain;">
-                        <div class="mt-2 text-center text-muted small">${idx + 1} / ${images.length}</div>
+            let slidesHtml = '';
+            activeGalleryImages.forEach((img, idx) => {
+                const isActive = idx === activeGalleryIndex ? 'active' : '';
+                slidesHtml += `
+                    <div class="carousel-item ${isActive}" data-slide-index="${idx}">
+                        <div class="d-flex align-items-center justify-content-center p-2" style="min-height: 420px; max-height: 68vh;">
+                            <img src="${escapeHtml(img)}" id="gallery-img-${idx}" class="rounded-3 shadow-lg" style="max-height: 65vh; max-width: 100%; object-fit: contain; cursor: zoom-in; transition: transform 0.25s ease;" onclick="toggleImageZoom(${idx})" alt="${escapeHtml(title)} - ছবি ${idx + 1}" onerror="this.onerror=null; this.src='https://placehold.co/600x400?text=IMG+Error';">
+                        </div>
                     </div>
                 `;
             });
+            carouselInner.innerHTML = slidesHtml;
 
-            carouselInner.innerHTML = html;
+            if (activeGalleryImages.length > 1) {
+                let thumbsHtml = '';
+                activeGalleryImages.forEach((img, idx) => {
+                    const isSelected = idx === activeGalleryIndex ? 'border-primary border-3 shadow opacity-100' : 'border-secondary opacity-60';
+                    thumbsHtml += `
+                        <div class="flex-shrink-0" onclick="setGallerySlide(${idx})" style="cursor: pointer;" title="ছবি ${idx + 1}">
+                            <img src="${escapeHtml(img)}" id="gallery-thumb-${idx}" class="rounded-2 border ${isSelected}" style="width: 50px; height: 50px; object-fit: cover;" alt="Thumb ${idx + 1}">
+                        </div>
+                    `;
+                });
+                thumbsStrip.innerHTML = thumbsHtml;
+                thumbsStrip.classList.remove('d-none');
+                prevBtn.classList.remove('d-none');
+                nextBtn.classList.remove('d-none');
+            } else {
+                thumbsStrip.innerHTML = '';
+                thumbsStrip.classList.add('d-none');
+                prevBtn.classList.add('d-none');
+                nextBtn.classList.add('d-none');
+            }
+
+            updateGalleryControls();
             viewerModal.show();
         }
 
-        function openCurrentUrlExternal() {
-            if (portalState.currentViewerUrl) {
-                window.open(portalState.currentViewerUrl, '_blank');
+        function setGallerySlide(index) {
+            if (index < 0 || index >= activeGalleryImages.length) return;
+            activeGalleryIndex = index;
+            portalState.currentViewerUrl = activeGalleryImages[index];
+
+            const items = document.querySelectorAll('#gallery-carousel-inner .carousel-item');
+            items.forEach((item, idx) => {
+                item.classList.toggle('active', idx === index);
+            });
+
+            resetGalleryZoom();
+            updateGalleryControls();
+        }
+
+        function navigateGallerySlide(delta) {
+            if (!activeGalleryImages.length) return;
+            let nextIndex = activeGalleryIndex + delta;
+            if (nextIndex < 0) nextIndex = activeGalleryImages.length - 1;
+            if (nextIndex >= activeGalleryImages.length) nextIndex = 0;
+            setGallerySlide(nextIndex);
+        }
+
+        function updateGalleryControls() {
+            const counterBadge = document.getElementById('gallery-counter-badge');
+            if (counterBadge) {
+                counterBadge.innerText = `ছবি ${activeGalleryIndex + 1} / ${activeGalleryImages.length}`;
+            }
+            activeGalleryImages.forEach((_, idx) => {
+                const thumb = document.getElementById(`gallery-thumb-${idx}`);
+                if (thumb) {
+                    if (idx === activeGalleryIndex) {
+                        thumb.className = 'rounded-2 border border-primary border-3 shadow opacity-100';
+                    } else {
+                        thumb.className = 'rounded-2 border border-secondary opacity-60';
+                    }
+                }
+            });
+        }
+
+        function toggleImageZoom(idx) {
+            const img = document.getElementById(`gallery-img-${idx}`);
+            if (!img) return;
+            if (currentGalleryZoom === 1) {
+                currentGalleryZoom = 1.75;
+                img.style.transform = `scale(${currentGalleryZoom})`;
+                img.style.cursor = 'zoom-out';
+            } else {
+                currentGalleryZoom = 1;
+                img.style.transform = 'scale(1)';
+                img.style.cursor = 'zoom-in';
             }
         }
+
+        function zoomGalleryImage(factor) {
+            const img = document.getElementById(`gallery-img-${activeGalleryIndex}`);
+            if (!img) return;
+            currentGalleryZoom = Math.min(3, Math.max(0.5, currentGalleryZoom * factor));
+            img.style.transform = `scale(${currentGalleryZoom})`;
+            img.style.cursor = currentGalleryZoom > 1 ? 'zoom-out' : 'zoom-in';
+        }
+
+        function resetGalleryZoom() {
+            currentGalleryZoom = 1;
+            const img = document.getElementById(`gallery-img-${activeGalleryIndex}`);
+            if (img) {
+                img.style.transform = 'scale(1)';
+                img.style.cursor = 'zoom-in';
+            }
+        }
+
+        function openCurrentUrlExternal() {
+            if (!portalState.currentViewerUrl) return;
+            const url = portalState.currentViewerUrl;
+            const title = document.getElementById('viewer-modal-title').innerText || 'MonicoOne_Image';
+
+            if (url.startsWith('data:image/')) {
+                try {
+                    const parts = url.split(',');
+                    const mime = (parts[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
+                    const bstr = atob(parts[1]);
+                    let n = bstr.length;
+                    const u8arr = new Uint8Array(n);
+                    while (n--) {
+                        u8arr[n] = bstr.charCodeAt(n);
+                    }
+                    const blob = new Blob([u8arr], { type: mime });
+                    const blobUrl = URL.createObjectURL(blob);
+
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    const ext = mime.includes('png') ? 'png' : 'jpg';
+                    a.download = `${title.replace(/[^a-zA-Z0-9_\u0980-\u09FF]/g, '_')}_${Date.now()}.${ext}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    showToast('ছবি ডাউনলোড শুরু হয়েছে।');
+                } catch(e) {
+                    const win = window.open('');
+                    if (win) {
+                        win.document.write(`<title>${escapeHtml(title)}</title><body style="margin:0;background:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${escapeHtml(url)}" style="max-width:100%;max-height:100vh;object-fit:contain;"></body>`);
+                    }
+                }
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+
+        // Keyboard navigation for image gallery
+        document.addEventListener('keydown', (e) => {
+            const gallery = document.getElementById('viewer-gallery');
+            if (!gallery || gallery.classList.contains('d-none')) return;
+            if (e.key === 'ArrowLeft') {
+                navigateGallerySlide(-1);
+            } else if (e.key === 'ArrowRight') {
+                navigateGallerySlide(1);
+            } else if (e.key === 'Escape') {
+                if (viewerModal) viewerModal.hide();
+            }
+        });
 
         // ==================== NOTIFICATIONS ====================
         function renderNotificationsBadge() {

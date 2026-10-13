@@ -44,22 +44,48 @@
             width: 270px;
             background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
             color: #f8fafc;
-            min-height: 100vh;
+            height: 100vh;
+            height: 100dvh;
+            max-height: 100vh;
             position: fixed;
             top: 0;
+            bottom: 0;
             left: 0;
             z-index: 1040;
             overflow-y: auto;
+            overflow-x: hidden;
             box-shadow: 4px 0 16px rgba(0,0,0,0.06);
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            overscroll-behavior: contain;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 4px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.7);
         }
 
         .sidebar .brand {
-            padding: 20px 24px;
+            padding: 18px 20px;
             display: flex;
             align-items: center;
             gap: 12px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
+            position: sticky;
+            top: 0;
+            background: #0f172a;
+            z-index: 10;
+            flex-shrink: 0;
         }
 
         .sidebar .brand-icon {
@@ -73,12 +99,14 @@
             font-size: 22px;
             color: white;
             box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+            flex-shrink: 0;
         }
 
         .sidebar-nav {
-            padding: 16px 12px;
+            padding: 16px 12px 100px;
             list-style: none;
             margin: 0;
+            flex: 1 1 auto;
         }
 
         .sidebar-nav .nav-category {
@@ -1534,6 +1562,25 @@
         </div>
     </div>
 
+    <!-- 7B. CARD IMAGE PREVIEW MODAL -->
+    <div class="modal fade" id="modalCardPreview" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-primary text-white border-0 py-3 px-4">
+                    <h6 class="modal-title fw-bold m-0" id="modalCardPreviewTitle"><i class="fa-solid fa-images me-2"></i> কার্ডের ছবি</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center bg-light">
+                    <div id="cardPreviewContainer" class="d-flex flex-column align-items-center gap-3"></div>
+                </div>
+                <div class="modal-footer border-0 bg-white justify-content-between">
+                    <small class="text-muted" id="cardPreviewCount"></small>
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">বন্ধ করুন</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 8. SEND NOTIFICATION MODAL -->
     <div class="modal fade" id="modalNotification" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -1622,6 +1669,7 @@
             modals.notice = new bootstrap.Modal(document.getElementById('modalNotice'));
             modals.popup = new bootstrap.Modal(document.getElementById('modalPopup'));
             modals.card = new bootstrap.Modal(document.getElementById('modalCard'));
+            modals.cardPreview = new bootstrap.Modal(document.getElementById('modalCardPreview'));
             modals.notification = new bootstrap.Modal(document.getElementById('modalNotification'));
 
             const customDbEl = document.getElementById('custom-db-url');
@@ -2953,12 +3001,24 @@
 
             let html = '';
             list.forEach(c => {
+                const imgList = (Array.isArray(c.images) ? c.images : []).filter(s => typeof s === 'string' && s.trim());
+                if (c.image && typeof c.image === 'string' && c.image.trim() && !imgList.includes(c.image.trim())) {
+                    imgList.unshift(c.image.trim());
+                }
+                const hasImgs = imgList.length > 0;
+
                 html += `
                 <tr>
                     <td><code>${escapeHtml(c.id)}</code></td>
                     <td class="fw-bold">${escapeHtml(c.title || '')}</td>
                     <td><a href="${escapeHtml(c.url || '#')}" target="_blank" class="small text-truncate d-inline-block" style="max-width:200px;">${escapeHtml(c.url || '-')}</a></td>
-                    <td>${c.image ? `<a href="${escapeHtml(c.image)}" target="_blank" class="small">ছবি দেখুন</a>` : '-'}</td>
+                    <td>
+                        ${hasImgs ? `
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0 fw-semibold" onclick="viewCardImageModal('${escapeHtml(c.id)}')">
+                                <i class="fa-solid fa-image me-1"></i>ছবি দেখুন (${imgList.length})
+                            </button>
+                        ` : '<span class="text-muted small">-</span>'}
+                    </td>
                     <td class="text-end">
                         <button class="btn-action btn-edit me-1" onclick="openEditCardModal('${c.id}')"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn-action btn-del" onclick="deleteCard('${c.id}', '${escapeHtml(c.title || '')}')"><i class="fa-solid fa-trash"></i></button>
@@ -2967,6 +3027,40 @@
                 `;
             });
             tbody.innerHTML = html;
+        }
+
+        function viewCardImageModal(cardId) {
+            const list = state.cards[state.currentCardType] || [];
+            const c = list.find(it => it.id === cardId);
+            if (!c) return;
+
+            const imgList = (Array.isArray(c.images) ? c.images : []).filter(s => typeof s === 'string' && s.trim());
+            if (c.image && typeof c.image === 'string' && c.image.trim() && !imgList.includes(c.image.trim())) {
+                imgList.unshift(c.image.trim());
+            }
+
+            if (!imgList.length) {
+                showToast('কোনো ছবি পাওয়া যায়নি!', true);
+                return;
+            }
+
+            document.getElementById('modalCardPreviewTitle').innerText = c.title || 'কার্ডের ছবি';
+            document.getElementById('cardPreviewCount').innerText = `মোট ${imgList.length}টি ছবি উপলব্ধ`;
+
+            const container = document.getElementById('cardPreviewContainer');
+            container.innerHTML = '';
+
+            imgList.forEach((img, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'w-100 bg-white p-2 rounded-3 border shadow-sm text-center';
+                wrapper.innerHTML = `
+                    <div class="small fw-semibold text-muted mb-2 text-start">ছবি #${idx + 1}</div>
+                    <img src="${escapeHtml(img)}" class="rounded-3 img-fluid shadow-sm" style="max-height: 500px; object-fit: contain;" alt="Image ${idx + 1}" onerror="this.src='https://placehold.co/400x300?text=IMG+Error'">
+                `;
+                container.appendChild(wrapper);
+            });
+
+            modals.cardPreview.show();
         }
 
         function compressImage(file, maxWidth = 1080, quality = 0.75) {
