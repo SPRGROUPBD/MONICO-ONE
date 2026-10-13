@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monico One - ওয়েবসাইট ভিউ ও স্মার্ট পোর্টাল</title>
+    <!-- Favicon -->
+    <link rel="icon" href="https://img.icons8.com/color/96/globe--v1.png" type="image/png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Toastify CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
+    <style>
+        :root {
+            --primary: #0284c7;
+            --primary-dark: #0369a1;
+            --primary-light: #e0f2fe;
+            --secondary: #0f172a;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --navbar-bg: rgba(255, 255, 255, 0.95);
+            --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        [data-bs-theme="dark"] {
+            --bg-body: #0b1120;
+            --bg-card: #151f32;
+            --border-color: #24324a;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --navbar-bg: rgba(21, 31, 50, 0.95);
+            --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Hind Siliguri', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Sticky Glass Navbar */
+        .portal-navbar {
+            background: var(--navbar-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+            box-shadow: var(--header-shadow);
+            padding: 10px 0;
+            transition: all 0.3s ease;
+        }
+
+        .portal-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .portal-brand-logo {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+            flex-shrink: 0;
+        }
+
+        .portal-brand-text h1 {
+            font-size: 19px;
+            font-weight: 800;
+            margin: 0;
+            line-height: 1.2;
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        [data-bs-theme="dark"] .portal-brand-text h1 {
+            background: linear-gradient(135deg, #38bdf8, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .portal-brand-text small {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+            display: block;
+        }
+
+        /* Search Input */
+        .portal-search {
+            position: relative;
+            max-width: 320px;
+            width: 100%;
+        }
+
+        .portal-search input {
+            background-color: var(--bg-body);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            padding: 8px 16px 8px 38px;
+            font-size: 13.5px;
+            color: var(--text-main);
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .portal-search input:focus {
+            background-color: var(--bg-card);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+            outline: none;
+        }
+
+        .portal-search i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Notice Bar */
+        .notice-ticker-wrapper {
+            background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
+            color: #ffffff;
+            padding: 8px 0;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+        }
+
+        .notice-ticker-badge {
+            background: #ffffff;
+            color: #dc2626;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+
+        .notice-marquee {
+            white-space: nowrap;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .notice-marquee span {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marqueeAnim 28s linear infinite;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .notice-marquee:hover span {
+            animation-play-state: paused;
+        }
+
+        @keyframes marqueeAnim {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-100%, 0); }
+        }
+
+        /* Carousel Slider */
+        .hero-slider-card {
+            border-radius: 20px;
+            overflow: hidden;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .carousel-item img {
+            width: 100%;
+            height: 380px;
+            object-fit: cover;
+            border-radius: 20px;
+            transition: transform 0.5s ease;
+        }
+
+        @media (max-width: 768px) {
+            .carousel-item img {
+                height: 220px;
+            }
+        }
+
+        .carousel-caption-custom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 28px 24px 20px;
+            background: linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.85) 100%);
+            color: white;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+
+        .carousel-caption-custom h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        /* Quick Action Chips */
+        .quick-actions-bar {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 24px;
+            scrollbar-width: thin;
+        }
+
+        .quick-chip {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .quick-chip:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(2, 132, 199, 0.12);
+        }
+
+        .quick-chip i {
+            font-size: 16px;
+            color: var(--primary);
+        }
+
+        /* Section Header */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-main);
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        /* Filter Pills */
+        .filter-nav {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            margin-bottom: 20px;
+            scrollbar-width: none;
+        }
+
+        .filter-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .filter-pill:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .filter-pill.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);
+        }
+
+        /* Month Chips */
+        .month-chips {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            padding: 4px 2px;
+        }
+
+        .month-chip {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .month-chip.active {
+            background: #e0f2fe;
+            color: #0369a1;
+            border-color: #38bdf8;
+            font-weight: 700;
+        }
+
+        [data-bs-theme="dark"] .month-chip.active {
+            background: #0369a1;
+            color: #e0f2fe;
+            border-color: #38bdf8;
+        }
+
+        /* Menu File Cards */
+        .menu-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 20px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+            border-color: #93c5fd;
+        }
+
+        .menu-card.pinned {
+            border-left: 4px solid var(--accent);
+        }
+
+        .menu-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            gap: 10px;
+        }
+
+        .menu-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+            background: #e0f2fe;
+            color: #0284c7;
+        }
+
+        .menu-card-title {
+            font-size: 15.5px;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+            color: var(--text-main);
+            line-height: 1.35;
+        }
+
+        .menu-card-subtitle {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .menu-card-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .badge-soft {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-soft-primary { background: #e0f2fe; color: #0284c7; }
+        .badge-soft-success { background: #dcfce7; color: #15803d; }
+        .badge-soft-danger { background: #fee2e2; color: #dc2626; }
+        .badge-soft-warning { background: #fef3c7; color: #d97706; }
+        .badge-soft-secondary { background: #f1f5f9; color: #475569; }
+
+        [data-bs-theme="dark"] .badge-soft-secondary { background: #1e293b; color: #cbd5e1; }
+
+        .menu-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Product Cards */
+        .product-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            transition: all 0.25s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 28px rgba(0,0,0,0.08);
+            border-color: #38bdf8;
+        }
+
+        .product-card-img-wrapper {
+            position: relative;
+            height: 190px;
+            background: #f1f5f9;
+            overflow: hidden;
+        }
+
+        [data-bs-theme="dark"] .product-card-img-wrapper {
+            background: #1e293b;
+        }
+
+        .product-card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .product-card:hover .product-card-img {
+            transform: scale(1.05);
+        }
+
+        .product-card-body {
+            padding: 16px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Viewer Modal */
+        .modal-fullscreen-custom {
+            max-width: 95vw;
+            height: 92vh;
+            margin: 4vh auto;
+        }
+
+        .viewer-frame {
+            width: 100%;
+            height: 75vh;
+            border: none;
+            border-radius: 12px;
+            background: #f8fafc;
+        }
+
+        /* Notification Drawer/Modal */
+        .notif-item {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            transition: background 0.15s;
+        }
+
+        .notif-item:hover {
+            background: rgba(2, 132, 199, 0.04);
+        }
+
+        .notif-item.unread {
+            border-left: 3px solid var(--primary);
+            background: rgba(2, 132, 199, 0.03);
+        }
+
+        /* Pulse Dot */
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success);
+            display: inline-block;
+            box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+            animation: pulseAnim 2s infinite;
+        }
+
+        @keyframes pulseAnim {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Footer */
+        .portal-footer {
+            background: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+            padding: 30px 0;
+            margin-top: auto;
+            color: var(--text-muted);
+            font-size: 13.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. STICKY TOP NAVBAR -->
+    <header class="portal-navbar">
+        <div class="container-fluid px-3 px-md-4">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <!-- Brand & Logo -->
+                <a href="#" class="portal-brand" onclick="location.reload(); return false;">
+                    <div class="portal-brand-logo">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div class="portal-brand-text">
+                        <h1>Monico One</h1>
+                        <small>স্মার্ট ফিল্ড অপারেশনস ও কন্টেন্ট পোর্টাল</small>
+                    </div>
+                </a>
+
+                <!-- Search Input (Desktop) -->
+                <div class="portal-search d-none d-md-block">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="global-search-input" placeholder="সার্কুলার, ফাইল বা নোটিশ খুঁজুন..." oninput="handleGlobalSearch(this.value)">
+                </div>
+
+                <!-- Right Action Icons & User -->
+                <div class="d-flex align-items-center gap-2">
+                    <!-- DB Status Indicator -->
+                    <div class="d-none d-lg-flex align-items-center gap-2 px-3 py-1 rounded-pill border bg-body-tertiary" style="font-size: 12px; font-weight: 600;">
+                        <span class="pulse-dot"></span>
+                        <span id="db-status-label">অনলাইন (Live RTDB)</span>
+                    </div>
+
+                    <!-- Instant Refresh Button -->
+                    <button class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="রিফ্রেশ করুন" onclick="fetchWebsiteData(true)">
+                        <i class="fa-solid fa-rotate" id="refresh-spin-icon"></i>
+                    </button>
+
+                    <!-- Push Notification Bell -->
+                    <button class="btn btn-outline-secondary btn-sm rounded-circle position-relative d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" onclick="openNotificationModal()" title="নোটিফিকেশন">
+                        <i class="fa-solid fa-bell"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notif-badge-count">
+                            0
+                        </span>
+                    </button>
+
+                    <!-- Dark / Light Mode Toggle -->
+                    <button class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" id="theme-toggle-btn" title="ডার্ক/লাইট মোড" onclick="toggleTheme()">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+
+                    <!-- User Profile / Login -->
+                    <div id="user-auth-section">
+                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-2" onclick="openLoginModal()" id="btn-login-trigger">
+                            <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                            <span class="d-none d-sm-inline">লগইন</span>
+                        </button>
+                    </div>
+
+                    <!-- Direct Link to Admin Console -->
+                    <a href="index.html" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-1 ms-1" title="অ্যাডমিন কনসোল খুলুন">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span class="d-none d-sm-inline">অ্যাডমিন</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Mobile Search Bar -->
+            <div class="portal-search d-block d-md-none mt-2 w-100">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" placeholder="সার্কুলার, ফাইল বা নোটিশ খুঁজুন..." oninput="handleGlobalSearch(this.value)">
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. SCROLLING NOTICE TICKER -->
+    <div id="notice-ticker-container" class="notice-ticker-wrapper d-none">
+        <div class="container-fluid px-3 px-md-4 d-flex align-items-center gap-3">
+            <span class="notice-ticker-badge">
+                <i class="fa-solid fa-bullhorn fa-beat-fade"></i> জরুরি নোটিশ
+            </span>
+            <div class="notice-marquee flex-grow-1" id="notice-marquee-content" onclick="openFullNoticeModal()">
+                <span id="notice-text-span">লোডিং...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="container-fluid px-3 px-md-4 py-4 flex-grow-1">
+
+        <!-- 3. HERO SLIDER CAROUSEL -->
+        <div id="slider-section-container" class="hero-slider-card d-none">
+            <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="4500">
+                <div class="carousel-indicators" id="carousel-indicators"></div>
+                <div class="carousel-inner" id="carousel-inner"></div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Next</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. QUICK SHORTCUTS & SIDEBAR MENUS -->
+        <div class="mb-4">
+            <div class="section-header mb-2">
+                <h2 class="section-title" style="font-size: 16px;">
+                    <i class="fa-solid fa-bolt-lightning text-warning"></i> দ্রুত লিংক ও পোর্টাল অ্যাকশন
+                </h2>
+                <small class="text-muted" id="quick-items-count">৬টি লিংক উপলব্ধ</small>
+            </div>
+            <div class="quick-actions-bar" id="quick-actions-container">
+                <!-- Dynamically populated or standard smart manager links -->
+                <div class="text-center py-2 text-muted small w-100">শর্টকাট লোড হচ্ছে...</div>
+            </div>
+        </div>
+
+        <!-- 5. MAIN CONTENT TABS & FILES SECTION -->
+        <div class="mb-5">
+            <!-- Section Title & Counters -->
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">
+                        <i class="fa-solid fa-folder-open text-primary"></i> সার্কুলার, মেমো ও ফাইলস (Grids 1-5)
+                    </h2>
+                    <small class="text-muted">সর্বশেষ আপলোড অনুযায়ী সাজানো (30, 29, 28... ক্রমানুসারে)</small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2 rounded-pill fw-bold" id="total-menus-badge">
+                        ০ টি ফাইল
+                    </span>
+                </div>
+            </div>
+
+            <!-- Group Filter Pills (All, Grid 1, Grid 2, Grid 3, Grid 4, Grid 5 PDF, Grid 6 Stock) -->
+            <div class="filter-nav" id="grid-filter-nav">
+                <button class="filter-pill active" onclick="setGridFilter('ALL', this)">
+                    <i class="fa-solid fa-border-all me-1"></i> সকল ফাইল (All)
+                </button>
+                <button class="filter-pill" onclick="setGridFilter('grid1', this)">
+                    <i class="fa-solid fa-link me-1"></i> প্রাইমারি মেনু (Grid 1)
+                </button>
+                <button class="filter-pill" onclick="setGridFilter('grid2', this)">
+                    <i class="fa-solid fa-file-invoice me-1"></i> সার্কুলার (Grid 2)
+                </button>
+                <button class="filter-pill" onclick="setGridFilter('grid3', this)">
+                    <i class="fa-solid fa-tags me-1"></i> পলিসি ও অফার (Grid 3)
+                </button>
+                <button class="filter-pill" onclick="setGridFilter('grid4', this)">
+                    <i class="fa-solid fa-newspaper me-1"></i> নোটিশ ও মেমো (Grid 4)
+                </button>
+                <button class="filter-pill" onclick="setGridFilter('grid5', this)">
+                    <i class="fa-solid fa-file-pdf me-1 text-danger"></i> সেলস রিপোর্ট PDF (Grid 5)
+                </button>
+                <button class="filter-pill" onclick="setGridFilter('grid6', this)">
+                    <i class="fa-solid fa-chart-simple me-1 text-success"></i> স্টক রিপোর্ট PDF (Grid 6)
+                </button>
+            </div>
+
+            <!-- Month Filter Chips (ALL, JAN, FEB, MAR...) -->
+            <div class="month-chips" id="month-chips-container">
+                <button class="month-chip active" onclick="setMonthFilter('ALL', this)">সকল মাস</button>
+                <button class="month-chip" onclick="setMonthFilter('JAN', this)">জানুয়ারি</button>
+                <button class="month-chip" onclick="setMonthFilter('FEB', this)">ফেব্রুয়ারি</button>
+                <button class="month-chip" onclick="setMonthFilter('MAR', this)">মার্চ</button>
+                <button class="month-chip" onclick="setMonthFilter('APR', this)">এপ্রিল</button>
+                <button class="month-chip" onclick="setMonthFilter('MAY', this)">মে</button>
+                <button class="month-chip" onclick="setMonthFilter('JUN', this)">জুন</button>
+                <button class="month-chip" onclick="setMonthFilter('JUL', this)">জুলাই</button>
+                <button class="month-chip" onclick="setMonthFilter('AUG', this)">আগস্ট</button>
+                <button class="month-chip" onclick="setMonthFilter('SEP', this)">সেপ্টেম্বর</button>
+                <button class="month-chip" onclick="setMonthFilter('OCT', this)">অক্টোবর</button>
+                <button class="month-chip" onclick="setMonthFilter('NOV', this)">নভেম্বর</button>
+                <button class="month-chip" onclick="setMonthFilter('DEC', this)">ডিসেম্বর</button>
+            </div>
+
+            <!-- Menu Files Grid Cards Container -->
+            <div class="row g-3" id="menu-cards-grid">
+                <!-- Dynamically rendered -->
+                <div class="col-12 text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2">ফাইল তালিকা লোড হচ্ছে...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. PRODUCT LAUNCH SHOWCASE -->
+        <div class="mb-5" id="products-section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">
+                        <i class="fa-solid fa-pills text-success"></i> প্রোডাক্ট লঞ্চ ও মেডিসিন শোকেস
+                    </h2>
+                    <small class="text-muted">নতুন পণ্য ও স্পেশাল প্রমোশনাল অফার</small>
+                </div>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 rounded-pill fw-bold" id="product-count-badge">
+                    ০ টি প্রোডাক্ট
+                </span>
+            </div>
+
+            <div class="row g-3" id="products-cards-grid">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- 7. TRAINING & TARGET SHEETS -->
+        <div class="row g-4 mb-5">
+            <!-- Training Cards -->
+            <div class="col-lg-6">
+                <div class="card h-100 border rounded-4 shadow-sm bg-body-tertiary p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h6 fw-bold m-0 text-primary">
+                            <i class="fa-solid fa-chalkboard-user me-2"></i> ট্রেনিং ও গাইডলাইন কার্ড
+                        </h3>
+                        <span class="badge bg-primary rounded-pill" id="training-count-badge">০ টি</span>
+                    </div>
+                    <div id="training-cards-container" class="d-flex flex-column gap-2">
+                        <!-- Items -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target Sheets -->
+            <div class="col-lg-6">
+                <div class="card h-100 border rounded-4 shadow-sm bg-body-tertiary p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h6 fw-bold m-0 text-warning">
+                            <i class="fa-solid fa-bullseye me-2"></i> টার্গেট ও পারফরম্যান্স শীট
+                        </h3>
+                        <span class="badge bg-warning text-dark rounded-pill" id="target-count-badge">০ টি</span>
+                    </div>
+                    <div id="target-cards-container" class="d-flex flex-column gap-2">
+                        <!-- Items -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 8. FOOTER -->
+    <footer class="portal-footer">
+        <div class="container-fluid px-3 px-md-4">
+            <div class="row g-4 align-items-center">
+                <div class="col-md-6 text-center text-md-start">
+                    <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-2 mb-2">
+                        <div class="portal-brand-logo" style="width: 32px; height: 32px; font-size: 16px;">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <h4 class="h6 fw-bold m-0">Monico One - ওয়েব এডিশন</h4>
+                    </div>
+                    <p class="m-0 text-muted small">
+                        কুষ্টিয়া ডিপো ফিল্ড ফোর্স, সেলস অর্ডার ও সার্কুলার ম্যানেজমেন্ট প্ল্যাটফর্ম।
+                    </p>
+                    <p class="m-0 text-muted small mt-1">
+                        ডাটাবেজ: <code id="footer-db-url">kushtia-depot-default-rtdb.firebaseio.com/MonicoOne</code>
+                    </p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <div class="d-flex align-items-center justify-content-center justify-content-md-end gap-3 mb-2">
+                        <a href="index.html" class="text-decoration-none fw-semibold small text-primary">
+                            <i class="fa-solid fa-shield-halved me-1"></i> অ্যাডমিন কনসোল
+                        </a>
+                        <span class="text-muted">|</span>
+                        <a href="javascript:void(0)" onclick="openEndpointModal()" class="text-decoration-none fw-semibold small text-secondary">
+                            <i class="fa-solid fa-database me-1"></i> ডাটাবেজ পরিবর্তন
+                        </a>
+                        <span class="text-muted">|</span>
+                        <a href="javascript:void(0)" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="text-decoration-none fw-semibold small text-secondary">
+                            <i class="fa-solid fa-arrow-up me-1"></i> উপরে যান
+                        </a>
+                    </div>
+                    <small class="text-muted">© 2026 Monico One. All rights reserved.</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- A. CONTENT VIEWER MODAL (PDF, DOCS, WEB, IMAGES) -->
+    <div class="modal fade" id="modalViewer" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen-custom modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom px-4 py-3">
+                    <div class="d-flex align-items-center gap-2 overflow-hidden me-3">
+                        <span class="badge bg-primary rounded-pill p-2" id="viewer-icon-badge">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </span>
+                        <div>
+                            <h5 class="modal-title fw-bold m-0 text-truncate" id="viewer-modal-title" style="max-width: 60vw;">ডকুমেন্ট ভিউয়ার</h5>
+                            <small class="text-muted" id="viewer-modal-subtitle">Monico One Interactive Document Viewer</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 ms-auto">
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3" id="viewer-open-external-btn" target="_blank" onclick="openCurrentUrlExternal()">
+                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> নতুন ট্যাবে খুলুন
+                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+                <div class="modal-body p-0 position-relative" style="background: #f1f5f9; min-height: 500px;">
+                    <!-- Loading Indicator -->
+                    <div id="viewer-loader" class="position-absolute top-50 start-50 translate-middle text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-muted small mt-2">ডকুমেন্ট লোড হচ্ছে...</p>
+                    </div>
+
+                    <!-- Iframe for Web / PDF -->
+                    <iframe id="viewer-iframe" class="viewer-frame d-none" onload="onIframeLoaded()"></iframe>
+
+                    <!-- Gallery Container for Images -->
+                    <div id="viewer-gallery" class="p-3 text-center d-none" style="max-height: 75vh; overflow-y: auto;">
+                        <div id="gallery-carousel" class="carousel slide" data-bs-interval="false">
+                            <div class="carousel-inner" id="gallery-carousel-inner"></div>
+                            <button class="carousel-control-prev" type="button" data-bs-target="#gallery-carousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"></span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#gallery-carousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- B. POPUP NOTICE MODAL (AUTO DISPLAY ON VISIT) -->
+    <div class="modal fade" id="modalPopupNotice" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div id="popup-notice-img-container" class="position-relative d-none">
+                    <img id="popup-notice-img" src="" alt="Popup Notice" style="width: 100%; max-height: 260px; object-fit: cover;">
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-1 rounded-pill mb-2 fw-bold" id="popup-notice-type">
+                        <i class="fa-solid fa-bullhorn me-1"></i> গুরুত্বপূর্ণ ঘোষণা
+                    </span>
+                    <h4 class="fw-bold mt-2 mb-3 text-dark" id="popup-notice-title">পপআপ বিজ্ঞপ্তি</h4>
+                    <p class="text-muted mb-4 text-start" id="popup-notice-body" style="white-space: pre-line; font-size: 14.5px;"></p>
+
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                            বন্ধ করুন
+                        </button>
+                        <button type="button" class="btn btn-primary rounded-pill px-4" id="popup-notice-action-btn" onclick="handlePopupAction()">
+                            বিস্তারিত দেখুন
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- C. NOTIFICATION CENTER MODAL -->
+    <div class="modal fade" id="modalNotificationCenter" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom px-4 py-3">
+                    <h5 class="modal-title fw-bold m-0 d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-bell text-danger"></i> নোটিফিকেশন সেন্টার
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" id="notification-center-list" style="max-height: 60vh;">
+                    <!-- Notification items -->
+                </div>
+                <div class="modal-footer border-top px-4 py-2 justify-content-between">
+                    <button type="button" class="btn btn-sm btn-link text-decoration-none text-muted" onclick="markAllNotificationsAsRead()">
+                        সবগুলো পড়া হয়েছে চিহ্নিত করুন
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">
+                        বন্ধ করুন
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- D. USER LOGIN MODAL -->
+    <div class="modal fade" id="modalUserLogin" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom px-4 py-3">
+                    <h5 class="modal-title fw-bold m-0">এমপ্লয়ি লগইন</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="login-form" onsubmit="handleUserLogin(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">এমপ্লয়ি আইডি (Employee ID)</label>
+                            <input type="text" class="form-control" id="login-emp-id" placeholder="যেমন: MPO101 বা DIC01" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-semibold">পাসওয়ার্ড (Password)</label>
+                            <input type="password" class="form-control" id="login-emp-pass" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill fw-semibold py-2">
+                            <i class="fa-solid fa-right-to-bracket me-1"></i> লগইন করুন
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- E. USER PROFILE MODAL (LOGGED IN) -->
+    <div class="modal fade" id="modalUserProfile" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4">
+                <div class="position-relative d-inline-block mx-auto mb-3">
+                    <img id="prof-user-avatar" src="https://img.icons8.com/color/96/user-male-circle--v1.png" alt="Avatar" class="rounded-circle border shadow-sm" style="width: 80px; height: 80px; object-fit: cover;">
+                </div>
+                <h5 class="fw-bold m-0" id="prof-user-name">Employee Name</h5>
+                <p class="text-muted small mb-2" id="prof-user-id">ID: 0000</p>
+                <div>
+                    <span class="badge bg-primary px-3 py-1 rounded-pill mb-4" id="prof-user-role">MPO</span>
+                </div>
+                <div class="d-grid gap-2">
+                    <a href="index.html" class="btn btn-outline-primary rounded-pill btn-sm py-2 d-none" id="prof-admin-link">
+                        <i class="fa-solid fa-shield-halved me-1"></i> অ্যাডমিন কনসোলে যান
+                    </a>
+                    <button type="button" class="btn btn-outline-danger rounded-pill btn-sm py-2" onclick="handleUserLogout()">
+                        <i class="fa-solid fa-power-off me-1"></i> লগআউট করুন
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- F. DATABASE ENDPOINT CONFIG MODAL -->
+    <div class="modal fade" id="modalEndpoint" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom px-4 py-3">
+                    <h5 class="modal-title fw-bold m-0"><i class="fa-solid fa-database text-primary me-2"></i>ডাটাবেজ কনফিগারেশন</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <label class="form-label small fw-semibold">Firebase Realtime Database URL</label>
+                    <input type="text" class="form-control" id="custom-db-url-input" value="">
+                    <small class="text-muted mt-2 d-block">
+                        ডিফল্ট: <code>https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne</code>
+                    </small>
+                </div>
+                <div class="modal-footer border-top px-4 py-2">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill btn-sm" onclick="resetDbUrl()">
+                        ডিফল্ট এ ফিরুন
+                    </button>
+                    <button type="button" class="btn btn-primary rounded-pill btn-sm px-4" onclick="saveCustomDbUrl()">
+                        সংরক্ষণ ও রিলোড
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    <script>
+        // ==================== STATE & CONFIGURATION ====================
+        const DEFAULT_RTDB_URL = 'https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne';
+        let BASE_URL = localStorage.getItem('MONICO_RTDB_URL') || DEFAULT_RTDB_URL;
+
+        let portalState = {
+            sidebarMenus: [],
+            menus: [],
+            sliders: [],
+            notices: [],
+            popups: [],
+            productCards: [],
+            trainingCards: [],
+            targetSheets: [],
+            notifications: [],
+            users: {},
+            currentUser: null,
+            activeGridFilter: 'ALL',
+            activeMonthFilter: 'ALL',
+            searchKeyword: '',
+            currentViewerUrl: ''
+        };
+
+        // Bootstrap Modals
+        let viewerModal, popupNoticeModal, notifCenterModal, loginModal, profileModal, endpointModal;
+
+        // Initialize on DOM load
+        document.addEventListener('DOMContentLoaded', () => {
+            viewerModal = new bootstrap.Modal(document.getElementById('modalViewer'));
+            popupNoticeModal = new bootstrap.Modal(document.getElementById('modalPopupNotice'));
+            notifCenterModal = new bootstrap.Modal(document.getElementById('modalNotificationCenter'));
+            loginModal = new bootstrap.Modal(document.getElementById('modalUserLogin'));
+            profileModal = new bootstrap.Modal(document.getElementById('modalUserProfile'));
+            endpointModal = new bootstrap.Modal(document.getElementById('modalEndpoint'));
+
+            // Load saved user session
+            const savedUser = localStorage.getItem('MONICO_LOGGED_USER');
+            if (savedUser) {
+                try {
+                    portalState.currentUser = JSON.parse(savedUser);
+                } catch(e) {}
+            }
+            updateUserUI();
+
+            // Set DB URL in inputs
+            document.getElementById('custom-db-url-input').value = BASE_URL;
+            document.getElementById('footer-db-url').innerText = BASE_URL.replace('https://', '');
+
+            // Initialize Theme
+            initTheme();
+
+            // Fetch live data from Firebase RTDB
+            fetchWebsiteData();
+        });
+
+        // ==================== TOAST & NOTIFICATIONS ====================
+        function showToast(msg, isError = false) {
+            Toastify({
+                text: msg,
+                duration: 3200,
+                gravity: "top",
+                position: "right",
+                style: {
+                    background: isError ? "#ef4444" : "#0284c7",
+                    borderRadius: "10px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    boxShadow: "0 8px 18px rgba(0,0,0,0.15)"
+                }
+            }).showToast();
+        }
+
+        // ==================== THEME MANAGEMENT ====================
+        function initTheme() {
+            const savedTheme = localStorage.getItem('MONICO_THEME') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+            updateThemeButton(savedTheme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-bs-theme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-bs-theme', next);
+            localStorage.setItem('MONICO_THEME', next);
+            updateThemeButton(next);
+        }
+
+        function updateThemeButton(theme) {
+            const btn = document.getElementById('theme-toggle-btn');
+            if (btn) {
+                btn.innerHTML = theme === 'dark' ? '<i class="fa-solid fa-sun text-warning"></i>' : '<i class="fa-solid fa-moon"></i>';
+            }
+        }
+
+        // ==================== SORTING UTILITY (30, 29, 28... Z to A) ====================
+        function normalizeBengaliDigits(str) {
+            if (!str) return '';
+            const b = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+            return String(str).replace(/[০-৯]/g, d => b.indexOf(d));
+        }
+
+        function extractDateOrNumberScore(title, dateStr) {
+            const normTitle = normalizeBengaliDigits(title || '');
+            const ddmmyyRegex = /\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b/;
+            const mTitle = normTitle.match(ddmmyyRegex);
+            if (mTitle) {
+                const day = parseInt(mTitle[1], 10);
+                const month = parseInt(mTitle[2], 10);
+                let year = parseInt(mTitle[3], 10);
+                if (year < 100) year += 2000;
+                return (year * 10000) + (month * 100) + day;
+            }
+
+            if (dateStr) {
+                const normDate = normalizeBengaliDigits(dateStr);
+                const mDate = normDate.match(ddmmyyRegex);
+                if (mDate) {
+                    const day = parseInt(mDate[1], 10);
+                    const month = parseInt(mDate[2], 10);
+                    let year = parseInt(mDate[3], 10);
+                    if (year < 100) year += 2000;
+                    return (year * 10000) + (month * 100) + day;
+                }
+            }
+
+            const numMatch = normTitle.match(/\b(\d+)\b/);
+            if (numMatch) {
+                return parseInt(numMatch[1], 10);
+            }
+            return null;
+        }
+
+        function sortDescendingZtoA(list) {
+            return list.sort((a, b) => {
+                if (a.isPinned !== b.isPinned) {
+                    return a.isPinned ? -1 : 1;
+                }
+                const sa = extractDateOrNumberScore(a.title, a.date);
+                const sb = extractDateOrNumberScore(b.title, b.date);
+                if (sa !== null && sb !== null && sa !== sb) {
+                    return sb - sa; // Descending (30, 29, 28...)
+                }
+                if (sa !== null && sb === null) return -1;
+                if (sa === null && sb !== null) return 1;
+                return (b.title || '').localeCompare(a.title || '', undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
+
+        // ==================== URL RESOLUTION (go: schemes) ====================
+        function resolveGoUrl(url) {
+            if (!url) return '';
+            const clean = url.trim();
+            switch (clean) {
+                case 'go:order': return 'http://103.153.241.44/monicoapp';
+                case 'go:Tour': return 'https://sprgroupbd.github.io/SmartManager/monicoone.html';
+                case 'go:delivery': return 'https://sprgroupbd.github.io/SmartManager/depo_bill.html';
+                case 'go:bill': return 'https://sprgroupbd.github.io/SmartManager/admin';
+                case 'go:att1': return 'https://sprgroupbd.github.io/SmartManager/att.html';
+                case 'go:dcc': return 'https://sprgroupbd.github.io/SmartManager/dcs.html';
+                default:
+                    if (clean.startsWith('go:')) {
+                        return 'https://sprgroupbd.github.io/SmartManager/' + clean.replace('go:', '').trim();
+                    }
+                    return clean;
+            }
+        }
+
+        // ==================== FETCH DATA FROM FIREBASE RTDB ====================
+        async function fetchWebsiteData(showToastFeedback = false) {
+            const spinIcon = document.getElementById('refresh-spin-icon');
+            if (spinIcon) spinIcon.classList.add('fa-spin');
+            document.getElementById('db-status-label').innerText = 'সিঙ্ক হচ্ছে...';
+
+            try {
+                const [sbRes, mRes, slRes, nRes, pRes, prodRes, trainRes, targetRes, legacyTrainRes, legacyTargetRes, notifRes, uRes] = await Promise.all([
+                    fetch(`${BASE_URL}/sidebar_menus.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/menus.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/sliders.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/notices.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/popup_notices.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/product_launch_cards.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/training_cards.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/target_sheets.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/product_training_cards.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/product_target_sheets.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/notifications.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/users.json`).then(r => r.json()).catch(() => null)
+                ]);
+
+                // 1. Sidebar Menus
+                portalState.sidebarMenus = [];
+                if (sbRes) {
+                    Object.keys(sbRes).forEach(k => {
+                        const it = sbRes[k];
+                        if (it) portalState.sidebarMenus.push({ id: k, ...it });
+                    });
+                    portalState.sidebarMenus.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.name || '').localeCompare(b.name || ''));
+                }
+
+                // 2. Menus Files
+                portalState.menus = [];
+                if (mRes) {
+                    Object.keys(mRes).forEach(k => {
+                        const it = mRes[k];
+                        if (it && (it.status || 'active') === 'active') {
+                            portalState.menus.push({ id: k, ...it });
+                        }
+                    });
+                    sortDescendingZtoA(portalState.menus);
+                }
+
+                // 3. Sliders
+                portalState.sliders = [];
+                if (slRes) {
+                    Object.keys(slRes).forEach(k => {
+                        const it = slRes[k];
+                        if (it && it.image) portalState.sliders.push({ id: k, ...it });
+                    });
+                }
+
+                // 4. Notices
+                portalState.notices = [];
+                if (nRes) {
+                    Object.keys(nRes).forEach(k => {
+                        const it = nRes[k];
+                        if (it && it.text) portalState.notices.push({ id: k, ...it });
+                    });
+                }
+
+                // 5. Popups
+                portalState.popups = [];
+                if (pRes) {
+                    Object.keys(pRes).forEach(k => {
+                        const it = pRes[k];
+                        if (it && (it.status || 'active').toLowerCase() === 'active') {
+                            portalState.popups.push({ id: k, ...it });
+                        }
+                    });
+                }
+
+                // 6. Product Launch Cards
+                portalState.productCards = [];
+                if (prodRes) {
+                    Object.keys(prodRes).forEach(k => {
+                        const it = prodRes[k];
+                        if (it) portalState.productCards.push({ id: k, ...it });
+                    });
+                    sortDescendingZtoA(portalState.productCards);
+                }
+
+                // 7. Training Cards (Merged)
+                portalState.trainingCards = [];
+                if (legacyTrainRes) Object.keys(legacyTrainRes).forEach(k => legacyTrainRes[k] && portalState.trainingCards.push({ id: k, ...legacyTrainRes[k] }));
+                if (trainRes) {
+                    Object.keys(trainRes).forEach(k => {
+                        if (trainRes[k]) {
+                            const ex = portalState.trainingCards.findIndex(i => i.id === k);
+                            if (ex !== -1) portalState.trainingCards[ex] = { id: k, ...trainRes[k] };
+                            else portalState.trainingCards.push({ id: k, ...trainRes[k] });
+                        }
+                    });
+                }
+                sortDescendingZtoA(portalState.trainingCards);
+
+                // 8. Target Sheets (Merged)
+                portalState.targetSheets = [];
+                if (legacyTargetRes) Object.keys(legacyTargetRes).forEach(k => legacyTargetRes[k] && portalState.targetSheets.push({ id: k, ...legacyTargetRes[k] }));
+                if (targetRes) {
+                    Object.keys(targetRes).forEach(k => {
+                        if (targetRes[k]) {
+                            const ex = portalState.targetSheets.findIndex(i => i.id === k);
+                            if (ex !== -1) portalState.targetSheets[ex] = { id: k, ...targetRes[k] };
+                            else portalState.targetSheets.push({ id: k, ...targetRes[k] });
+                        }
+                    });
+                }
+                sortDescendingZtoA(portalState.targetSheets);
+
+                // 9. Notifications
+                portalState.notifications = [];
+                if (notifRes) {
+                    Object.keys(notifRes).forEach(k => {
+                        const it = notifRes[k];
+                        if (it) portalState.notifications.push({ id: k, ...it });
+                    });
+                    portalState.notifications.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+                }
+
+                // 10. Users
+                portalState.users = uRes || {};
+
+                // Render all sections
+                renderAllComponents();
+
+                document.getElementById('db-status-label').innerText = 'অনলাইন (Live RTDB)';
+                if (showToastFeedback) showToast('ডাটাবেজ রিফ্রেশ ও সিঙ্ক সম্পন্ন হয়েছে।');
+
+                // Trigger active popup notice if available
+                triggerAutoPopupNotice();
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('db-status-label').innerText = 'অফলাইন / ত্রুটি';
+                showToast('ডাটাবেজ থেকে ডাটা লোড করতে সমস্যা হয়েছে!', true);
+            } finally {
+                if (spinIcon) spinIcon.classList.remove('fa-spin');
+            }
+        }
+
+        // ==================== RENDER ALL SECTIONS ====================
+        function renderAllComponents() {
+            renderNoticeTicker();
+            renderSliders();
+            renderQuickActions();
+            renderMenuCards();
+            renderProducts();
+            renderTrainingCards();
+            renderTargetSheets();
+            renderNotificationsBadge();
+        }
+
+        // 1. Notice Ticker
+        function renderNoticeTicker() {
+            const container = document.getElementById('notice-ticker-container');
+            const span = document.getElementById('notice-text-span');
+            if (portalState.notices.length > 0) {
+                const combinedNotice = portalState.notices.map(n => n.text).join('  ★★★  ');
+                span.innerText = combinedNotice;
+                container.classList.remove('d-none');
+            } else {
+                container.classList.add('d-none');
+            }
+        }
+
+        function openFullNoticeModal() {
+            if (portalState.notices.length === 0) return;
+            const fullText = portalState.notices.map((n, i) => `${i + 1}. ${n.text}`).join('\n\n');
+            document.getElementById('popup-notice-title').innerText = 'চলমান জরুরি নোটিশ';
+            document.getElementById('popup-notice-body').innerText = fullText;
+            document.getElementById('popup-notice-type').innerText = 'স্ক্রোল নোটিশ';
+            document.getElementById('popup-notice-img-container').classList.add('d-none');
+            document.getElementById('popup-notice-action-btn').classList.add('d-none');
+            popupNoticeModal.show();
+        }
+
+        // 2. Banner Slider
+        function renderSliders() {
+            const container = document.getElementById('slider-section-container');
+            const inner = document.getElementById('carousel-inner');
+            const indicators = document.getElementById('carousel-indicators');
+
+            if (!portalState.sliders.length) {
+                container.classList.add('d-none');
+                return;
+            }
+
+            container.classList.remove('d-none');
+            let innerHtml = '';
+            let indicHtml = '';
+
+            portalState.sliders.forEach((s, idx) => {
+                const isActive = idx === 0 ? 'active' : '';
+                indicHtml += `
+                    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="${idx}" class="${isActive}" aria-label="Slide ${idx + 1}"></button>
+                `;
+                innerHtml += `
+                    <div class="carousel-item ${isActive}">
+                        <img src="${escapeHtml(s.image)}" alt="${escapeHtml(s.title || 'Banner')}" onerror="this.src='https://placehold.co/1200x400?text=Monico+One'">
+                        ${s.title ? `
+                            <div class="carousel-caption-custom">
+                                <h3>${escapeHtml(s.title)}</h3>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            indicators.innerHTML = indicHtml;
+            inner.innerHTML = innerHtml;
+        }
+
+        // 3. Quick Shortcuts
+        function renderQuickActions() {
+            const container = document.getElementById('quick-actions-container');
+            let items = portalState.sidebarMenus.filter(sm => (sm.status || 'active') === 'active');
+
+            // Default tools if empty
+            if (!items.length) {
+                items = [
+                    { name: 'ট্যুর প্ল্যান', url: 'go:Tour', icon: 'fa-car' },
+                    { name: 'ডেলিভারি বিল', url: 'go:delivery', icon: 'fa-truck-fast' },
+                    { name: 'অ্যাটেনডেন্স', url: 'go:att1', icon: 'fa-clipboard-user' },
+                    { name: 'ডেইলি কল রিপোর্ট (DCS)', url: 'go:dcc', icon: 'fa-chart-pie' },
+                    { name: 'সেলস অর্ডার', url: 'go:order', icon: 'fa-cart-shopping' },
+                    { name: 'স্মার্ট ম্যানেজার', url: 'go:bill', icon: 'fa-briefcase' }
+                ];
+            }
+
+            document.getElementById('quick-items-count').innerText = `${items.length}টি টুল উপলব্ধ`;
+
+            let html = '';
+            items.forEach(it => {
+                const effectiveUrl = resolveGoUrl(it.url);
+                let iconClass = it.icon || 'fa-globe';
+                if (!iconClass.startsWith('fa-') && !iconClass.startsWith('fa ')) iconClass = 'fa-' + iconClass;
+
+                html += `
+                    <div class="quick-chip" onclick="handleItemClick('${escapeHtml(it.name)}', '${escapeHtml(effectiveUrl)}')">
+                        <i class="fa-solid ${escapeHtml(iconClass)}"></i>
+                        <span>${escapeHtml(it.name)}</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square small text-muted ms-1" style="font-size: 11px;"></i>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 4. Menu Files & Circulars Hub
+        function setGridFilter(grid, el) {
+            portalState.activeGridFilter = grid;
+            document.querySelectorAll('#grid-filter-nav .filter-pill').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            renderMenuCards();
+        }
+
+        function setMonthFilter(month, el) {
+            portalState.activeMonthFilter = month;
+            document.querySelectorAll('#month-chips-container .month-chip').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            renderMenuCards();
+        }
+
+        function handleGlobalSearch(q) {
+            portalState.searchKeyword = q.toLowerCase().trim();
+            renderMenuCards();
+        }
+
+        function renderMenuCards() {
+            const grid = document.getElementById('menu-cards-grid');
+            let list = portalState.menus;
+
+            // Filter by Grid
+            if (portalState.activeGridFilter !== 'ALL') {
+                list = list.filter(m => (m.group || 'grid1') === portalState.activeGridFilter);
+            }
+
+            // Filter by Month
+            if (portalState.activeMonthFilter !== 'ALL') {
+                list = list.filter(m => (m.month || '').toUpperCase() === portalState.activeMonthFilter);
+            }
+
+            // Filter by Search Query
+            if (portalState.searchKeyword) {
+                list = list.filter(m => {
+                    const t = (m.title || '').toLowerCase();
+                    const sub = (m.subtitle || '').toLowerCase();
+                    const d = (m.date || '').toLowerCase();
+                    return t.includes(portalState.searchKeyword) || sub.includes(portalState.searchKeyword) || d.includes(portalState.searchKeyword);
+                });
+            }
+
+            document.getElementById('total-menus-badge').innerText = `${list.length} টি ফাইল`;
+
+            if (!list.length) {
+                grid.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <div class="p-4 bg-body-tertiary rounded-4 border d-inline-block">
+                            <i class="fa-solid fa-folder-open fa-3x text-muted mb-3 opacity-50"></i>
+                            <h5 class="fw-bold mb-1">কোনো ফাইল খুঁজে পাওয়া যায়নি</h5>
+                            <p class="text-muted small m-0">ফিল্টার পরিবর্তন করে আবার চেষ্টা করুন।</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            list.forEach(m => {
+                const isGrid5Pdf = (m.group || '') === 'grid5';
+                const isGrid6Pdf = (m.group || '') === 'grid6';
+                const isPdf = isGrid5Pdf || isGrid6Pdf || (m.url && m.url.toLowerCase().includes('.pdf'));
+                const hasUrl = m.url && m.url.trim().length > 0;
+                const images = Array.isArray(m.images) ? m.images : [];
+                const imgCount = images.length;
+                const effectiveUrl = resolveGoUrl(m.url);
+
+                let iconClass = m.icon || (isPdf ? 'fa-file-pdf' : (imgCount > 0 ? 'fa-images' : 'fa-folder'));
+                if (!iconClass.startsWith('fa-') && !iconClass.startsWith('fa ')) iconClass = 'fa-' + iconClass;
+
+                let iconColor = isPdf ? 'text-danger' : (imgCount > 0 ? 'text-primary' : 'text-info');
+                let iconBg = isPdf ? 'background: #fee2e2;' : (imgCount > 0 ? 'background: #e0f2fe;' : 'background: #f0fdf4;');
+
+                html += `
+                    <div class="col-sm-6 col-lg-4 col-xl-3">
+                        <div class="menu-card ${m.isPinned ? 'pinned' : ''}">
+                            <div>
+                                <div class="menu-card-header">
+                                    <div class="menu-icon-box" style="${iconBg}">
+                                        <i class="fa-solid ${escapeHtml(iconClass)} ${iconColor}"></i>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-1 justify-content-end">
+                                        ${m.isPinned ? `
+                                            <span class="badge-soft badge-soft-warning"><i class="fa-solid fa-thumbtack"></i> পিন</span>
+                                        ` : ''}
+                                        <span class="badge-soft badge-soft-secondary">${escapeHtml(m.group || 'grid1')}</span>
+                                    </div>
+                                </div>
+
+                                <h3 class="menu-card-title">${escapeHtml(m.title || 'শিরোনামহীন')}</h3>
+                                ${m.subtitle ? `<div class="menu-card-subtitle">${escapeHtml(m.subtitle)}</div>` : ''}
+
+                                <div class="menu-card-badges">
+                                    ${m.date ? `
+                                        <span class="badge-soft badge-soft-secondary"><i class="fa-regular fa-calendar me-1"></i>${escapeHtml(m.date)}</span>
+                                    ` : ''}
+                                    ${m.month ? `
+                                        <span class="badge-soft badge-soft-primary">${escapeHtml(m.month)}</span>
+                                    ` : ''}
+                                    ${isPdf ? `
+                                        <span class="badge-soft badge-soft-danger"><i class="fa-solid fa-file-pdf me-1"></i>PDF ডকুমেন্ট</span>
+                                    ` : (imgCount > 0 ? `
+                                        <span class="badge-soft badge-soft-primary"><i class="fa-solid fa-image me-1"></i>${imgCount}টি ছবি</span>
+                                    ` : `
+                                        <span class="badge-soft badge-soft-success"><i class="fa-solid fa-globe me-1"></i>ওয়েব লিংক</span>
+                                    `)}
+                                </div>
+                            </div>
+
+                            <div class="menu-card-footer">
+                                ${imgCount > 0 ? `
+                                    <button class="btn btn-primary btn-sm rounded-pill px-3 w-100 fw-semibold" onclick="openGalleryViewer('${escapeHtml(m.title)}', ${JSON.stringify(images).replace(/"/g, '&quot;')})">
+                                        <i class="fa-solid fa-images me-1"></i> ছবি গ্যালারি (${imgCount})
+                                    </button>
+                                ` : (hasUrl ? `
+                                    <button class="btn btn-outline-primary btn-sm rounded-pill px-3 flex-grow-1 fw-semibold" onclick="handleItemClick('${escapeHtml(m.title)}', '${escapeHtml(effectiveUrl)}')">
+                                        <i class="fa-solid fa-eye me-1"></i> ভিউ করুন
+                                    </button>
+                                    <a href="${escapeHtml(effectiveUrl)}" target="_blank" class="btn btn-light border btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="সরাসরি খুলুন">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                    </a>
+                                ` : `
+                                    <button class="btn btn-light btn-sm rounded-pill px-3 w-100 text-muted" disabled>
+                                        কোনো লিংক নেই
+                                    </button>
+                                `)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+        }
+
+        // 5. Products Showcase
+        function renderProducts() {
+            const grid = document.getElementById('products-cards-grid');
+            const countBadge = document.getElementById('product-count-badge');
+            const list = portalState.productCards;
+
+            countBadge.innerText = `${list.length} টি প্রোডাক্ট`;
+
+            if (!list.length) {
+                grid.innerHTML = `
+                    <div class="col-12 text-center py-4 text-muted small">
+                        বর্তমানে কোনো প্রোডাক্ট কার্ড ডাটাবেজে নেই।
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            list.forEach(p => {
+                const img = p.image || (Array.isArray(p.images) && p.images[0]) || 'https://placehold.co/400x300?text=Product';
+                const effectiveUrl = resolveGoUrl(p.url);
+
+                html += `
+                    <div class="col-sm-6 col-md-4 col-xl-3">
+                        <div class="product-card">
+                            <div class="product-card-img-wrapper">
+                                <img src="${escapeHtml(img)}" alt="${escapeHtml(p.title || 'Product')}" class="product-card-img" onerror="this.src='https://placehold.co/400x300?text=Product'">
+                                ${p.date ? `
+                                    <span class="position-absolute top-0 start-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2 py-1 small">
+                                        ${escapeHtml(p.date)}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="product-card-body">
+                                <div>
+                                    <h4 class="h6 fw-bold mb-1">${escapeHtml(p.title || 'মেডিসিন')}</h4>
+                                    ${p.description ? `<p class="text-muted small mb-2 line-clamp-2">${escapeHtml(p.description)}</p>` : ''}
+                                </div>
+                                <div class="mt-3 pt-2 border-top d-flex gap-2">
+                                    ${effectiveUrl ? `
+                                        <button class="btn btn-outline-success btn-sm rounded-pill w-100 fw-semibold" onclick="handleItemClick('${escapeHtml(p.title)}', '${escapeHtml(effectiveUrl)}')">
+                                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> বিস্তারিত
+                                        </button>
+                                    ` : (img ? `
+                                        <button class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-semibold" onclick="openGalleryViewer('${escapeHtml(p.title)}', ['${escapeHtml(img)}'])">
+                                            <i class="fa-solid fa-image me-1"></i> ছবি দেখুন
+                                        </button>
+                                    ` : '')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+        }
+
+        // 6. Training Cards
+        function renderTrainingCards() {
+            const container = document.getElementById('training-cards-container');
+            const countBadge = document.getElementById('training-count-badge');
+            const list = portalState.trainingCards;
+
+            countBadge.innerText = `${list.length} টি`;
+
+            if (!list.length) {
+                container.innerHTML = `<div class="text-muted small py-3 text-center">কোনো ট্রেনিং কার্ড পাওয়া যায়নি।</div>`;
+                return;
+            }
+
+            let html = '';
+            list.forEach(t => {
+                const effectiveUrl = resolveGoUrl(t.url);
+                html += `
+                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2">
+                        <div class="overflow-hidden">
+                            <h5 class="small fw-bold m-0 text-truncate">${escapeHtml(t.title || 'ট্রেনিং')}</h5>
+                            <small class="text-muted">${escapeHtml(t.date || '')} ${t.month ? `(${escapeHtml(t.month)})` : ''}</small>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm rounded-pill px-3 flex-shrink-0" onclick="handleItemClick('${escapeHtml(t.title)}', '${escapeHtml(effectiveUrl)}')">
+                            <i class="fa-solid fa-eye me-1"></i> ওপেন
+                        </button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 7. Target Sheets
+        function renderTargetSheets() {
+            const container = document.getElementById('target-cards-container');
+            const countBadge = document.getElementById('target-count-badge');
+            const list = portalState.targetSheets;
+
+            countBadge.innerText = `${list.length} টি`;
+
+            if (!list.length) {
+                container.innerHTML = `<div class="text-muted small py-3 text-center">কোনো টার্গেট শীট পাওয়া যায়নি।</div>`;
+                return;
+            }
+
+            let html = '';
+            list.forEach(ts => {
+                const effectiveUrl = resolveGoUrl(ts.url);
+                html += `
+                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2">
+                        <div class="overflow-hidden">
+                            <h5 class="small fw-bold m-0 text-truncate">${escapeHtml(ts.title || 'টার্গেট শীট')}</h5>
+                            <small class="text-muted">${escapeHtml(ts.date || '')} ${ts.month ? `(${escapeHtml(ts.month)})` : ''}</small>
+                        </div>
+                        <button class="btn btn-outline-warning btn-sm rounded-pill px-3 flex-shrink-0" onclick="handleItemClick('${escapeHtml(ts.title)}', '${escapeHtml(effectiveUrl)}')">
+                            <i class="fa-solid fa-file-excel me-1"></i> দেখুন
+                        </button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // ==================== AUTO POPUP NOTICE ====================
+        function triggerAutoPopupNotice() {
+            if (!portalState.popups.length) return;
+            const popup = portalState.popups[0]; // first active popup
+            const sessionDismissed = sessionStorage.getItem('POPUP_DISMISSED_' + popup.id);
+            if (sessionDismissed) return;
+
+            document.getElementById('popup-notice-title').innerText = popup.title || 'পপআপ বিজ্ঞপ্তি';
+            document.getElementById('popup-notice-body').innerText = popup.body || '';
+            document.getElementById('popup-notice-type').innerText = (popup.type || 'general').toUpperCase();
+
+            const imgBox = document.getElementById('popup-notice-img-container');
+            const imgEl = document.getElementById('popup-notice-img');
+            if (popup.image) {
+                imgEl.src = popup.image;
+                imgBox.classList.remove('d-none');
+            } else {
+                imgBox.classList.add('d-none');
+            }
+
+            const actionBtn = document.getElementById('popup-notice-action-btn');
+            if (popup.url) {
+                actionBtn.classList.remove('d-none');
+                actionBtn.setAttribute('data-url', resolveGoUrl(popup.url));
+            } else {
+                actionBtn.classList.add('d-none');
+            }
+
+            sessionStorage.setItem('POPUP_DISMISSED_' + popup.id, 'true');
+            popupNoticeModal.show();
+        }
+
+        function handlePopupAction() {
+            const btn = document.getElementById('popup-notice-action-btn');
+            const url = btn.getAttribute('data-url');
+            if (url) {
+                popupNoticeModal.hide();
+                handleItemClick('ঘোষণা বিস্তারিত', url);
+            }
+        }
+
+        // ==================== DOCUMENT & CONTENT VIEWER ====================
+        function handleItemClick(title, url) {
+            if (!url) return;
+
+            portalState.currentViewerUrl = url;
+            document.getElementById('viewer-modal-title').innerText = title;
+            document.getElementById('viewer-modal-subtitle').innerText = url;
+
+            const isPdf = url.toLowerCase().includes('.pdf');
+            const iconBadge = document.getElementById('viewer-icon-badge');
+            iconBadge.innerHTML = isPdf ? '<i class="fa-solid fa-file-pdf"></i>' : '<i class="fa-solid fa-globe"></i>';
+
+            const iframe = document.getElementById('viewer-iframe');
+            const gallery = document.getElementById('viewer-gallery');
+            const loader = document.getElementById('viewer-loader');
+
+            gallery.classList.add('d-none');
+            iframe.classList.add('d-none');
+            loader.classList.remove('d-none');
+
+            // If PDF remote URL, use Google Docs Viewer for seamless web iframe rendering
+            let effectiveEmbedUrl = url;
+            if (isPdf && (url.startsWith('http://') || url.startsWith('https://')) && !url.includes('docs.google.com')) {
+                effectiveEmbedUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
+            }
+
+            iframe.src = effectiveEmbedUrl;
+            viewerModal.show();
+        }
+
+        function onIframeLoaded() {
+            document.getElementById('viewer-loader').classList.add('d-none');
+            document.getElementById('viewer-iframe').classList.remove('d-none');
+        }
+
+        function openGalleryViewer(title, images) {
+            if (!images || !images.length) return;
+
+            document.getElementById('viewer-modal-title').innerText = title;
+            document.getElementById('viewer-modal-subtitle').innerText = `${images.length}টি ছবি উপলব্ধ`;
+            document.getElementById('viewer-icon-badge').innerHTML = '<i class="fa-solid fa-images"></i>';
+
+            const iframe = document.getElementById('viewer-iframe');
+            const gallery = document.getElementById('viewer-gallery');
+            const loader = document.getElementById('viewer-loader');
+            const carouselInner = document.getElementById('gallery-carousel-inner');
+
+            iframe.classList.add('d-none');
+            loader.classList.add('d-none');
+            gallery.classList.remove('d-none');
+
+            let html = '';
+            images.forEach((img, idx) => {
+                const isActive = idx === 0 ? 'active' : '';
+                html += `
+                    <div class="carousel-item ${isActive}">
+                        <img src="${escapeHtml(img)}" class="d-block mx-auto rounded-3 shadow" style="max-height: 70vh; max-width: 100%; object-fit: contain;">
+                        <div class="mt-2 text-center text-muted small">${idx + 1} / ${images.length}</div>
+                    </div>
+                `;
+            });
+
+            carouselInner.innerHTML = html;
+            viewerModal.show();
+        }
+
+        function openCurrentUrlExternal() {
+            if (portalState.currentViewerUrl) {
+                window.open(portalState.currentViewerUrl, '_blank');
+            }
+        }
+
+        // ==================== NOTIFICATIONS ====================
+        function renderNotificationsBadge() {
+            const badge = document.getElementById('notif-badge-count');
+            const readIds = getReadNotificationIds();
+            const unreadCount = portalState.notifications.filter(n => !readIds.includes(n.id)).length;
+
+            if (unreadCount > 0) {
+                badge.innerText = unreadCount > 99 ? '99+' : unreadCount;
+                badge.classList.remove('d-none');
+            } else {
+                badge.classList.add('d-none');
+            }
+        }
+
+        function getReadNotificationIds() {
+            try {
+                return JSON.parse(localStorage.getItem('MONICO_READ_NOTIFS') || '[]');
+            } catch(e) {
+                return [];
+            }
+        }
+
+        function openNotificationModal() {
+            const listEl = document.getElementById('notification-center-list');
+            const readIds = getReadNotificationIds();
+
+            if (!portalState.notifications.length) {
+                listEl.innerHTML = `
+                    <div class="p-5 text-center text-muted">
+                        <i class="fa-regular fa-bell-slash fa-2x mb-2 opacity-50"></i>
+                        <p class="m-0 small">কোনো নতুন নোটিফিকেশন নেই।</p>
+                    </div>
+                `;
+            } else {
+                let html = '';
+                portalState.notifications.forEach(n => {
+                    const isRead = readIds.includes(n.id);
+                    const dateFormatted = n.dateFormatted || (n.timestamp ? new Date(n.timestamp).toLocaleString('bn-BD') : '');
+
+                    html += `
+                        <div class="notif-item ${!isRead ? 'unread' : ''}" onclick="markNotifAsRead('${n.id}', '${escapeHtml(n.url || '')}')">
+                            <div class="mt-1">
+                                <i class="fa-solid fa-circle-info text-primary"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="fw-bold m-0 small">${escapeHtml(n.title || 'বিজ্ঞপ্তি')}</h6>
+                                    <small class="text-muted" style="font-size: 11px;">${escapeHtml(dateFormatted)}</small>
+                                </div>
+                                <p class="text-muted small m-0">${escapeHtml(n.message || '')}</p>
+                                ${n.url ? `<a href="javascript:void(0)" class="small text-primary fw-semibold mt-1 d-inline-block">লিংক খুলুন &rarr;</a>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                listEl.innerHTML = html;
+            }
+
+            notifCenterModal.show();
+        }
+
+        function markNotifAsRead(id, url) {
+            let readIds = getReadNotificationIds();
+            if (!readIds.includes(id)) {
+                readIds.push(id);
+                localStorage.setItem('MONICO_READ_NOTIFS', JSON.stringify(readIds));
+                renderNotificationsBadge();
+            }
+            if (url) {
+                notifCenterModal.hide();
+                handleItemClick('নোটিফিকেশন লিংক', resolveGoUrl(url));
+            }
+        }
+
+        function markAllNotificationsAsRead() {
+            const allIds = portalState.notifications.map(n => n.id);
+            localStorage.setItem('MONICO_READ_NOTIFS', JSON.stringify(allIds));
+            renderNotificationsBadge();
+            notifCenterModal.hide();
+            showToast('সকল নোটিফিকেশন পড়া হয়েছে হিসেবে চিহ্নিত করা হয়েছে।');
+        }
+
+        // ==================== USER LOGIN & AUTH ====================
+        function openLoginModal() {
+            loginModal.show();
+        }
+
+        function handleUserLogin(e) {
+            e.preventDefault();
+            const empId = document.getElementById('login-emp-id').value.trim();
+            const pass = document.getElementById('login-emp-pass').value.trim();
+
+            if (!portalState.users || !Object.keys(portalState.users).length) {
+                showToast('ইউজার ডাটাবেজ এখনও লোড হচ্ছে, অনুগ্রহ করে একটু অপেক্ষা করুন...', true);
+                return;
+            }
+
+            // Find matching user in Firebase users table
+            let matchedUser = null;
+            Object.keys(portalState.users).forEach(k => {
+                const u = portalState.users[k];
+                if ((u.employeeId || k).toLowerCase() === empId.toLowerCase() && String(u.password).trim() === pass) {
+                    matchedUser = { employeeId: u.employeeId || k, ...u };
+                }
+            });
+
+            if (matchedUser) {
+                portalState.currentUser = matchedUser;
+                localStorage.setItem('MONICO_LOGGED_USER', JSON.stringify(matchedUser));
+                loginModal.hide();
+                updateUserUI();
+                showToast(`স্বাগতম, ${matchedUser.fullName || matchedUser.employeeId}!`);
+            } else {
+                showToast('ভুল এমপ্লয়ি আইডি বা পাসওয়ার্ড!', true);
+            }
+        }
+
+        function updateUserUI() {
+            const sec = document.getElementById('user-auth-section');
+            if (portalState.currentUser) {
+                const u = portalState.currentUser;
+                sec.innerHTML = `
+                    <button class="btn btn-light btn-sm rounded-pill px-3 fw-semibold border d-flex align-items-center gap-2" onclick="openProfileModal()">
+                        <i class="fa-solid fa-circle-user text-primary"></i>
+                        <span class="d-none d-sm-inline">${escapeHtml(u.fullName || u.employeeId)}</span>
+                        <span class="badge bg-primary-subtle text-primary border" style="font-size: 10px;">${escapeHtml(u.role || 'MPO')}</span>
+                    </button>
+                `;
+            } else {
+                sec.innerHTML = `
+                    <button class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-2" onclick="openLoginModal()" id="btn-login-trigger">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        <span class="d-none d-sm-inline">লগইন</span>
+                    </button>
+                `;
+            }
+        }
+
+        function openProfileModal() {
+            const u = portalState.currentUser;
+            if (!u) return;
+
+            document.getElementById('prof-user-name').innerText = u.fullName || u.employeeId;
+            document.getElementById('prof-user-id').innerText = `Employee ID: ${u.employeeId}`;
+            document.getElementById('prof-user-role').innerText = u.role || 'MPO';
+
+            const adminLink = document.getElementById('prof-admin-link');
+            const role = (u.role || '').toUpperCase();
+            if (role === 'SUPER_ADMIN' || role === 'SUPER ADMIN' || role === 'DIC') {
+                adminLink.classList.remove('d-none');
+            } else {
+                adminLink.classList.add('d-none');
+            }
+
+            profileModal.show();
+        }
+
+        function handleUserLogout() {
+            portalState.currentUser = null;
+            localStorage.removeItem('MONICO_LOGGED_USER');
+            profileModal.hide();
+            updateUserUI();
+            showToast('লগআউট সম্পন্ন হয়েছে।');
+        }
+
+        // ==================== ENDPOINT SETTINGS ====================
+        function openEndpointModal() {
+            endpointModal.show();
+        }
+
+        function saveCustomDbUrl() {
+            const val = document.getElementById('custom-db-url-input').value.trim();
+            if (!val) {
+                showToast('দয়া করে ডাটাবেজ URL দিন!', true);
+                return;
+            }
+            localStorage.setItem('MONICO_RTDB_URL', val);
+            BASE_URL = val;
+            endpointModal.hide();
+            showToast('ডাটাবেজ URL সংরক্ষিত হয়েছে। রিলোড হচ্ছে...');
+            setTimeout(() => location.reload(), 800);
+        }
+
+        function resetDbUrl() {
+            localStorage.removeItem('MONICO_RTDB_URL');
+            BASE_URL = DEFAULT_RTDB_URL;
+            document.getElementById('custom-db-url-input').value = DEFAULT_RTDB_URL;
+            endpointModal.hide();
+            showToast('ডিফল্ট ডাটাবেজে রিসেট করা হয়েছে।');
+            setTimeout(() => location.reload(), 800);
+        }
+
+        // Utility: HTML Escape
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
