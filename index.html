@@ -1920,9 +1920,20 @@
                 if (sbRes) {
                     Object.keys(sbRes).forEach(k => {
                         const it = sbRes[k];
-                        if (it) state.sidebarMenus.push({ id: k, ...it, order: it.order ?? 0 });
+                        if (it) {
+                            state.sidebarMenus.push({
+                                ...it,
+                                id: k,
+                                order: (typeof it.order === 'number') ? it.order : (parseInt(it.order, 10) || 0)
+                            });
+                        }
                     });
-                    state.sidebarMenus.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+                    state.sidebarMenus.sort((a, b) => {
+                        const ordA = Number(a.order ?? 0);
+                        const ordB = Number(b.order ?? 0);
+                        if (ordA !== ordB) return ordA - ordB;
+                        return String(a.name || '').localeCompare(String(b.name || ''));
+                    });
                 }
 
                 // 2. Menus
@@ -2080,18 +2091,20 @@
                         </span>
                     </td>
                     <td class="text-center">
-                        <button class="btn-action btn-up me-1" title="উপরে তুলুন" ${isFirst ? 'disabled style="opacity:0.3;"' : ''} onclick="moveSidebarItem(${index}, -1)">
-                            <i class="fa-solid fa-arrow-up"></i>
-                        </button>
-                        <button class="btn-action btn-down" title="নিচে নামান" ${isLast ? 'disabled style="opacity:0.3;"' : ''} onclick="moveSidebarItem(${index}, 1)">
-                            <i class="fa-solid fa-arrow-down"></i>
-                        </button>
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <button type="button" class="btn-action btn-up" title="উপরে তুলুন" ${isFirst ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="event.stopPropagation(); moveSidebarItem(${index}, -1);">
+                                <i class="fa-solid fa-arrow-up"></i>
+                            </button>
+                            <button type="button" class="btn-action btn-down" title="নিচে নামান" ${isLast ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="event.stopPropagation(); moveSidebarItem(${index}, 1);">
+                                <i class="fa-solid fa-arrow-down"></i>
+                            </button>
+                        </div>
                     </td>
                     <td class="text-end">
-                        <button class="btn-action btn-edit me-1" title="এডিট" onclick="openEditSidebarModal('${item.id}')">
+                        <button type="button" class="btn-action btn-edit me-1" title="এডিট" onclick="openEditSidebarModal('${escapeHtml(item.id)}')">
                             <i class="fa-solid fa-pen"></i>
                         </button>
-                        <button class="btn-action btn-del" title="ডিলিট" onclick="deleteSidebarItem('${item.id}', '${escapeHtml(item.name || '')}')">
+                        <button type="button" class="btn-action btn-del" title="ডিলিট" onclick="deleteSidebarItem('${escapeHtml(item.id)}', '${escapeHtml(item.name || '')}')">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </td>
@@ -2101,35 +2114,68 @@
             tbody.innerHTML = html;
         }
 
+        let isReorderingSidebar = false;
         async function moveSidebarItem(index, delta) {
+            if (isReorderingSidebar) return;
+            index = parseInt(index, 10);
+            delta = parseInt(delta, 10);
             const targetIndex = index + delta;
+            if (isNaN(index) || isNaN(targetIndex)) return;
             if (targetIndex < 0 || targetIndex >= state.sidebarMenus.length) return;
+
+            isReorderingSidebar = true;
 
             // Swap in local array
             const temp = state.sidebarMenus[index];
             state.sidebarMenus[index] = state.sidebarMenus[targetIndex];
             state.sidebarMenus[targetIndex] = temp;
 
-            // Update order properties
-            state.sidebarMenus.forEach((it, idx) => it.order = idx);
+            // Re-assign sequential order numbers
+            state.sidebarMenus.forEach((it, idx) => {
+                it.order = idx;
+            });
 
+            // Immediately update the table UI so the user sees instant response
             renderSidebarMenusTable();
             showToast('ক্রম পরিবর্তন করা হচ্ছে...');
 
             try {
-                // Update in Firebase RTDB
-                await Promise.all(state.sidebarMenus.map((it, idx) => {
-                    return fetch(`${BASE_URL}/sidebar_menus/${it.id}.json`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ order: idx })
+                // Multi-path patch to /sidebar_menus.json
+                const multiPatch = {};
+                state.sidebarMenus.forEach((it, idx) => {
+                    const cleanKey = String(it.id).trim();
+                    multiPatch[`${cleanKey}/order`] = idx;
+                });
+
+                const patchRes = await fetch(`${BASE_URL}/sidebar_menus.json`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(multiPatch)
+                });
+
+                if (!patchRes.ok) {
+                    // Fallback to individual node updates if multiPatch is rejected
+                    const promises = state.sidebarMenus.map((it, idx) => {
+                        const cleanKey = encodeURIComponent(String(it.id).trim());
+                        return fetch(`${BASE_URL}/sidebar_menus/${cleanKey}.json`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ order: idx })
+                        });
                     });
-                }));
+                    const resList = await Promise.all(promises);
+                    if (resList.some(r => !r.ok)) {
+                        throw new Error('সার্ভারে ডাটা সংরক্ষণ ব্যর্থ হয়েছে!');
+                    }
+                }
+
                 showToast('সাইডবার মেনুর ক্রম সফলভাবে আপডেট হয়েছে!');
             } catch (err) {
-                console.error(err);
+                console.error('moveSidebarItem error:', err);
                 showToast('ক্রম আপডেট করতে ব্যর্থ: ' + err.message, true);
                 fetchAllData();
+            } finally {
+                isReorderingSidebar = false;
             }
         }
 
@@ -2178,7 +2224,7 @@
             const targetId = id || ('-SM' + Date.now());
 
             try {
-                const res = await fetch(`${BASE_URL}/sidebar_menus/${targetId}.json`, {
+                const res = await fetch(`${BASE_URL}/sidebar_menus/${encodeURIComponent(targetId)}.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -2199,7 +2245,7 @@
             if (!confirm(`আপনি কি "${name}" সাইডবার মেনুটি ডিলিট করতে চান?`)) return;
 
             try {
-                const res = await fetch(`${BASE_URL}/sidebar_menus/${id}.json`, { method: 'DELETE' });
+                const res = await fetch(`${BASE_URL}/sidebar_menus/${encodeURIComponent(id)}.json`, { method: 'DELETE' });
                 if (res.ok) {
                     showToast('সাইডবার মেনু মুছে ফেলা হয়েছে!');
                     fetchAllData();

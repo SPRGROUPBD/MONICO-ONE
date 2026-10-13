@@ -1663,6 +1663,59 @@
             grid.innerHTML = html;
         }
 
+        // ==================== IMAGE & CARD HELPERS ====================
+        function isImageUrl(url) {
+            if (!url) return false;
+            const u = String(url).trim().toLowerCase();
+            return u.startsWith('data:image/') ||
+                   /\.(jpeg|jpg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(u) ||
+                   (u.includes('firebasestorage.googleapis.com') && (u.includes('alt=media') || !u.includes('.pdf'))) ||
+                   u.includes('drive.google.com/uc?export=view') ||
+                   u.includes('images.unsplash.com') ||
+                   u.includes('placehold.co');
+        }
+
+        function getItemImages(item) {
+            if (!item) return [];
+            let list = [];
+            if (Array.isArray(item.images)) {
+                item.images.forEach(img => {
+                    if (typeof img === 'string' && img.trim()) list.push(img.trim());
+                });
+            } else if (typeof item.images === 'string' && item.images.trim()) {
+                item.images.split('\n').concat(item.images.split(',')).forEach(s => {
+                    const clean = s.trim();
+                    if (clean && !list.includes(clean)) list.push(clean);
+                });
+            }
+            if (item.image && typeof item.image === 'string' && item.image.trim()) {
+                const mainImg = item.image.trim();
+                if (!list.includes(mainImg)) list.unshift(mainImg);
+            }
+            if (item.url && isImageUrl(item.url)) {
+                const u = item.url.trim();
+                if (!list.includes(u)) list.push(u);
+            }
+            return list;
+        }
+
+        function openCardGallery(type, index) {
+            let item = null;
+            if (type === 'training') item = portalState.trainingCards[index];
+            else if (type === 'target') item = portalState.targetSheets[index];
+            else if (type === 'product') item = portalState.productCards[index];
+
+            if (!item) return;
+            const images = getItemImages(item);
+            if (images.length) {
+                openGalleryViewer(item.title || 'ছবি গ্যালারি', images);
+            } else if (item.url) {
+                handleItemClick(item.title, resolveGoUrl(item.url));
+            } else {
+                showToast('কোনো ছবি বা লিংক পাওয়া যায়নি!', true);
+            }
+        }
+
         // 6. Training Cards
         function renderTrainingCards() {
             const container = document.getElementById('training-cards-container');
@@ -1677,17 +1730,53 @@
             }
 
             let html = '';
-            list.forEach(t => {
+            list.forEach((t, idx) => {
                 const effectiveUrl = resolveGoUrl(t.url);
+                const imgList = getItemImages(t);
+                const thumbnail = imgList[0] || '';
+                const hasWebLink = effectiveUrl && !isImageUrl(effectiveUrl);
+
                 html += `
-                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2">
-                        <div class="overflow-hidden">
-                            <h5 class="small fw-bold m-0 text-truncate">${escapeHtml(t.title || 'ট্রেনিং')}</h5>
-                            <small class="text-muted">${escapeHtml(t.date || '')} ${t.month ? `(${escapeHtml(t.month)})` : ''}</small>
+                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2 shadow-sm">
+                        <div class="d-flex align-items-center gap-3 overflow-hidden">
+                            ${thumbnail ? `
+                                <div class="flex-shrink-0" style="cursor: pointer;" onclick="openCardGallery('training', ${idx})" title="ছবি বড় করে দেখুন">
+                                    <img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(t.title || 'Training')}" class="rounded-3 border shadow-sm" style="width: 52px; height: 52px; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100?text=IMG';">
+                                </div>
+                            ` : `
+                                <div class="flex-shrink-0 rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                                    <i class="fa-solid fa-chalkboard-user"></i>
+                                </div>
+                            `}
+                            <div class="overflow-hidden">
+                                <h5 class="small fw-bold m-0 text-truncate">${escapeHtml(t.title || 'ট্রেনিং')}</h5>
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    <small class="text-muted">${escapeHtml(t.date || '')} ${t.month ? `(${escapeHtml(t.month)})` : ''}</small>
+                                    ${imgList.length > 0 ? `
+                                        <span class="badge bg-primary-subtle text-primary border" style="font-size: 10px;">
+                                            <i class="fa-solid fa-images me-1"></i>${imgList.length}টি ছবি
+                                        </span>
+                                    ` : ''}
+                                </div>
+                            </div>
                         </div>
-                        <button class="btn btn-outline-primary btn-sm rounded-pill px-3 flex-shrink-0" onclick="handleItemClick('${escapeHtml(t.title)}', '${escapeHtml(effectiveUrl)}')">
-                            <i class="fa-solid fa-eye me-1"></i> ওপেন
-                        </button>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            ${imgList.length > 0 ? `
+                                <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold" onclick="openCardGallery('training', ${idx})">
+                                    <i class="fa-solid fa-image me-1"></i> ছবি দেখুন
+                                </button>
+                            ` : ''}
+                            ${hasWebLink ? `
+                                <button class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold" onclick="handleItemClick('${escapeHtml(t.title)}', '${escapeHtml(effectiveUrl)}')">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> ওপেন
+                                </button>
+                            ` : ''}
+                            ${!imgList.length && !hasWebLink && effectiveUrl ? `
+                                <button class="btn btn-outline-primary btn-sm rounded-pill px-3 flex-shrink-0" onclick="handleItemClick('${escapeHtml(t.title)}', '${escapeHtml(effectiveUrl)}')">
+                                    <i class="fa-solid fa-eye me-1"></i> ওপেন
+                                </button>
+                            ` : ''}
+                        </div>
                     </div>
                 `;
             });
@@ -1709,17 +1798,53 @@
             }
 
             let html = '';
-            list.forEach(ts => {
+            list.forEach((ts, idx) => {
                 const effectiveUrl = resolveGoUrl(ts.url);
+                const imgList = getItemImages(ts);
+                const thumbnail = imgList[0] || '';
+                const hasWebLink = effectiveUrl && !isImageUrl(effectiveUrl);
+
                 html += `
-                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2">
-                        <div class="overflow-hidden">
-                            <h5 class="small fw-bold m-0 text-truncate">${escapeHtml(ts.title || 'টার্গেট শীট')}</h5>
-                            <small class="text-muted">${escapeHtml(ts.date || '')} ${ts.month ? `(${escapeHtml(ts.month)})` : ''}</small>
+                    <div class="p-3 bg-body rounded-3 border d-flex justify-content-between align-items-center gap-2 shadow-sm">
+                        <div class="d-flex align-items-center gap-3 overflow-hidden">
+                            ${thumbnail ? `
+                                <div class="flex-shrink-0" style="cursor: pointer;" onclick="openCardGallery('target', ${idx})" title="ছবি বড় করে দেখুন">
+                                    <img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(ts.title || 'Target Sheet')}" class="rounded-3 border shadow-sm" style="width: 52px; height: 52px; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/100x100?text=IMG';">
+                                </div>
+                            ` : `
+                                <div class="flex-shrink-0 rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                                    <i class="fa-solid fa-bullseye"></i>
+                                </div>
+                            `}
+                            <div class="overflow-hidden">
+                                <h5 class="small fw-bold m-0 text-truncate">${escapeHtml(ts.title || 'টার্গেট শীট')}</h5>
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    <small class="text-muted">${escapeHtml(ts.date || '')} ${ts.month ? `(${escapeHtml(ts.month)})` : ''}</small>
+                                    ${imgList.length > 0 ? `
+                                        <span class="badge bg-warning-subtle text-warning border" style="font-size: 10px;">
+                                            <i class="fa-solid fa-images me-1"></i>${imgList.length}টি ছবি
+                                        </span>
+                                    ` : ''}
+                                </div>
+                            </div>
                         </div>
-                        <button class="btn btn-outline-warning btn-sm rounded-pill px-3 flex-shrink-0" onclick="handleItemClick('${escapeHtml(ts.title)}', '${escapeHtml(effectiveUrl)}')">
-                            <i class="fa-solid fa-file-excel me-1"></i> দেখুন
-                        </button>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            ${imgList.length > 0 ? `
+                                <button class="btn btn-outline-warning btn-sm rounded-pill px-3 fw-semibold text-dark" onclick="openCardGallery('target', ${idx})">
+                                    <i class="fa-solid fa-image me-1"></i> ছবি দেখুন
+                                </button>
+                            ` : ''}
+                            ${hasWebLink ? `
+                                <button class="btn btn-warning btn-sm rounded-pill px-3 fw-semibold text-dark" onclick="handleItemClick('${escapeHtml(ts.title)}', '${escapeHtml(effectiveUrl)}')">
+                                    <i class="fa-solid fa-file-excel me-1"></i> দেখুন
+                                </button>
+                            ` : ''}
+                            ${!imgList.length && !hasWebLink && effectiveUrl ? `
+                                <button class="btn btn-outline-warning btn-sm rounded-pill px-3 flex-shrink-0" onclick="handleItemClick('${escapeHtml(ts.title)}', '${escapeHtml(effectiveUrl)}')">
+                                    <i class="fa-solid fa-file-excel me-1"></i> দেখুন
+                                </button>
+                            ` : ''}
+                        </div>
                     </div>
                 `;
             });
@@ -1772,6 +1897,12 @@
         function handleItemClick(title, url) {
             if (!url) return;
 
+            // Direct image URL handling - show in rich image gallery instead of broken iframe
+            if (isImageUrl(url)) {
+                openGalleryViewer(title, [url]);
+                return;
+            }
+
             portalState.currentViewerUrl = url;
             document.getElementById('viewer-modal-title').innerText = title;
             document.getElementById('viewer-modal-subtitle').innerText = url;
@@ -1806,6 +1937,7 @@
         function openGalleryViewer(title, images) {
             if (!images || !images.length) return;
 
+            portalState.currentViewerUrl = images[0] || '';
             document.getElementById('viewer-modal-title').innerText = title;
             document.getElementById('viewer-modal-subtitle').innerText = `${images.length}টি ছবি উপলব্ধ`;
             document.getElementById('viewer-icon-badge').innerHTML = '<i class="fa-solid fa-images"></i>';
