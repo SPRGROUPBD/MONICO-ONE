@@ -47,6 +47,9 @@ import com.example.utils.PdfUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -196,16 +199,30 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "এই মেনু/ফাইলটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    repository.deleteMenuItem(id)
-                                    snackbarHostState.showSnackbar("ফাইলটি মুছে ফেলা হয়েছে।")
+                                    try {
+                                        val ok = repository.deleteMenuItem(id)
+                                        if (ok) {
+                                            snackbarHostState.showSnackbar("ফাইলটি মুছে ফেলা হয়েছে।")
+                                        } else {
+                                            snackbarHostState.showSnackbar("ফাইলটি মুছে ফেলতে সমস্যা হয়েছে।")
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                                    }
                                 }
                             }
                         },
                         onToggleStatus = { m ->
                             val newStatus = if (m.status == "active") "inactive" else "active"
                             scope.launch {
-                                repository.saveMenuItem(m.copy(status = newStatus))
-                                snackbarHostState.showSnackbar("স্ট্যাটাস আপডেট করা হয়েছে।")
+                                try {
+                                    repository.saveMenuItem(m.copy(status = newStatus))
+                                    snackbarHostState.showSnackbar("স্ট্যাটাস আপডেট করা হয়েছে।")
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                                }
                             }
                         }
                     )
@@ -218,8 +235,17 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "এই সাইডবার মেনুটি ডিলিট করতে চান?" to {
                                 scope.launch {
-                                    repository.deleteSidebarMenu(id)
-                                    snackbarHostState.showSnackbar("সাইডবার মেনু মুছে ফেলা হয়েছে।")
+                                    try {
+                                        val ok = repository.deleteSidebarMenu(id)
+                                        if (ok) {
+                                            snackbarHostState.showSnackbar("সাইডবার মেনু মুছে ফেলা হয়েছে।")
+                                        } else {
+                                            snackbarHostState.showSnackbar("সাইডবার মেনু মুছে ফেলতে সমস্যা হয়েছে।")
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                                    }
                                 }
                             }
                         },
@@ -229,8 +255,12 @@ fun AdminPanelScreen(
                                 val item = currentList.removeAt(index)
                                 currentList.add(index - 1, item)
                                 scope.launch {
-                                    repository.reorderSidebarMenus(currentList)
-                                    snackbarHostState.showSnackbar("সাইডবার মেনু উপরে নেওয়া হয়েছে।")
+                                    try {
+                                        repository.reorderSidebarMenus(currentList)
+                                        snackbarHostState.showSnackbar("সাইডবার মেনু উপরে নেওয়া হয়েছে।")
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
                                 }
                             }
                         },
@@ -240,8 +270,12 @@ fun AdminPanelScreen(
                                 val item = currentList.removeAt(index)
                                 currentList.add(index + 1, item)
                                 scope.launch {
-                                    repository.reorderSidebarMenus(currentList)
-                                    snackbarHostState.showSnackbar("সাইডবার মেনু নিচে নেওয়া হয়েছে।")
+                                    try {
+                                        repository.reorderSidebarMenus(currentList)
+                                        snackbarHostState.showSnackbar("সাইডবার মেনু নিচে নেওয়া হয়েছে।")
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
                                 }
                             }
                         }
@@ -255,8 +289,17 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "স্লাইডারটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    repository.deleteSlider(id)
-                                    snackbarHostState.showSnackbar("স্লাইডার মুছে ফেলা হয়েছে।")
+                                    try {
+                                        val ok = repository.deleteSlider(id)
+                                        if (ok) {
+                                            snackbarHostState.showSnackbar("স্লাইডার মুছে ফেলা হয়েছে।")
+                                        } else {
+                                            snackbarHostState.showSnackbar("স্লাইডার মুছে ফেলতে সমস্যা হয়েছে।")
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                                    }
                                 }
                             }
                         }
@@ -270,8 +313,17 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "নোটিশটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    repository.deleteNotice(id)
-                                    snackbarHostState.showSnackbar("নোটিশ মুছে ফেলা হয়েছে।")
+                                    try {
+                                        val ok = repository.deleteNotice(id)
+                                        if (ok) {
+                                            snackbarHostState.showSnackbar("নোটিশ মুছে ফেলা হয়েছে।")
+                                        } else {
+                                            snackbarHostState.showSnackbar("নোটিশ মুছে ফেলতে সমস্যা হয়েছে।")
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                                    }
                                 }
                             }
                         }
@@ -289,16 +341,29 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "পপআপ নোটিশটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    repository.deletePopup(id)
-                                    snackbarHostState.showSnackbar("পপআপ মুছে ফেলা হয়েছে।")
+                                    try {
+                                        val ok = repository.deletePopup(id)
+                                        if (ok) {
+                                            snackbarHostState.showSnackbar("পপআপ মুছে ফেলা হয়েছে।")
+                                        } else {
+                                            snackbarHostState.showSnackbar("পপআপ মুছে ফেলতে সমস্যা হয়েছে।")
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                                    }
                                 }
                             }
                         },
                         onToggleStatus = { p ->
                             val newStatus = if (p.status.equals("active", ignoreCase = true)) "off" else "active"
                             scope.launch {
-                                repository.savePopup(p.copy(status = newStatus))
-                                snackbarHostState.showSnackbar("পপআপ স্ট্যাটাস: " + if (newStatus == "active") "Active (চালু)" else "Off (বন্ধ)")
+                                try {
+                                    repository.savePopup(p.copy(status = newStatus))
+                                    snackbarHostState.showSnackbar("পপআপ স্ট্যাটাস: " + if (newStatus == "active") "Active (চালু)" else "Off (বন্ধ)")
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
                             }
                         }
                     )
@@ -314,8 +379,17 @@ fun AdminPanelScreen(
                         onDelete = { path, id ->
                             itemToDelete = "এই কার্ডটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    repository.deleteCard(path, id)
-                                    snackbarHostState.showSnackbar("কার্ড মুছে ফেলা হয়েছে।")
+                                    try {
+                                        val ok = repository.deleteCard(path, id)
+                                        if (ok) {
+                                            snackbarHostState.showSnackbar("কার্ড মুছে ফেলা হয়েছে।")
+                                        } else {
+                                            snackbarHostState.showSnackbar("কার্ড মুছে ফেলতে সমস্যা হয়েছে।")
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                                    }
                                 }
                             }
                         }
@@ -329,8 +403,17 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "ইউজার $id মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    repository.deleteUser(id)
-                                    snackbarHostState.showSnackbar("ইউজার মুছে ফেলা হয়েছে।")
+                                    try {
+                                        val ok = repository.deleteUser(id)
+                                        if (ok) {
+                                            snackbarHostState.showSnackbar("ইউজার মুছে ফেলা হয়েছে।")
+                                        } else {
+                                            snackbarHostState.showSnackbar("ইউজার মুছে ফেলতে সমস্যা হয়েছে।")
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                                    }
                                 }
                             }
                         }
@@ -341,8 +424,17 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "এই নোটিফিকেশনটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    repository.deleteNotification(id)
-                                    snackbarHostState.showSnackbar("নোটিফিকেশন মুছে ফেলা হয়েছে।")
+                                    try {
+                                        val ok = repository.deleteNotification(id)
+                                        if (ok) {
+                                            snackbarHostState.showSnackbar("নোটিফিকেশন মুছে ফেলা হয়েছে।")
+                                        } else {
+                                            snackbarHostState.showSnackbar("নোটিফিকেশন মুছে ফেলতে সমস্যা হয়েছে।")
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                                    }
                                 }
                             }
                         }
@@ -382,9 +474,19 @@ fun AdminPanelScreen(
             onDismiss = { showMenuDialog = false },
             onSave = { updatedItem ->
                 scope.launch {
-                    repository.saveMenuItem(updatedItem)
-                    snackbarHostState.showSnackbar(if (editingMenuItem == null) "নতুন ফাইল যোগ করা হয়েছে।" else "ফাইল আপডেট করা হয়েছে।")
-                    showMenuDialog = false
+                    try {
+                        val ok = repository.saveMenuItem(updatedItem)
+                        if (ok) {
+                            snackbarHostState.showSnackbar(if (editingMenuItem == null) "নতুন ফাইল যোগ করা হয়েছে।" else "ফাইল আপডেট করা হয়েছে।")
+                        } else {
+                            snackbarHostState.showSnackbar("ফাইল সংরক্ষণ করতে সমস্যা হয়েছে।")
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
+                    } finally {
+                        showMenuDialog = false
+                    }
                 }
             }
         )
@@ -397,9 +499,14 @@ fun AdminPanelScreen(
             onDismiss = { showSidebarDialog = false },
             onSave = { updatedItem ->
                 scope.launch {
-                    repository.saveSidebarMenu(updatedItem)
-                    snackbarHostState.showSnackbar("সাইডবার মেনু সংরক্ষিত হয়েছে।")
-                    showSidebarDialog = false
+                    try {
+                        repository.saveSidebarMenu(updatedItem)
+                        snackbarHostState.showSnackbar("সাইডবার মেনু সংরক্ষিত হয়েছে।")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        showSidebarDialog = false
+                    }
                 }
             }
         )
@@ -412,9 +519,14 @@ fun AdminPanelScreen(
             onDismiss = { showSliderDialog = false },
             onSave = { updatedItem ->
                 scope.launch {
-                    repository.saveSlider(updatedItem)
-                    snackbarHostState.showSnackbar("স্লাইডার সংরক্ষিত হয়েছে।")
-                    showSliderDialog = false
+                    try {
+                        repository.saveSlider(updatedItem)
+                        snackbarHostState.showSnackbar("স্লাইডার সংরক্ষিত হয়েছে।")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        showSliderDialog = false
+                    }
                 }
             }
         )
@@ -427,9 +539,14 @@ fun AdminPanelScreen(
             onDismiss = { showNoticeDialog = false },
             onSave = { text, id ->
                 scope.launch {
-                    repository.saveNotice(text, id)
-                    snackbarHostState.showSnackbar("নোটিশ সংরক্ষিত হয়েছে।")
-                    showNoticeDialog = false
+                    try {
+                        repository.saveNotice(text, id)
+                        snackbarHostState.showSnackbar("নোটিশ সংরক্ষিত হয়েছে।")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        showNoticeDialog = false
+                    }
                 }
             }
         )
@@ -442,9 +559,14 @@ fun AdminPanelScreen(
             onDismiss = { showPopupDialog = false },
             onSave = { updatedItem ->
                 scope.launch {
-                    repository.savePopup(updatedItem)
-                    snackbarHostState.showSnackbar("পপআপ নোটিশ সংরক্ষিত হয়েছে।")
-                    showPopupDialog = false
+                    try {
+                        repository.savePopup(updatedItem)
+                        snackbarHostState.showSnackbar("পপআপ নোটিশ সংরক্ষিত হয়েছে।")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        showPopupDialog = false
+                    }
                 }
             }
         )
@@ -458,9 +580,14 @@ fun AdminPanelScreen(
             onDismiss = { showCardDialog = false },
             onSave = { path, updatedCard ->
                 scope.launch {
-                    repository.saveCard(path, updatedCard)
-                    snackbarHostState.showSnackbar("কার্ড সংরক্ষিত হয়েছে।")
-                    showCardDialog = false
+                    try {
+                        repository.saveCard(path, updatedCard)
+                        snackbarHostState.showSnackbar("কার্ড সংরক্ষিত হয়েছে।")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        showCardDialog = false
+                    }
                 }
             }
         )
@@ -473,9 +600,14 @@ fun AdminPanelScreen(
             onDismiss = { showUserDialog = false },
             onSave = { updatedUser ->
                 scope.launch {
-                    repository.saveUser(updatedUser)
-                    snackbarHostState.showSnackbar("ইউজার সংরক্ষিত হয়েছে।")
-                    showUserDialog = false
+                    try {
+                        repository.saveUser(updatedUser)
+                        snackbarHostState.showSnackbar("ইউজার সংরক্ষিত হয়েছে।")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        showUserDialog = false
+                    }
                 }
             }
         )
@@ -545,7 +677,10 @@ private fun MenuEditDialog(
     var selectedGrid by remember { mutableStateOf(item?.group?.ifBlank { "grid2" } ?: "grid2") }
     var gridMenuOpen by remember { mutableStateOf(false) }
 
-    var selectedMonth by remember { mutableStateOf(item?.month?.ifBlank { "March" } ?: "March") }
+    val defaultMonth = remember { SimpleDateFormat("MMMM", Locale.ENGLISH).format(Date()) }
+    val defaultDate = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
+
+    var selectedMonth by remember { mutableStateOf(item?.month?.ifBlank { defaultMonth } ?: defaultMonth) }
     var monthMenuOpen by remember { mutableStateOf(false) }
 
     val initialRoleSet = remember(item) {
@@ -565,7 +700,7 @@ private fun MenuEditDialog(
     var selectedRoleSet by remember { mutableStateOf(initialRoleSet) }
 
     var title by remember { mutableStateOf(item?.title ?: "") }
-    var dateStr by remember { mutableStateOf(item?.date?.ifBlank { "2026-03-25" } ?: "2026-03-25") }
+    var dateStr by remember { mutableStateOf(item?.date?.ifBlank { defaultDate } ?: defaultDate) }
     var icon by remember { mutableStateOf(item?.icon ?: "fa-folder") }
     var isPinned by remember { mutableStateOf(item?.isPinned ?: false) }
 
@@ -2163,26 +2298,27 @@ private fun AdminMenusTab(
                                 }
                             }
 
-                            items(itemsInGrid, key = { it.id }) { m ->
+                            val distinctGridItems = itemsInGrid.distinctBy { it.id }
+                            items(distinctGridItems, key = { m -> "grid_${cat.id}_${m.id}" }) { m ->
                                 MenuItemAdminCard(m, cat.color, onToggleStatus, onEdit, onDelete)
                             }
                         }
                     }
 
                     // Any orphan items not in known categories
-                    val orphanItems = filteredList.filter { m -> adminGridCategories.none { it.id == m.group } }
+                    val orphanItems = filteredList.filter { m -> adminGridCategories.none { it.id == m.group } }.distinctBy { it.id }
                     if (orphanItems.isNotEmpty()) {
                         item(key = "header_others") {
                             Text("অন্যান্য ফাইল (${orphanItems.size}টি):", fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                         }
-                        items(orphanItems, key = { it.id }) { m ->
+                        items(orphanItems, key = { m -> "orphan_${m.id}" }) { m ->
                             MenuItemAdminCard(m, Color.Gray, onToggleStatus, onEdit, onDelete)
                         }
                     }
                 } else {
                     // Single Grid Selected View
                     val currentCat = adminGridCategories.firstOrNull { it.id == selectedGridFilter }
-                    item {
+                    item(key = "header_selected_grid") {
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = (currentCat?.color ?: MonicoBlue).copy(alpha = 0.12f),
@@ -2207,7 +2343,8 @@ private fun AdminMenusTab(
                         }
                     }
 
-                    items(filteredList, key = { it.id }) { m ->
+                    val distinctFilteredList = filteredList.distinctBy { it.id }
+                    items(distinctFilteredList, key = { m -> "filter_${m.group}_${m.id}" }) { m ->
                         MenuItemAdminCard(m, currentCat?.color ?: MonicoBlue, onToggleStatus, onEdit, onDelete)
                     }
                 }

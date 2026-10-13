@@ -309,28 +309,19 @@ class MonicoRepository(private val context: Context) {
 
     /**
      * Sorts menus in reverse order: 30, 29, 28, 27 (descending by day/date) and Z to A.
+     * Guaranteed compliant with TimSort comparison contract to prevent crashes.
      */
     fun sortMenusDescending(list: List<MenuItem>): List<MenuItem> {
-        return list.sortedWith(Comparator { a, b ->
-            // Keep pinned items first
-            if (a.isPinned != b.isPinned) {
-                return@Comparator if (a.isPinned) -1 else 1
-            }
-
-            val scoreA = extractDateOrNumberScore(a.title, a.date)
-            val scoreB = extractDateOrNumberScore(b.title, b.date)
-            if (scoreA != null && scoreB != null && scoreA != scoreB) {
-                return@Comparator scoreB.compareTo(scoreA) // 30, 29, 28, 27 descending
-            }
-            if (scoreA != null && scoreB == null) return@Comparator -1
-            if (scoreA == null && scoreB != null) return@Comparator 1
-
-            // Natural descending: Z to A
-            val cmp = naturalCompareDescending(a.title, b.title)
-            if (cmp != 0) return@Comparator cmp
-
-            b.id.compareTo(a.id)
-        })
+        return try {
+            list.sortedWith(
+                compareByDescending<MenuItem> { it.isPinned }
+                    .thenByDescending { extractDateOrNumberScore(it.title, it.date) ?: Long.MIN_VALUE }
+                    .thenByDescending { normalizeBengaliDigits(it.title).lowercase() }
+                    .thenByDescending { it.id }
+            )
+        } catch (e: Exception) {
+            list.sortedByDescending { it.id }
+        }
     }
 
     /**
@@ -338,27 +329,20 @@ class MonicoRepository(private val context: Context) {
      * in reverse order: 30, 29, 28, 27 (descending by day/date) and Z to A.
      */
     fun sortCardsDescending(list: List<ContentCard>): List<ContentCard> {
-        return list.sortedWith(Comparator { a, b ->
-            val scoreA = extractDateOrNumberScore(a.title, "")
-            val scoreB = extractDateOrNumberScore(b.title, "")
-            if (scoreA != null && scoreB != null && scoreA != scoreB) {
-                return@Comparator scoreB.compareTo(scoreA) // 30, 29, 28, 27 descending
-            }
-            if (scoreA != null && scoreB == null) return@Comparator -1
-            if (scoreA == null && scoreB != null) return@Comparator 1
-
-            val cmp = naturalCompareDescending(a.title, b.title)
-            if (cmp != 0) return@Comparator cmp
-
-            b.id.compareTo(a.id)
-        })
+        return try {
+            list.sortedWith(
+                compareByDescending<ContentCard> { extractDateOrNumberScore(it.title, "") ?: Long.MIN_VALUE }
+                    .thenByDescending { normalizeBengaliDigits(it.title).lowercase() }
+                    .thenByDescending { it.id }
+            )
+        } catch (e: Exception) {
+            list.sortedByDescending { it.id }
+        }
     }
 
     /**
-     * Ultra-fast database login.
-     * Uses targeted direct node lookup (~200ms) instead of downloading the 12.5MB database.
-     * Checks local cache instantly, validates credentials with high accuracy and flexibility,
-     * and handles case-insensitivity seamlessly.
+     * Ultra-fast database login directly against Firebase RTDB.
+     * No hardcoded demo/seed data. All users come from Firebase database.
      */
     suspend fun login(empIdInput: String, passInput: String): Result<User> = withContext(Dispatchers.IO) {
         val cleanId = empIdInput.trim()
@@ -368,62 +352,7 @@ class MonicoRepository(private val context: Context) {
             return@withContext Result.failure(Exception("অনুগ্রহ করে এমপ্লয়ি আইডি ও পাসওয়ার্ড লিখুন!"))
         }
 
-        // 1. Instant Super Admin validation (KS / Monica Ku or Monico@Ku007)
-        if (cleanId.equals("KS", ignoreCase = true) &&
-            (cleanPass.equals("Monica Ku", ignoreCase = true) ||
-             cleanPass == "Monico@Ku007" ||
-             cleanPass.equals("KS", ignoreCase = true))
-        ) {
-            val adminUser = User(
-                employeeId = "KS",
-                fullName = "Md Sajjad Ahmed",
-                password = cleanPass,
-                role = "SUPER_ADMIN",
-                status = "active",
-                profilePic = ""
-            )
-            saveUserSession(adminUser)
-            cacheUserCredentials(adminUser)
-            repoScope.launch {
-                try {
-                    service.updatePresence(adminUser.employeeId, adminUser.fullName, adminUser.role)
-                    syncAll()
-                } catch (_: Exception) {}
-            }
-            return@withContext Result.success(adminUser)
-        }
-
-        // 2. Instant check with currently cached user session
-        val cachedUser = _currentUser.value
-        if (cachedUser != null &&
-            cachedUser.employeeId.equals(cleanId, ignoreCase = true) &&
-            (cachedUser.password == cleanPass || cachedUser.password.equals(cleanPass, ignoreCase = true))
-        ) {
-            repoScope.launch {
-                try {
-                    service.updatePresence(cachedUser.employeeId, cachedUser.fullName, cachedUser.role)
-                    syncAll()
-                } catch (_: Exception) {}
-            }
-            return@withContext Result.success(cachedUser)
-        }
-
-        // 3. Instant local known users cache check (0ms offline-first)
-        val localUser = getCachedUserCredentials(cleanId)
-        if (localUser != null &&
-            (localUser.password == cleanPass || localUser.password.equals(cleanPass, ignoreCase = true))
-        ) {
-            saveUserSession(localUser)
-            repoScope.launch {
-                try {
-                    service.updatePresence(localUser.employeeId, localUser.fullName, localUser.role)
-                    syncAll()
-                } catch (_: Exception) {}
-            }
-            return@withContext Result.success(localUser)
-        }
-
-        // 4. Lightning-fast direct Firebase RTDB node lookup (<350ms, ~150 bytes)
+        // 1. Direct Firebase RTDB node lookup (<350ms, ~150 bytes)
         try {
             val remoteUser = withTimeoutOrNull(6000L) {
                 service.fetchSingleUser(cleanId)
@@ -432,8 +361,7 @@ class MonicoRepository(private val context: Context) {
             if (remoteUser != null) {
                 val dbPass = remoteUser.password.trim()
                 val isPasswordCorrect = dbPass == cleanPass ||
-                        dbPass.equals(cleanPass, ignoreCase = true) ||
-                        (cleanId.equals("KS", ignoreCase = true) && cleanPass.equals("Monica Ku", ignoreCase = true))
+                        dbPass.equals(cleanPass, ignoreCase = true)
 
                 if (isPasswordCorrect) {
                     saveUserSession(remoteUser)
@@ -441,7 +369,6 @@ class MonicoRepository(private val context: Context) {
                     repoScope.launch {
                         try {
                             service.updatePresence(remoteUser.employeeId, remoteUser.fullName, remoteUser.role)
-                            // Fetch profile picture in background without blocking login
                             val pic = service.fetchUserProfilePic(remoteUser.employeeId)
                             if (!pic.isNullOrBlank()) {
                                 val withPic = remoteUser.copy(profilePic = pic)
@@ -459,7 +386,37 @@ class MonicoRepository(private val context: Context) {
             e.printStackTrace()
         }
 
-        // 5. Fallback check against in-memory allUsers list
+        // 2. Offline session check with currently cached user session
+        val cachedUser = _currentUser.value
+        if (cachedUser != null &&
+            cachedUser.employeeId.equals(cleanId, ignoreCase = true) &&
+            (cachedUser.password == cleanPass || cachedUser.password.equals(cleanPass, ignoreCase = true))
+        ) {
+            repoScope.launch {
+                try {
+                    service.updatePresence(cachedUser.employeeId, cachedUser.fullName, cachedUser.role)
+                    syncAll()
+                } catch (_: Exception) {}
+            }
+            return@withContext Result.success(cachedUser)
+        }
+
+        // 3. Local cached credentials from previously authenticated database logins
+        val localUser = getCachedUserCredentials(cleanId)
+        if (localUser != null &&
+            (localUser.password == cleanPass || localUser.password.equals(cleanPass, ignoreCase = true))
+        ) {
+            saveUserSession(localUser)
+            repoScope.launch {
+                try {
+                    service.updatePresence(localUser.employeeId, localUser.fullName, localUser.role)
+                    syncAll()
+                } catch (_: Exception) {}
+            }
+            return@withContext Result.success(localUser)
+        }
+
+        // 4. Fallback check against in-memory allUsers list from Firebase
         val foundInAll = _allUsers.value.find { it.employeeId.equals(cleanId, ignoreCase = true) }
         if (foundInAll != null) {
             val dbPass = foundInAll.password.trim()
@@ -563,29 +520,21 @@ class MonicoRepository(private val context: Context) {
                 val notifDeferred = async { service.fetchNotifications() }
 
                 val m = menusDeferred.await()
-                if (m.isNotEmpty()) {
-                    val sortedMenus = sortMenusDescending(m)
-                    _menus.value = sortedMenus
-                    saveMenusToCache(sortedMenus)
-                }
+                val sortedMenus = sortMenusDescending(m.filter { it.id.isNotBlank() }.distinctBy { it.id })
+                _menus.value = sortedMenus
+                saveMenusToCache(sortedMenus)
 
                 val s = slidersDeferred.await()
-                if (s.isNotEmpty()) {
-                    _sliders.value = s.reversed()
-                    saveSlidersToCache(_sliders.value)
-                }
+                _sliders.value = s.reversed()
+                saveSlidersToCache(_sliders.value)
 
                 val n = noticesDeferred.await()
-                if (n.isNotEmpty()) {
-                    _notices.value = n.reversed()
-                    saveNoticesToCache(_notices.value)
-                }
+                _notices.value = n.reversed()
+                saveNoticesToCache(_notices.value)
 
                 val p = popupsDeferred.await()
-                if (p.isNotEmpty()) {
-                    _popups.value = p
-                    savePopupsToCache(_popups.value)
-                }
+                _popups.value = p
+                savePopupsToCache(_popups.value)
 
                 val prod = prodDeferred.await()
                 _productCards.value = sortCardsDescending(prod)
@@ -600,20 +549,18 @@ class MonicoRepository(private val context: Context) {
                 saveCardsToCache("cache_target_sheets", _targetSheets.value)
 
                 val side = sideDeferred.await()
-                if (side.isNotEmpty()) _sidebarMenus.value = side
+                _sidebarMenus.value = side
 
                 val notifs = notifDeferred.await()
-                if (notifs.isNotEmpty()) {
-                    _notifications.value = notifs
-                    val cur = _currentUser.value
-                    if (cur != null) {
-                        NotificationHelper.checkAndNotifyNewItems(
-                            context = context,
-                            userRole = cur.role,
-                            userEmpId = cur.employeeId,
-                            items = notifs
-                        )
-                    }
+                _notifications.value = notifs
+                val cur = _currentUser.value
+                if (cur != null && notifs.isNotEmpty()) {
+                    NotificationHelper.checkAndNotifyNewItems(
+                        context = context,
+                        userRole = cur.role,
+                        userEmpId = cur.employeeId,
+                        items = notifs
+                    )
                 }
 
                 // If super admin, fetch users list in background for Admin Panel without blocking main sync
@@ -849,29 +796,44 @@ class MonicoRepository(private val context: Context) {
     }
 
     suspend fun saveMenuItem(menu: MenuItem): Boolean {
-        val targetId = if (menu.id.isNotBlank()) menu.id else "-M" + System.currentTimeMillis()
-        val itemToSave = menu.copy(id = targetId)
-        val currentList = _menus.value.toMutableList()
-        val idx = currentList.indexOfFirst { it.id == targetId }
-        if (idx != -1) {
-            currentList[idx] = itemToSave
-        } else {
+        return try {
+            val targetId = if (menu.id.isNotBlank()) menu.id else "-M" + System.currentTimeMillis() + "_" + (1000..9999).random()
+            val itemToSave = menu.copy(id = targetId)
+            val currentList = _menus.value.filter { it.id != targetId }.toMutableList()
             currentList.add(0, itemToSave)
-        }
-        val sorted = sortMenusDescending(currentList)
-        _menus.value = sorted
-        saveMenusToCache(sorted)
+            val sorted = sortMenusDescending(currentList.distinctBy { it.id })
+            _menus.value = sorted
+            saveMenusToCache(sorted)
 
-        return service.saveMenuItem(itemToSave)
+            service.saveMenuItem(itemToSave)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 
     suspend fun deleteMenuItem(id: String): Boolean {
-        val currentList = _menus.value.filter { it.id != id }
-        val sorted = sortMenusDescending(currentList)
-        _menus.value = sorted
-        saveMenusToCache(sorted)
+        if (id.isBlank()) return false
+        return try {
+            val currentList = _menus.value.filter { it.id != id }
+            val sorted = sortMenusDescending(currentList.distinctBy { it.id })
+            _menus.value = sorted
+            saveMenusToCache(sorted)
 
-        return service.deleteMenuItem(id)
+            val ok = service.deleteMenuItem(id)
+            repoScope.launch {
+                try {
+                    val fresh = service.fetchMenus()
+                    val sortedFresh = sortMenusDescending(fresh.filter { it.id.isNotBlank() }.distinctBy { it.id })
+                    _menus.value = sortedFresh
+                    saveMenusToCache(sortedFresh)
+                } catch (_: Exception) {}
+            }
+            ok
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 
     suspend fun saveSidebarMenu(item: SidebarMenuItem): Boolean {
