@@ -304,6 +304,80 @@
 </head>
 <body>
 
+    <!-- 0. SUPER ADMIN ACCESS GATE -->
+    <div id="admin-auth-gate" class="min-vh-100 d-flex align-items-center justify-content-center p-3" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0369a1 100%); overflow-y: auto;">
+        <div class="card border-0 shadow-lg rounded-4 overflow-hidden my-auto" style="max-width: 460px; width: 100%; background: #ffffff;">
+            <div class="p-4 text-center text-white" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white text-primary mb-3 shadow" style="width: 64px; height: 64px; font-size: 26px;">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h4 class="fw-bold m-0">Monico One Admin</h4>
+                <p class="small text-white-50 m-0 mt-1">সুপার অ্যাডমিন সিকিউরিটি গেটওয়ে</p>
+                <div class="badge bg-danger text-white mt-2 px-3 py-1 rounded-pill" style="font-size: 11px;">
+                    <i class="fa-solid fa-lock me-1"></i> শুধুমাত্র Super Admin অ্যাক্সেস
+                </div>
+            </div>
+
+            <div class="p-4">
+                <!-- Denied box if non-super-admin user is logged in -->
+                <div id="gate-denied-box" class="alert alert-danger rounded-3 d-none mb-3">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-danger mt-1 fs-5"></i>
+                        <div>
+                            <div class="fw-bold text-danger">প্রবেশাধিকার অস্বীকৃত</div>
+                            <div class="small mt-1 text-dark" id="gate-denied-msg">
+                                সাধারণ ইউজারদের জন্য অ্যাডমিন প্যানেল অ্যাক্সেস সংরক্ষিত নয়।
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Super Admin Login Form -->
+                <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">
+                            <i class="fa-solid fa-user me-1 text-primary"></i> সুপার অ্যাডমিন আইডি
+                        </label>
+                        <input type="text" class="form-control form-control-lg fs-6" id="gate-emp-id" placeholder="যেমন: 1001 বা ADMIN" required autofocus autocomplete="username">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">
+                            <i class="fa-solid fa-key me-1 text-primary"></i> পাসওয়ার্ড
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control form-control-lg fs-6" id="gate-password" placeholder="••••••••" required autocomplete="current-password">
+                            <button class="btn btn-outline-secondary" type="button" onclick="toggleGatePasswordVisibility()" title="পাসওয়ার্ড দেখুন">
+                                <i class="fa-solid fa-eye" id="gate-toggle-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="gate-error-alert" class="alert alert-danger py-2 small d-none mb-3"></div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2" id="gate-login-btn">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>অ্যাডমিন প্যানেলে প্রবেশ করুন</span>
+                    </button>
+                </form>
+
+                <div class="text-center mt-3 pt-3 border-top">
+                    <a href="website.html" class="btn btn-light btn-sm text-secondary rounded-pill px-3 fw-semibold text-decoration-none">
+                        <i class="fa-solid fa-arrow-left me-1"></i> ওয়েবসাইটে ফিরে যান (Website View)
+                    </a>
+                </div>
+            </div>
+            <div class="bg-light px-4 py-3 text-center border-top">
+                <small class="text-muted" style="font-size: 11px;">
+                    <i class="fa-solid fa-circle-info me-1"></i> সাধারণ বা অননুমোদিত ইউজারদের প্রবেশ কঠোরভাবে নিষিদ্ধ।
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN ADMIN APP WRAPPER (Shown only to authenticated Super Admin) -->
+    <div id="admin-app-root" style="display: none;">
+
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
         <div class="brand">
@@ -424,6 +498,14 @@
                 <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1 bg-light rounded-pill border">
                     <span class="spinner-grow spinner-grow-sm text-success" role="status" style="width: 8px; height: 8px;"></span>
                     <small class="fw-semibold text-secondary" id="db-status-text">কানেক্টেড (Firebase RTDB)</small>
+                </div>
+                <div class="d-flex align-items-center gap-2 px-3 py-1 bg-primary bg-opacity-10 rounded-pill border border-primary border-opacity-25" id="admin-user-header-badge">
+                    <i class="fa-solid fa-user-shield text-primary"></i>
+                    <span class="small fw-bold text-primary" id="admin-header-user-name">Super Admin</span>
+                    <span class="badge bg-danger rounded-pill" style="font-size: 10px;">SUPER_ADMIN</span>
+                    <button class="btn btn-sm btn-outline-danger border-0 rounded-circle p-1 ms-1" onclick="handleAdminLogout()" title="লগআউট">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
                 </div>
                 <a href="website.html" class="btn btn-outline-primary d-flex align-items-center gap-2 px-3 rounded-pill text-decoration-none">
                     <i class="fa-solid fa-globe"></i>
@@ -1502,7 +1584,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> <!-- /#admin-app-root -->
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -1542,9 +1624,148 @@
             modals.card = new bootstrap.Modal(document.getElementById('modalCard'));
             modals.notification = new bootstrap.Modal(document.getElementById('modalNotification'));
 
-            document.getElementById('custom-db-url').value = BASE_URL;
-            fetchAllData();
+            const customDbEl = document.getElementById('custom-db-url');
+            if (customDbEl) customDbEl.value = BASE_URL;
+
+            // Enforce Super Admin Access
+            checkAdminAuth();
         });
+
+        // ==================== SUPER ADMIN AUTHENTICATION & ACCESS CONTROL ====================
+        function checkAdminAuth() {
+            const savedUserStr = localStorage.getItem('MONICO_LOGGED_USER');
+            const gate = document.getElementById('admin-auth-gate');
+            const appRoot = document.getElementById('admin-app-root');
+            const deniedBox = document.getElementById('gate-denied-box');
+            const deniedMsg = document.getElementById('gate-denied-msg');
+
+            if (!savedUserStr) {
+                // No user logged in
+                gate.classList.remove('d-none');
+                appRoot.style.display = 'none';
+                deniedBox.classList.add('d-none');
+                return false;
+            }
+
+            try {
+                const u = JSON.parse(savedUserStr);
+                const role = (u.role || '').trim().toUpperCase();
+                if (role === 'SUPER_ADMIN' || role === 'SUPER ADMIN') {
+                    // Authorized Super Admin!
+                    unlockAdminPanel(u);
+                    return true;
+                } else {
+                    // Non-super-admin user logged in - Block Admin access!
+                    gate.classList.remove('d-none');
+                    appRoot.style.display = 'none';
+                    deniedMsg.innerHTML = `আপনি বর্তমানে <strong>${escapeHtml(u.fullName || u.employeeId)}</strong> হিসেবে লগইন আছেন (রোল: <span class="badge bg-secondary">${escapeHtml(u.role || 'USER')}</span>)।<br>ওয়েবসাইটের সাধারণ ইউজারদের জন্য অ্যাডমিন প্যানেল অ্যাক্সেস সংরক্ষিত নয়। অ্যাডমিন অ্যাক্সেস শুধুমাত্র <strong>Super Admin</strong> এর জন্য অনুমোদিত।`;
+                    deniedBox.classList.remove('d-none');
+                    return false;
+                }
+            } catch(e) {
+                gate.classList.remove('d-none');
+                appRoot.style.display = 'none';
+                deniedBox.classList.add('d-none');
+                return false;
+            }
+        }
+
+        function unlockAdminPanel(user) {
+            const gate = document.getElementById('admin-auth-gate');
+            const appRoot = document.getElementById('admin-app-root');
+            gate.classList.add('d-none');
+            appRoot.style.display = 'block';
+
+            // Update top header user info
+            const nameEl = document.getElementById('admin-header-user-name');
+            if (nameEl) {
+                nameEl.innerText = user.fullName || user.employeeId;
+            }
+
+            // Fetch all admin data now that authentication is verified
+            fetchAllData();
+        }
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const empId = document.getElementById('gate-emp-id').value.trim();
+            const pass = document.getElementById('gate-password').value.trim();
+            const errBox = document.getElementById('gate-error-alert');
+            const btn = document.getElementById('gate-login-btn');
+
+            errBox.classList.add('d-none');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>যাচাই করা হচ্ছে...';
+
+            try {
+                const res = await fetch(`${BASE_URL}/users.json`);
+                if (!res.ok) throw new Error('ডাটাবেজ কানেকশন সমস্যা! স্ট্যাটাস: ' + res.status);
+                const usersData = await res.json() || {};
+                state.users = usersData;
+
+                let matchedUser = null;
+                Object.keys(usersData).forEach(k => {
+                    const u = usersData[k];
+                    if ((u.employeeId || k).toLowerCase() === empId.toLowerCase() && String(u.password).trim() === pass) {
+                        matchedUser = { employeeId: u.employeeId || k, ...u };
+                    }
+                });
+
+                if (!matchedUser) {
+                    errBox.innerText = 'ভুল এমপ্লয়ি আইডি বা পাসওয়ার্ড!';
+                    errBox.classList.remove('d-none');
+                    return;
+                }
+
+                const role = (matchedUser.role || '').trim().toUpperCase();
+                if (role !== 'SUPER_ADMIN' && role !== 'SUPER ADMIN') {
+                    errBox.innerHTML = `<strong>অ্যাক্সেস অস্বীকৃত!</strong> এই অ্যাকাউন্টের রোল হলো <strong>${escapeHtml(matchedUser.role || 'USER')}</strong>। অ্যাডমিন প্যানেল শুধুমাত্র <strong>Super Admin</strong> এর জন্য অনুমোদিত। সাধারণ ইউজারদের প্রবেশ নিষেধ।`;
+                    errBox.classList.remove('d-none');
+                    return;
+                }
+
+                // Super Admin validated
+                localStorage.setItem('MONICO_LOGGED_USER', JSON.stringify(matchedUser));
+                showToast(`স্বাগতম, Super Admin ${matchedUser.fullName || matchedUser.employeeId}!`);
+                unlockAdminPanel(matchedUser);
+            } catch(err) {
+                console.error(err);
+                errBox.innerText = 'লগইন ব্যর্থ হয়েছে: ' + (err.message || 'নেটওয়ার্ক সমস্যা');
+                errBox.classList.remove('d-none');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i><span>অ্যাডমিন প্যানেলে প্রবেশ করুন</span>';
+            }
+        }
+
+        function handleAdminLogout() {
+            if (!confirm('আপনি কি অ্যাডমিন কনসোল থেকে লগআউট করতে চান?')) return;
+            localStorage.removeItem('MONICO_LOGGED_USER');
+            showToast('অ্যাডমিন প্যানেল থেকে সফলভাবে লগআউট হয়েছে।');
+            const gate = document.getElementById('admin-auth-gate');
+            const appRoot = document.getElementById('admin-app-root');
+            const deniedBox = document.getElementById('gate-denied-box');
+            appRoot.style.display = 'none';
+            gate.classList.remove('d-none');
+            deniedBox.classList.add('d-none');
+            const passInput = document.getElementById('gate-password');
+            if (passInput) passInput.value = '';
+        }
+
+        function toggleGatePasswordVisibility() {
+            const passInput = document.getElementById('gate-password');
+            const icon = document.getElementById('gate-toggle-icon');
+            if (!passInput || !icon) return;
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
 
         function showToast(msg, isError = false) {
             Toastify({

@@ -644,8 +644,8 @@
                         </button>
                     </div>
 
-                    <!-- Direct Link to Admin Console -->
-                    <a href="index.html" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-1 ms-1" title="অ্যাডমিন কনসোল খুলুন">
+                    <!-- Direct Link to Admin Console (Super Admin Only) -->
+                    <a href="index.html" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-1 ms-1 d-none" id="nav-admin-link" title="অ্যাডমিন কনসোল খুলুন">
                         <i class="fa-solid fa-shield-halved"></i>
                         <span class="d-none d-sm-inline">অ্যাডমিন</span>
                     </a>
@@ -848,7 +848,7 @@
                 </div>
                 <div class="col-md-6 text-center text-md-end">
                     <div class="d-flex align-items-center justify-content-center justify-content-md-end gap-3 mb-2">
-                        <a href="index.html" class="text-decoration-none fw-semibold small text-primary">
+                        <a href="index.html" class="text-decoration-none fw-semibold small text-primary d-none" id="footer-admin-link">
                             <i class="fa-solid fa-shield-halved me-1"></i> অ্যাডমিন কনসোল
                         </a>
                         <span class="text-muted">|</span>
@@ -1959,8 +1959,22 @@
 
         function updateUserUI() {
             const sec = document.getElementById('user-auth-section');
-            if (portalState.currentUser) {
-                const u = portalState.currentUser;
+            const navAdminLink = document.getElementById('nav-admin-link');
+            const footerAdminLink = document.getElementById('footer-admin-link');
+            const u = portalState.currentUser;
+            const role = (u && u.role ? u.role : '').trim().toUpperCase();
+            const isSuperAdmin = (role === 'SUPER_ADMIN' || role === 'SUPER ADMIN');
+
+            if (navAdminLink) {
+                if (isSuperAdmin) navAdminLink.classList.remove('d-none');
+                else navAdminLink.classList.add('d-none');
+            }
+            if (footerAdminLink) {
+                if (isSuperAdmin) footerAdminLink.classList.remove('d-none');
+                else footerAdminLink.classList.add('d-none');
+            }
+
+            if (u) {
                 sec.innerHTML = `
                     <button class="btn btn-light btn-sm rounded-pill px-3 fw-semibold border d-flex align-items-center gap-2" onclick="openProfileModal()">
                         <i class="fa-solid fa-circle-user text-primary"></i>
@@ -1987,8 +2001,8 @@
             document.getElementById('prof-user-role').innerText = u.role || 'MPO';
 
             const adminLink = document.getElementById('prof-admin-link');
-            const role = (u.role || '').toUpperCase();
-            if (role === 'SUPER_ADMIN' || role === 'SUPER ADMIN' || role === 'DIC') {
+            const role = (u.role || '').trim().toUpperCase();
+            if (role === 'SUPER_ADMIN' || role === 'SUPER ADMIN') {
                 adminLink.classList.remove('d-none');
             } else {
                 adminLink.classList.add('d-none');

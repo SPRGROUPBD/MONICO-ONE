@@ -32,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -61,6 +62,72 @@ fun AdminPanelScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val currentUser by repository.currentUser.collectAsState()
+    val isSuperAdmin = remember(currentUser) {
+        val role = currentUser?.role?.trim()?.uppercase() ?: ""
+        role == "SUPER_ADMIN" || role == "SUPER ADMIN"
+    }
+
+    if (!isSuperAdmin) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("অ্যাডমিন প্যানেল") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Security,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Text(
+                            "অ্যাক্সেস সংরক্ষিত (Access Denied)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            "আপনার অ্যাকাউন্টের রোল (${currentUser?.role ?: "MPO"})। অ্যাডমিন প্যানেলে প্রবেশাধিকার শুধুমাত্র Super Admin এর জন্য অনুমোদিত।",
+                            textAlign = TextAlign.Center,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Button(
+                            onClick = onBack,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("ড্যাশবোর্ডে ফিরে যান")
+                        }
+                    }
+                }
+            }
+        }
+        return
+    }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("মেনু ফাইল ও সার্কুলার (Grids 1-6)", "সাইডবার মেনু", "স্লাইডার", "নোটিশ", "পপআপ", "প্রোডাক্ট/ট্রেনিং", "ইউজার", "নোটিফিকেশন")
