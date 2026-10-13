@@ -356,8 +356,17 @@ class FirebaseRtdbService {
                     if (imgArr != null) {
                         for (j in 0 until imgArr.length()) {
                             val s = imgArr.optString(j)
-                            if (!s.isNullOrBlank()) imgList.add(s)
+                            if (!s.isNullOrBlank()) imgList.add(s.trim())
                         }
+                    } else {
+                        val imgStr = obj.optString("images", "")
+                        if (imgStr.isNotBlank()) {
+                            imgStr.split("\n", ",").map { it.trim() }.filter { it.isNotBlank() }.forEach { imgList.add(it) }
+                        }
+                    }
+                    val singleImg = obj.optString("image", "").trim()
+                    if (singleImg.isNotBlank() && !imgList.contains(singleImg)) {
+                        imgList.add(0, singleImg)
                     }
                     val cardId = obj.optString("id", i.toString())
                     list.add(
@@ -366,7 +375,7 @@ class FirebaseRtdbService {
                             title = obj.optString("title", ""),
                             url = obj.optString("url", ""),
                             images = imgList,
-                            image = obj.optString("image", "")
+                            image = singleImg
                         )
                     )
                 }
@@ -381,8 +390,17 @@ class FirebaseRtdbService {
                     if (imgArr != null) {
                         for (i in 0 until imgArr.length()) {
                             val s = imgArr.optString(i)
-                            if (!s.isNullOrBlank()) imgList.add(s)
+                            if (!s.isNullOrBlank()) imgList.add(s.trim())
                         }
+                    } else {
+                        val imgStr = obj.optString("images", "")
+                        if (imgStr.isNotBlank()) {
+                            imgStr.split("\n", ",").map { it.trim() }.filter { it.isNotBlank() }.forEach { imgList.add(it) }
+                        }
+                    }
+                    val singleImg = obj.optString("image", "").trim()
+                    if (singleImg.isNotBlank() && !imgList.contains(singleImg)) {
+                        imgList.add(0, singleImg)
                     }
                     list.add(
                         ContentCard(
@@ -390,7 +408,7 @@ class FirebaseRtdbService {
                             title = obj.optString("title", ""),
                             url = obj.optString("url", ""),
                             images = imgList,
-                            image = obj.optString("image", "")
+                            image = singleImg
                         )
                     )
                 }

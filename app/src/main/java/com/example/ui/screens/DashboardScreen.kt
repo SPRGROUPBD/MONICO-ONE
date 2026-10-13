@@ -57,7 +57,6 @@ fun DashboardScreen(
     onToggleDarkMode: () -> Unit,
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit,
-    onOpenAdminPanel: () -> Unit,
     initialShowNotifications: Boolean = false
 ) {
     val context = LocalContext.current
@@ -208,8 +207,8 @@ fun DashboardScreen(
                     modifier = Modifier.width(300.dp)
                 ) {
                     val drawerScrollState = rememberScrollState()
-                    val activeSortedSidebarMenus = remember(sidebarMenus) {
-                        sidebarMenus.filter { it.status == "active" }
+                    val activeSortedSidebarMenus = remember(sidebarMenus, userRole) {
+                        sidebarMenus.filter { it.status == "active" && hasAccess(it.allowedRole) }
                             .sortedWith(compareBy<SidebarMenuItem> { it.order }.thenBy { it.name })
                     }
                     Column(
@@ -230,22 +229,12 @@ fun DashboardScreen(
                             )
                             Column {
                                 Text("Monico One", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                Text("Enterprise Admin Portal", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("স্মার্ট পোর্টাল ও ম্যানেজমেন্ট", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                        if (isSuperAdmin) {
-                            NavigationDrawerItem(
-                                icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MonicoBlue) },
-                                label = { Text("অ্যাডমিন প্যানেল (Admin Console)", fontWeight = FontWeight.SemiBold) },
-                                selected = false,
-                                onClick = {
-                                    scope.launch { drawerState.close() }
-                                    onOpenAdminPanel()
-                                }
-                            )
-                        }
+
 
                         NavigationDrawerItem(
                             icon = { Icon(Icons.Default.Security, contentDescription = null, tint = MonicoGreen) },
@@ -460,14 +449,6 @@ fun DashboardScreen(
                                         }
                                     }
 
-                                    if (isSuperAdmin) {
-                                        IconButton(
-                                            onClick = onOpenAdminPanel,
-                                            modifier = Modifier.size(34.dp)
-                                        ) {
-                                            Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin Panel", tint = MonicoAmber, modifier = Modifier.size(20.dp))
-                                        }
-                                    }
 
                                     Box(
                                         modifier = Modifier
@@ -581,13 +562,15 @@ fun DashboardScreen(
                 }
 
                 // 6. Grid 2: Flat Bonus Sheet
-                item {
-                    SectionHeader(
-                        title = "ফ্ল্যাট বোনাস শিট (FLAT BONUS SHEET)",
-                        icon = Icons.Default.CardGiftcard,
-                        color = MonicoAmber
-                    )
-                    if (grid2Menus.isNotEmpty()) {
+                if (grid2Menus.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "ফ্ল্যাট বোনাস শিট (FLAT BONUS SHEET)",
+                            icon = Icons.Default.CardGiftcard,
+                            color = MonicoAmber
+                        )
+                    }
+                    item {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
@@ -603,19 +586,19 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    } else {
-                        EmptySectionNotice("ফ্ল্যাট বোনাস শিটের কোনো ফাইল নেই।")
                     }
                 }
 
                 // 7. Grid 3: Head Office Circular
-                item {
-                    SectionHeader(
-                        title = "হেড অফিস সার্কুলার (HEAD OFFICE CIRCULAR)",
-                        icon = Icons.Default.Campaign,
-                        color = MonicoBlue
-                    )
-                    if (grid3Menus.isNotEmpty()) {
+                if (grid3Menus.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "হেড অফিস সার্কুলার (HEAD OFFICE CIRCULAR)",
+                            icon = Icons.Default.Campaign,
+                            color = MonicoBlue
+                        )
+                    }
+                    item {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
@@ -631,19 +614,19 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    } else {
-                        EmptySectionNotice("হেড অফিস সার্কুলারের কোনো ফাইল নেই।")
                     }
                 }
 
                 // 8. Grid 4: Salary TA Bill
-                item {
-                    SectionHeader(
-                        title = "স্যালারি ও টিএ বিল (SALARY TA BILL)",
-                        icon = Icons.Default.Payments,
-                        color = MonicoPurple
-                    )
-                    if (grid4Menus.isNotEmpty()) {
+                if (grid4Menus.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "স্যালারি ও টিএ বিল (SALARY TA BILL)",
+                            icon = Icons.Default.Payments,
+                            color = MonicoPurple
+                        )
+                    }
+                    item {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
@@ -659,19 +642,19 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    } else {
-                        EmptySectionNotice("স্যালারি ও টিএ বিলের কোনো ফাইল নেই।")
                     }
                 }
 
                 // 9. Grid 5: Sales Report (PDF)
-                item {
-                    SectionHeader(
-                        title = "সেলস রিপোর্ট (SALES REPORT PDF)",
-                        icon = Icons.Default.PictureAsPdf,
-                        color = MonicoRed
-                    )
-                    if (grid5Menus.isNotEmpty()) {
+                if (grid5Menus.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "সেলস রিপোর্ট (SALES REPORT PDF)",
+                            icon = Icons.Default.PictureAsPdf,
+                            color = MonicoRed
+                        )
+                    }
+                    item {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
@@ -687,19 +670,19 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    } else {
-                        EmptySectionNotice("সেলস রিপোর্টের কোনো PDF ফাইল নেই।")
                     }
                 }
 
                 // 10. Grid 6: Stock Report (PDF)
-                item {
-                    SectionHeader(
-                        title = "স্টক রিপোর্ট (STOCK REPORT PDF)",
-                        icon = Icons.Default.Inventory,
-                        color = Color(0xFF0D9488)
-                    )
-                    if (grid6Menus.isNotEmpty()) {
+                if (grid6Menus.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "স্টক রিপোর্ট (STOCK REPORT PDF)",
+                            icon = Icons.Default.Inventory,
+                            color = Color(0xFF0D9488)
+                        )
+                    }
+                    item {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
@@ -715,19 +698,19 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    } else {
-                        EmptySectionNotice("স্টক রিপোর্টের কোনো PDF ফাইল নেই।")
                     }
                 }
 
                 // 11. Product Training Section
-                item {
-                    SectionHeader(
-                        title = "প্রোডাক্ট ট্রেনিং (PRODUCT TRAINING)",
-                        icon = Icons.Default.School,
-                        color = MonicoPurple
-                    )
-                    if (sortedTrainingCards.isNotEmpty()) {
+                if (sortedTrainingCards.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "প্রোডাক্ট ট্রেনিং (PRODUCT TRAINING)",
+                            icon = Icons.Default.School,
+                            color = MonicoPurple
+                        )
+                    }
+                    item {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
@@ -739,19 +722,19 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    } else {
-                        EmptySectionNotice("কোনো ট্রেনিং কার্ড পাওয়া যায়নি।")
                     }
                 }
 
-                // 11. New Product Launched Section
-                item {
-                    SectionHeader(
-                        title = "নতুন পণ্য উদ্বোধন (NEW PRODUCT LAUNCHED)",
-                        icon = Icons.Default.RocketLaunch,
-                        color = MonicoGreen
-                    )
-                    if (sortedProductCards.isNotEmpty()) {
+                // 12. New Product Launched Section
+                if (sortedProductCards.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "নতুন পণ্য উদ্বোধন (NEW PRODUCT LAUNCHED)",
+                            icon = Icons.Default.RocketLaunch,
+                            color = MonicoGreen
+                        )
+                    }
+                    item {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
@@ -763,19 +746,19 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    } else {
-                        EmptySectionNotice("নতুন কোনো প্রোডাক্ট কার্ড নেই।")
                     }
                 }
 
-                // 12. Product wise Target Sheet Section
-                item {
-                    SectionHeader(
-                        title = "টার্গেট শিট (PRODUCT TARGET SHEET)",
-                        icon = Icons.Default.TrackChanges,
-                        color = MonicoAmber
-                    )
-                    if (sortedTargetSheets.isNotEmpty()) {
+                // 13. Product wise Target Sheet Section
+                if (sortedTargetSheets.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "টার্গেট শিট (PRODUCT TARGET SHEET)",
+                            icon = Icons.Default.TrackChanges,
+                            color = MonicoAmber
+                        )
+                    }
+                    item {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
@@ -787,8 +770,44 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                    } else {
-                        EmptySectionNotice("কোনো টার্গেট শিট ফাইল নেই।")
+                    }
+                }
+
+                // Consolidated empty state when no sections match current filter/query
+                val hasAnyContent = grid1Menus.isNotEmpty() ||
+                        grid2Menus.isNotEmpty() ||
+                        grid3Menus.isNotEmpty() ||
+                        grid4Menus.isNotEmpty() ||
+                        grid5Menus.isNotEmpty() ||
+                        grid6Menus.isNotEmpty() ||
+                        sortedTrainingCards.isNotEmpty() ||
+                        sortedProductCards.isNotEmpty() ||
+                        sortedTargetSheets.isNotEmpty()
+
+                if (!hasAnyContent) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 36.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.FolderOpen,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(52.dp)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = if (searchQuery.isNotBlank()) "অনুসন্ধানে কোনো ফাইল পাওয়া যায়নি" else "বর্তমান ফিল্টারে কোনো ফাইল বা সার্কুলার নেই",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
 

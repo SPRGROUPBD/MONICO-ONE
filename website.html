@@ -526,19 +526,274 @@
             justify-content: space-between;
         }
 
-        /* Viewer Modal */
-        .modal-fullscreen-custom {
-            max-width: 95vw;
-            height: 92vh;
-            margin: 4vh auto;
+        /* Full Page Content & Image Viewer Modal */
+        #modalViewer.modal {
+            padding: 0 !important;
+        }
+
+        #modalViewer .modal-dialog.modal-fullscreen {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        #modalViewer .modal-content {
+            border-radius: 0 !important;
+            background: #090d16 !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            border: none !important;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #modalViewer .modal-header {
+            background: #0f172a !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+            color: #ffffff !important;
+            padding: 10px 18px !important;
+            flex-shrink: 0;
+            min-height: 58px;
+        }
+
+        #modalViewer .modal-title {
+            color: #ffffff !important;
+        }
+
+        #modalViewer .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+            opacity: 0.85;
+        }
+
+        #modalViewer .btn-close:hover {
+            opacity: 1;
         }
 
         .viewer-frame {
             width: 100%;
-            height: 75vh;
+            height: calc(100vh - 60px);
+            height: calc(100dvh - 60px);
             border: none;
-            border-radius: 12px;
-            background: #f8fafc;
+            border-radius: 0;
+            background: #ffffff;
+            flex-grow: 1;
+        }
+
+        /* Center View for Image Gallery in Modal (Portrait & Landscape & A4 Documents) */
+        #viewer-gallery {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #090d16;
+            overflow: hidden;
+        }
+
+        .gallery-controls-pill {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            max-width: 580px;
+            width: 94%;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transition: opacity 0.25s ease, top 0.25s ease;
+        }
+
+        .gallery-thumbs-strip {
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            max-width: 92%;
+            max-height: 72px;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transition: opacity 0.25s ease, bottom 0.25s ease;
+        }
+
+        #gallery-carousel {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        #modalViewer .carousel-inner {
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            margin: auto !important;
+        }
+
+        #modalViewer .carousel-item {
+            width: 100% !important;
+            height: 100% !important;
+            float: none !important;
+            margin-right: 0 !important;
+            position: relative !important;
+        }
+
+        #modalViewer .carousel-item.active {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            height: 100% !important;
+            margin: auto !important;
+        }
+
+        #modalViewer .carousel-item:not(.active) {
+            display: none !important;
+        }
+
+        /* Base Image Wrapper: Supports both Fit-Page Center and A4 Full Width Scroll */
+        .gallery-main-image-wrap {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            box-sizing: border-box;
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        /* 1. Fit Page Mode: Perfectly centered vertically and horizontally inside viewport */
+        .gallery-main-image-wrap.mode-fit-page {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: hidden !important;
+            padding: 10px !important;
+            margin: auto !important;
+        }
+
+        .gallery-main-image-wrap.mode-fit-page .gallery-main-image {
+            max-height: calc(100vh - 120px);
+            max-height: calc(100dvh - 120px);
+            max-width: 96vw;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            cursor: zoom-in;
+            margin: auto;
+            display: block;
+            border-radius: 10px;
+            box-shadow: 0 14px 45px rgba(0, 0, 0, 0.85);
+            background: #ffffff;
+            user-select: none;
+            -webkit-user-drag: none;
+            transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        /* 2. Dedicated A4 Fit Width Mode: Fills full width so document text is big, crisp and legible */
+        .gallery-main-image-wrap.mode-fit-width {
+            display: block !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding: 56px 12px 90px 12px !important;
+            text-align: center !important;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+
+        .gallery-main-image-wrap.mode-fit-width .gallery-main-image {
+            width: 100% !important;
+            max-width: 900px !important;
+            height: auto !important;
+            max-height: none !important;
+            margin: 0 auto !important;
+            display: block !important;
+            border-radius: 8px;
+            box-shadow: 0 16px 50px rgba(0, 0, 0, 0.95);
+            background: #ffffff;
+            cursor: zoom-out;
+            transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        /* Dedicated Portrait Mode Optimization (Mobile / Tablets / Portrait Screens) */
+        @media (orientation: portrait), (max-width: 768px) {
+            #modalViewer .modal-header {
+                padding: 8px 12px !important;
+                min-height: 48px !important;
+            }
+
+            #viewer-modal-title {
+                font-size: 14px !important;
+                max-width: 48vw !important;
+            }
+
+            .gallery-controls-pill {
+                top: 8px !important;
+                max-width: 98% !important;
+                width: 98% !important;
+                padding: 4px 8px !important;
+            }
+
+            .gallery-thumbs-strip {
+                bottom: 8px !important;
+                max-width: 96% !important;
+                max-height: 60px !important;
+                padding: 4px !important;
+            }
+
+            .gallery-thumbs-strip img {
+                width: 42px !important;
+                height: 42px !important;
+            }
+
+            /* In portrait screens, maximize vertical/horizontal space so A4 isn't small */
+            .gallery-main-image-wrap.mode-fit-page {
+                padding: 6px !important;
+            }
+
+            .gallery-main-image-wrap.mode-fit-page .gallery-main-image {
+                max-height: calc(100dvh - 100px) !important;
+                max-height: calc(100vh - 100px) !important;
+                max-width: 98vw !important;
+                border-radius: 6px !important;
+            }
+
+            .gallery-main-image-wrap.mode-fit-width {
+                padding: 48px 4px 76px 4px !important;
+            }
+
+            .gallery-main-image-wrap.mode-fit-width .gallery-main-image {
+                max-width: 100% !important;
+                border-radius: 6px !important;
+            }
+        }
+
+        /* 3. Immersive Fullscreen Mode (Removes all headers to provide 100% true full screen) */
+        #modalViewer.viewer-immersive-mode #viewer-modal-header {
+            display: none !important;
+        }
+
+        #modalViewer.viewer-immersive-mode .gallery-controls-pill {
+            top: 10px !important;
+            background: rgba(15, 23, 42, 0.85) !important;
+        }
+
+        #modalViewer.viewer-immersive-mode .gallery-main-image-wrap.mode-fit-page .gallery-main-image {
+            max-height: calc(100dvh - 24px) !important;
+            max-width: 99vw !important;
+        }
+
+        #modalViewer.viewer-immersive-mode .gallery-main-image-wrap.mode-fit-width {
+            padding-top: 48px !important;
+            padding-bottom: 24px !important;
         }
 
         /* Notification Drawer/Modal */
@@ -870,65 +1125,85 @@
 
     <!-- A. CONTENT VIEWER MODAL (PDF, DOCS, WEB, IMAGES) -->
     <div class="modal fade" id="modalViewer" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen-custom modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-header border-bottom px-3 px-md-4 py-3 bg-white">
+        <div class="modal-dialog modal-fullscreen m-0">
+            <div class="modal-content border-0 bg-dark text-white d-flex flex-column h-100" style="background: #090d16 !important;">
+                <div class="modal-header border-bottom border-secondary border-opacity-25 px-3 px-md-4 py-2" id="viewer-modal-header" style="background: #0f172a; min-height: 58px;">
                     <div class="d-flex align-items-center gap-2 overflow-hidden me-3">
                         <span class="badge bg-primary rounded-pill p-2" id="viewer-icon-badge">
-                            <i class="fa-solid fa-file-pdf"></i>
+                            <i class="fa-solid fa-images"></i>
                         </span>
                         <div>
-                            <h5 class="modal-title fw-bold m-0 text-truncate" id="viewer-modal-title" style="max-width: 55vw;">ডকুমেন্ট ভিউয়ার</h5>
-                            <small class="text-muted" id="viewer-modal-subtitle">Monico One Interactive Document Viewer</small>
+                            <h5 class="modal-title fw-bold m-0 text-white text-truncate" id="viewer-modal-title" style="max-width: 55vw;">ডকুমেন্ট / ছবি ভিউয়ার</h5>
+                            <small class="text-white-50 small" id="viewer-modal-subtitle">Monico One Fullscreen Viewer</small>
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2 ms-auto">
-                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold d-flex align-items-center gap-1" id="viewer-open-external-btn" onclick="openCurrentUrlExternal()">
+                        <button class="btn btn-sm btn-outline-light rounded-pill px-3 fw-semibold d-flex align-items-center gap-1" id="viewer-open-external-btn" onclick="openCurrentUrlExternal()">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                             <span class="d-none d-sm-inline" id="viewer-action-label">নতুন ট্যাবে খুলুন</span>
                         </button>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                 </div>
-                <div class="modal-body p-0 position-relative" style="background: #0f172a; min-height: 520px;">
+                <div class="modal-body p-0 position-relative flex-grow-1 d-flex flex-column" style="background: #090d16; min-height: 0; overflow: hidden;">
                     <!-- Loading Indicator -->
-                    <div id="viewer-loader" class="position-absolute top-50 start-50 translate-middle text-center text-white">
+                    <div id="viewer-loader" class="position-absolute top-50 start-50 translate-middle text-center text-white" style="z-index: 5;">
                         <div class="spinner-border text-primary" role="status"></div>
                         <p class="text-light small mt-2">ডকুমেন্ট / ছবি লোড হচ্ছে...</p>
                     </div>
 
                     <!-- Iframe for Web / PDF -->
-                    <iframe id="viewer-iframe" class="viewer-frame d-none" style="background: #ffffff;" onload="onIframeLoaded()"></iframe>
+                    <iframe id="viewer-iframe" class="viewer-frame d-none w-100 flex-grow-1" style="display: none; border: none; background: #ffffff;"></iframe>
 
-                    <!-- Gallery Container for Images -->
-                    <div id="viewer-gallery" class="p-2 p-md-3 text-center d-none position-relative w-100 h-100 d-flex flex-column justify-content-between" style="min-height: 520px;">
-                        <div class="d-flex justify-content-between align-items-center px-3 py-1 mb-2 bg-dark bg-opacity-75 rounded-pill text-white small mx-auto" style="max-width: 500px; width: 100%;">
-                            <span id="gallery-counter-badge" class="fw-semibold text-warning">ছবি ১ / ১</span>
-                            <div class="d-flex gap-2 align-items-center">
-                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="zoomGalleryImage(1.2)" title="জুম ইন" style="width: 28px; height: 28px;">
+                    <!-- Gallery Container for Images (True Portrait & Landscape Center View) -->
+                    <div id="viewer-gallery" class="p-0 text-center d-none position-relative w-100 flex-grow-1" style="display: none; min-height: 0; background: #090d16; overflow: hidden; height: 100%;">
+                        <!-- Floating Top Control Pill -->
+                        <div id="gallery-top-controls" class="gallery-controls-pill d-flex justify-content-between align-items-center px-2 px-sm-3 py-1 bg-dark bg-opacity-80 rounded-pill text-white small border border-secondary border-opacity-25 shadow">
+                            <div class="d-flex align-items-center gap-1 gap-sm-2">
+                                <span id="gallery-counter-badge" class="fw-semibold text-warning small">ছবি ১ / ১</span>
+                                <span id="gallery-portrait-badge" class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-50 rounded-pill px-2 py-1 small d-none" style="font-size: 11px;">
+                                    <i class="fa-solid fa-file-invoice me-1"></i>A4 ডকুমেন্ট
+                                </span>
+                            </div>
+                            <div class="d-flex gap-1 align-items-center">
+                                <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-2 py-0 border d-flex align-items-center gap-1 text-nowrap" id="btn-gallery-fit-mode" onclick="toggleA4FitMode()" title="A4 ফুল উইডথ / পেজ ফিট মোড" style="font-size: 11px; height: 26px;">
+                                    <i id="gallery-fit-mode-icon" class="fa-solid fa-arrows-left-right-to-line"></i>
+                                    <span id="gallery-fit-mode-label" class="d-none d-sm-inline">A4 ফুল উইডথ</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" id="btn-gallery-fullscreen" onclick="toggleImmersiveFullscreen()" title="পূর্ণ পর্দা (Fullscreen)" style="width: 28px; height: 28px;">
+                                    <i id="gallery-fullscreen-icon" class="fa-solid fa-expand"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="zoomGalleryImage(1.25)" title="জুম ইন" style="width: 28px; height: 28px;">
                                     <i class="fa-solid fa-magnifying-glass-plus"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="zoomGalleryImage(0.8)" title="জুম আউট" style="width: 28px; height: 28px;">
                                     <i class="fa-solid fa-magnifying-glass-minus"></i>
                                 </button>
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="rotateGalleryImage(90)" title="ঘোরান (Rotate 90°)" style="width: 28px; height: 28px;">
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="resetGalleryZoom()" title="রিসেট" style="width: 28px; height: 28px;">
                                     <i class="fa-solid fa-arrows-rotate"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="openCurrentUrlExternal()" title="ডাউনলোড" style="width: 28px; height: 28px;">
+                                    <i class="fa-solid fa-download"></i>
                                 </button>
                             </div>
                         </div>
 
-                        <div id="gallery-carousel" class="position-relative flex-grow-1 d-flex align-items-center justify-content-center overflow-hidden my-auto" style="min-height: 400px;">
-                            <div class="carousel-inner w-100" id="gallery-carousel-inner"></div>
-                            <button class="carousel-control-prev" id="gallery-prev-btn" type="button" onclick="navigateGallerySlide(-1)" style="width: 8%;">
-                                <span class="carousel-control-prev-icon p-3 bg-dark bg-opacity-75 rounded-circle shadow" aria-hidden="true"></span>
+                        <!-- 100% Fully Centered Main Image Carousel -->
+                        <div id="gallery-carousel" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center overflow-hidden">
+                            <div class="carousel-inner w-100 h-100 d-flex align-items-center justify-content-center" id="gallery-carousel-inner"></div>
+                            <button class="carousel-control-prev" id="gallery-prev-btn" type="button" onclick="navigateGallerySlide(-1)" style="width: 10%; z-index: 20;">
+                                <span class="carousel-control-prev-icon p-2 p-sm-3 bg-dark bg-opacity-75 rounded-circle shadow" aria-hidden="true"></span>
                             </button>
-                            <button class="carousel-control-next" id="gallery-next-btn" type="button" onclick="navigateGallerySlide(1)" style="width: 8%;">
-                                <span class="carousel-control-next-icon p-3 bg-dark bg-opacity-75 rounded-circle shadow" aria-hidden="true"></span>
+                            <button class="carousel-control-next" id="gallery-next-btn" type="button" onclick="navigateGallerySlide(1)" style="width: 10%; z-index: 20;">
+                                <span class="carousel-control-next-icon p-2 p-sm-3 bg-dark bg-opacity-75 rounded-circle shadow" aria-hidden="true"></span>
                             </button>
                         </div>
 
-                        <!-- Thumbnails strip -->
-                        <div id="gallery-thumbnails-strip" class="d-flex gap-2 justify-content-center mt-2 p-2 bg-dark bg-opacity-75 rounded-4 overflow-x-auto mx-auto" style="max-width: 90%; max-height: 80px;"></div>
+                        <!-- Thumbnails strip (Floating Center at bottom) -->
+                        <div id="gallery-thumbnails-strip" class="gallery-thumbs-strip d-flex gap-2 justify-content-center p-2 bg-dark bg-opacity-75 rounded-4 overflow-x-auto border border-secondary border-opacity-25 shadow"></div>
                     </div>
                 </div>
             </div>
@@ -1098,6 +1373,34 @@
         // Initialize on DOM load
         document.addEventListener('DOMContentLoaded', () => {
             viewerModal = new bootstrap.Modal(document.getElementById('modalViewer'));
+            document.getElementById('modalViewer').addEventListener('hidden.bs.modal', () => {
+                const iframe = document.getElementById('viewer-iframe');
+                if (iframe) {
+                    iframe.onload = null;
+                    iframe.removeAttribute('src');
+                    iframe.classList.add('d-none');
+                    iframe.style.setProperty('display', 'none', 'important');
+                }
+                const gallery = document.getElementById('viewer-gallery');
+                if (gallery) {
+                    gallery.classList.add('d-none');
+                    gallery.style.setProperty('display', 'none', 'important');
+                }
+                const carouselInner = document.getElementById('gallery-carousel-inner');
+                if (carouselInner) carouselInner.innerHTML = '';
+                portalState.currentViewerType = '';
+                portalState.currentViewerUrl = '';
+                activeGalleryImages = [];
+                currentGalleryZoom = 1;
+                currentGalleryRotation = 0;
+                currentGalleryFitMode = 'fit-page';
+                isImmersiveFullscreen = false;
+                document.getElementById('modalViewer').classList.remove('viewer-immersive-mode');
+                const fullIcon = document.getElementById('gallery-fullscreen-icon');
+                if (fullIcon) fullIcon.className = 'fa-solid fa-expand';
+                const portraitBadge = document.getElementById('gallery-portrait-badge');
+                if (portraitBadge) portraitBadge.classList.add('d-none');
+            });
             popupNoticeModal = new bootstrap.Modal(document.getElementById('modalPopupNotice'));
             notifCenterModal = new bootstrap.Modal(document.getElementById('modalNotificationCenter'));
             loginModal = new bootstrap.Modal(document.getElementById('modalUserLogin'));
@@ -1507,13 +1810,24 @@
             renderMenuCards();
         }
 
+        function formatGroupLabel(group) {
+            const g = (group || '').toLowerCase();
+            if (g === 'grid1' || g === 'grid-1' || g === 'grid_1') return 'প্রাইমারি মেনু';
+            if (g === 'grid2') return 'সার্কুলার / বোনাস';
+            if (g === 'grid3') return 'পলিসি ও অফার';
+            if (g === 'grid4') return 'নোটিশ ও মেমো';
+            if (g === 'grid5') return 'সেলস রিপোর্ট';
+            if (g === 'grid6') return 'স্টক রিপোর্ট';
+            return group || 'সাধারণ ফাইল';
+        }
+
         function renderMenuCards() {
             const grid = document.getElementById('menu-cards-grid');
             let list = portalState.menus;
 
-            // Filter by Grid
+            // Filter by Grid strictly by matching assigned group
             if (portalState.activeGridFilter !== 'ALL') {
-                list = list.filter(m => (m.group || 'grid1') === portalState.activeGridFilter);
+                list = list.filter(m => (m.group || '').toLowerCase() === portalState.activeGridFilter.toLowerCase());
             }
 
             // Filter by Month
@@ -1574,7 +1888,7 @@
                                         ${m.isPinned ? `
                                             <span class="badge-soft badge-soft-warning"><i class="fa-solid fa-thumbtack"></i> পিন</span>
                                         ` : ''}
-                                        <span class="badge-soft badge-soft-secondary">${escapeHtml(m.group || 'grid1')}</span>
+                                        <span class="badge-soft badge-soft-secondary">${escapeHtml(formatGroupLabel(m.group))}</span>
                                     </div>
                                 </div>
 
@@ -1948,6 +2262,9 @@
         let activeGalleryImages = [];
         let activeGalleryIndex = 0;
         let currentGalleryZoom = 1;
+        let currentGalleryRotation = 0;
+        let currentGalleryFitMode = 'fit-page'; // 'fit-page' | 'fit-width'
+        let isImmersiveFullscreen = false;
 
         function handleItemClick(title, url) {
             if (!url) return;
@@ -1958,6 +2275,7 @@
                 return;
             }
 
+            portalState.currentViewerType = 'doc';
             portalState.currentViewerUrl = url;
             document.getElementById('viewer-modal-title').innerText = title;
             document.getElementById('viewer-modal-subtitle').innerText = url;
@@ -1971,9 +2289,15 @@
             const gallery = document.getElementById('viewer-gallery');
             const loader = document.getElementById('viewer-loader');
 
-            gallery.classList.add('d-none');
-            iframe.classList.add('d-none');
-            loader.classList.remove('d-none');
+            if (gallery) {
+                gallery.classList.add('d-none');
+                gallery.style.setProperty('display', 'none', 'important');
+            }
+            if (iframe) {
+                iframe.classList.add('d-none');
+                iframe.style.setProperty('display', 'none', 'important');
+            }
+            if (loader) loader.classList.remove('d-none');
 
             // If PDF remote URL, use Google Docs Viewer for seamless web iframe rendering
             let effectiveEmbedUrl = url;
@@ -1981,18 +2305,42 @@
                 effectiveEmbedUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
             }
 
-            iframe.src = effectiveEmbedUrl;
+            if (iframe) {
+                iframe.onload = onIframeLoaded;
+                iframe.src = effectiveEmbedUrl;
+            }
             viewerModal.show();
         }
 
         function onIframeLoaded() {
-            document.getElementById('viewer-loader').classList.add('d-none');
-            document.getElementById('viewer-iframe').classList.remove('d-none');
+            const gallery = document.getElementById('viewer-gallery');
+            const iframe = document.getElementById('viewer-iframe');
+            const loader = document.getElementById('viewer-loader');
+
+            // CRITICAL: If gallery is active or current type is image or iframe is empty/about:blank, never show iframe!
+            if (portalState.currentViewerType !== 'doc' || !gallery || !gallery.classList.contains('d-none')) {
+                if (iframe) {
+                    iframe.classList.add('d-none');
+                    iframe.style.setProperty('display', 'none', 'important');
+                }
+                return;
+            }
+            if (!iframe || !iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href) {
+                if (iframe) {
+                    iframe.classList.add('d-none');
+                    iframe.style.setProperty('display', 'none', 'important');
+                }
+                return;
+            }
+            if (loader) loader.classList.add('d-none');
+            iframe.classList.remove('d-none');
+            iframe.style.display = 'block';
         }
 
         function openGalleryViewer(title, images, startIndex = 0) {
             if (!images || !images.length) return;
 
+            portalState.currentViewerType = 'image';
             activeGalleryImages = images.map(img => resolveImageUrl(img)).filter(Boolean);
             if (!activeGalleryImages.length) {
                 showToast('কোনো বৈধ ছবি পাওয়া যায়নি!', true);
@@ -2001,6 +2349,8 @@
 
             activeGalleryIndex = Math.max(0, Math.min(startIndex, activeGalleryImages.length - 1));
             currentGalleryZoom = 1;
+            currentGalleryRotation = 0;
+            currentGalleryFitMode = 'fit-page';
             portalState.currentViewerUrl = activeGalleryImages[activeGalleryIndex];
 
             document.getElementById('viewer-modal-title').innerText = title || 'ছবি গ্যালারি';
@@ -2016,18 +2366,34 @@
             const prevBtn = document.getElementById('gallery-prev-btn');
             const nextBtn = document.getElementById('gallery-next-btn');
 
-            iframe.src = '';
-            iframe.classList.add('d-none');
-            loader.classList.add('d-none');
-            gallery.classList.remove('d-none');
+            // Strictly suppress and clean iframe so it NEVER triggers onload, white box, or takes space
+            if (iframe) {
+                iframe.onload = null;
+                iframe.removeAttribute('src');
+                iframe.classList.add('d-none');
+                iframe.style.setProperty('display', 'none', 'important');
+            }
+            if (loader) loader.classList.add('d-none');
+
+            // Strictly activate gallery with flex centering
+            if (gallery) {
+                gallery.classList.remove('d-none');
+                gallery.style.setProperty('display', 'flex', 'important');
+            }
 
             let slidesHtml = '';
             activeGalleryImages.forEach((img, idx) => {
                 const isActive = idx === activeGalleryIndex ? 'active' : '';
                 slidesHtml += `
-                    <div class="carousel-item ${isActive}" data-slide-index="${idx}">
-                        <div class="d-flex align-items-center justify-content-center p-2" style="min-height: 420px; max-height: 68vh;">
-                            <img src="${escapeHtml(img)}" id="gallery-img-${idx}" class="rounded-3 shadow-lg" style="max-height: 65vh; max-width: 100%; object-fit: contain; cursor: zoom-in; transition: transform 0.25s ease;" onclick="toggleImageZoom(${idx})" alt="${escapeHtml(title)} - ছবি ${idx + 1}" onerror="this.onerror=null; this.src='https://placehold.co/600x400?text=IMG+Error';">
+                    <div class="carousel-item ${isActive} w-100 h-100" data-slide-index="${idx}">
+                        <div class="gallery-main-image-wrap mode-${currentGalleryFitMode}" id="gallery-wrap-${idx}">
+                            <img src="${escapeHtml(img)}" 
+                                 id="gallery-img-${idx}" 
+                                 class="gallery-main-image" 
+                                 onload="handleGalleryImageLoad(this, ${idx})"
+                                 onclick="handleGalleryImageClick(${idx})" 
+                                 alt="${escapeHtml(title)} - ছবি ${idx + 1}" 
+                                 onerror="this.onerror=null; this.src='https://placehold.co/600x400?text=IMG+Error';">
                         </div>
                     </div>
                 `;
@@ -2059,6 +2425,112 @@
             viewerModal.show();
         }
 
+        function handleGalleryImageLoad(img, idx) {
+            if (!img) return;
+            const w = img.naturalWidth || 1;
+            const h = img.naturalHeight || 1;
+            const ratio = h / w;
+            const isPortrait = ratio >= 1.25; // Typical portrait document (A4 is 1.414)
+            img.dataset.isPortrait = isPortrait ? 'true' : 'false';
+
+            if (idx === activeGalleryIndex) {
+                updateA4Indicator(isPortrait);
+            }
+        }
+
+        function updateA4Indicator(isPortrait) {
+            const badge = document.getElementById('gallery-portrait-badge');
+            if (badge) {
+                if (isPortrait) {
+                    badge.classList.remove('d-none');
+                    badge.innerHTML = '<i class="fa-solid fa-file-invoice me-1"></i>A4 ডকুমেন্ট';
+                } else {
+                    badge.classList.add('d-none');
+                }
+            }
+        }
+
+        function toggleA4FitMode() {
+            if (currentGalleryFitMode === 'fit-page') {
+                setGalleryFitMode('fit-width');
+            } else {
+                setGalleryFitMode('fit-page');
+            }
+        }
+
+        function setGalleryFitMode(mode) {
+            currentGalleryFitMode = mode;
+            currentGalleryZoom = 1;
+            currentGalleryRotation = 0;
+
+            const wraps = document.querySelectorAll('.gallery-main-image-wrap');
+            wraps.forEach(wrap => {
+                wrap.classList.remove('mode-fit-page', 'mode-fit-width');
+                wrap.classList.add(`mode-${mode}`);
+                wrap.scrollTop = 0;
+            });
+
+            const label = document.getElementById('gallery-fit-mode-label');
+            const icon = document.getElementById('gallery-fit-mode-icon');
+            const btn = document.getElementById('btn-gallery-fit-mode');
+
+            if (mode === 'fit-width') {
+                if (label) label.innerText = 'সেন্টার পেজ ফিট';
+                if (icon) icon.className = 'fa-solid fa-arrows-up-down';
+                if (btn) btn.className = 'btn btn-sm btn-warning rounded-pill px-2 py-0 border d-flex align-items-center gap-1 text-nowrap shadow-sm';
+                showToast('A4 ফুল উইডথ মোড: স্ক্রোল করে পুরো ডকুমেন্ট বড় ও স্পষ্টভাবে পড়ুন');
+            } else {
+                if (label) label.innerText = 'A4 ফুল উইডথ';
+                if (icon) icon.className = 'fa-solid fa-arrows-left-right-to-line';
+                if (btn) btn.className = 'btn btn-sm btn-outline-info rounded-pill px-2 py-0 border d-flex align-items-center gap-1 text-nowrap';
+                showToast('সেন্টার পেজ ফিট মোড');
+            }
+
+            applyImageTransform();
+        }
+
+        function toggleImmersiveFullscreen() {
+            isImmersiveFullscreen = !isImmersiveFullscreen;
+            const modalEl = document.getElementById('modalViewer');
+            const icon = document.getElementById('gallery-fullscreen-icon');
+            const btn = document.getElementById('btn-gallery-fullscreen');
+
+            if (isImmersiveFullscreen) {
+                modalEl.classList.add('viewer-immersive-mode');
+                if (icon) icon.className = 'fa-solid fa-compress';
+                if (btn) btn.className = 'btn btn-sm btn-warning rounded-circle p-1 border-0 shadow-sm';
+                showToast('পূর্ণ পর্দা ভিউ সক্রিয় (হেডার লুকানো)');
+            } else {
+                modalEl.classList.remove('viewer-immersive-mode');
+                if (icon) icon.className = 'fa-solid fa-expand';
+                if (btn) btn.className = 'btn btn-sm btn-outline-light rounded-circle p-1 border-0';
+            }
+        }
+
+        function handleGalleryImageClick(idx) {
+            if (idx !== activeGalleryIndex) return;
+            const currentImg = document.getElementById(`gallery-img-${idx}`);
+            const isPortrait = currentImg && (currentImg.dataset.isPortrait === 'true' || 
+                ((currentImg.naturalHeight || 0) / (currentImg.naturalWidth || 1) >= 1.25));
+
+            // If an A4 portrait document is in fit-page mode and zoom is 1:
+            // Clicking on it switches to A4 full width reading mode!
+            if (isPortrait && currentGalleryFitMode === 'fit-page' && currentGalleryZoom === 1) {
+                setGalleryFitMode('fit-width');
+                return;
+            }
+
+            // If in fit-width mode and zoom is 1:
+            // Clicking on it switches back to center fit-page mode!
+            if (currentGalleryFitMode === 'fit-width' && currentGalleryZoom === 1) {
+                setGalleryFitMode('fit-page');
+                return;
+            }
+
+            // Otherwise standard zoom toggle
+            toggleImageZoom(idx);
+        }
+
         function setGallerySlide(index) {
             if (index < 0 || index >= activeGalleryImages.length) return;
             activeGalleryIndex = index;
@@ -2068,6 +2540,13 @@
             items.forEach((item, idx) => {
                 item.classList.toggle('active', idx === index);
             });
+
+            const currentImg = document.getElementById(`gallery-img-${index}`);
+            if (currentImg) {
+                const isPortrait = currentImg.dataset.isPortrait === 'true' || 
+                    ((currentImg.naturalHeight || 0) / (currentImg.naturalWidth || 1) >= 1.25);
+                updateA4Indicator(isPortrait);
+            }
 
             resetGalleryZoom();
             updateGalleryControls();
@@ -2099,34 +2578,36 @@
         }
 
         function toggleImageZoom(idx) {
-            const img = document.getElementById(`gallery-img-${idx}`);
-            if (!img) return;
+            if (idx !== activeGalleryIndex) return;
             if (currentGalleryZoom === 1) {
-                currentGalleryZoom = 1.75;
-                img.style.transform = `scale(${currentGalleryZoom})`;
-                img.style.cursor = 'zoom-out';
+                currentGalleryZoom = 1.85;
             } else {
                 currentGalleryZoom = 1;
-                img.style.transform = 'scale(1)';
-                img.style.cursor = 'zoom-in';
             }
+            applyImageTransform();
         }
 
         function zoomGalleryImage(factor) {
-            const img = document.getElementById(`gallery-img-${activeGalleryIndex}`);
-            if (!img) return;
-            currentGalleryZoom = Math.min(3, Math.max(0.5, currentGalleryZoom * factor));
-            img.style.transform = `scale(${currentGalleryZoom})`;
-            img.style.cursor = currentGalleryZoom > 1 ? 'zoom-out' : 'zoom-in';
+            currentGalleryZoom = Math.min(3.5, Math.max(0.5, currentGalleryZoom * factor));
+            applyImageTransform();
+        }
+
+        function rotateGalleryImage(deg = 90) {
+            currentGalleryRotation = (currentGalleryRotation + deg) % 360;
+            applyImageTransform();
         }
 
         function resetGalleryZoom() {
             currentGalleryZoom = 1;
+            currentGalleryRotation = 0;
+            applyImageTransform();
+        }
+
+        function applyImageTransform() {
             const img = document.getElementById(`gallery-img-${activeGalleryIndex}`);
-            if (img) {
-                img.style.transform = 'scale(1)';
-                img.style.cursor = 'zoom-in';
-            }
+            if (!img) return;
+            img.style.transform = `scale(${currentGalleryZoom}) rotate(${currentGalleryRotation}deg)`;
+            img.style.cursor = currentGalleryZoom > 1 ? 'zoom-out' : 'zoom-in';
         }
 
         function openCurrentUrlExternal() {
@@ -2178,6 +2659,35 @@
                 if (viewerModal) viewerModal.hide();
             }
         });
+
+        // Touch swipe support for mobile portrait mode
+        let galleryTouchStartX = 0;
+        let galleryTouchStartY = 0;
+        document.addEventListener('touchstart', (e) => {
+            const gallery = document.getElementById('viewer-gallery');
+            if (!gallery || gallery.classList.contains('d-none')) return;
+            if (e.touches && e.touches.length === 1) {
+                galleryTouchStartX = e.touches[0].clientX;
+                galleryTouchStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const gallery = document.getElementById('viewer-gallery');
+            if (!gallery || gallery.classList.contains('d-none')) return;
+            if (currentGalleryZoom > 1.1) return; // Allow panning when zoomed
+            if (e.changedTouches && e.changedTouches.length === 1) {
+                const diffX = e.changedTouches[0].clientX - galleryTouchStartX;
+                const diffY = e.changedTouches[0].clientY - galleryTouchStartY;
+                if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+                    if (diffX < 0) {
+                        navigateGallerySlide(1); // Swipe left -> next
+                    } else {
+                        navigateGallerySlide(-1); // Swipe right -> prev
+                    }
+                }
+            }
+        }, { passive: true });
 
         // ==================== NOTIFICATIONS ====================
         function renderNotificationsBadge() {
