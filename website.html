@@ -1112,7 +1112,7 @@
 
     <script>
         // ==================== STATE & CONFIGURATION ====================
-        const DEFAULT_RTDB_URL = 'https://monico-one-default-rtdb.firebaseio.com/MonicoOne';
+        const DEFAULT_RTDB_URL = 'https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne';
         let BASE_URL = localStorage.getItem('MONICO_RTDB_URL') || DEFAULT_RTDB_URL;
 
         let portalState = {
@@ -1258,25 +1258,7 @@
             });
         }
 
-        // ==================== URL RESOLUTION (go: schemes) ====================
-        function resolveGoUrl(url) {
-            if (!url) return '';
-            const clean = url.trim();
-            switch (clean) {
-                case 'go:order': return 'http://103.153.241.44/monicoapp';
-                case 'go:Tour': return 'https://sprgroupbd.github.io/SmartManager/monicoone.html';
-                case 'go:delivery': return 'https://sprgroupbd.github.io/SmartManager/depo_bill.html';
-                case 'go:bill': return 'https://sprgroupbd.github.io/SmartManager/admin';
-                case 'go:att1': return 'https://sprgroupbd.github.io/SmartManager/att.html';
-                case 'go:dcc': return 'https://sprgroupbd.github.io/SmartManager/dcs.html';
-                default:
-                    if (clean.startsWith('go:')) {
-                        return 'https://sprgroupbd.github.io/SmartManager/' + clean.replace('go:', '').trim();
-                    }
-                    return clean;
-            }
-        }
-
+        
         // ==================== FETCH DATA FROM FIREBASE RTDB ====================
         async function fetchWebsiteData(showToastFeedback = false) {
             const spinIcon = document.getElementById('refresh-spin-icon');
