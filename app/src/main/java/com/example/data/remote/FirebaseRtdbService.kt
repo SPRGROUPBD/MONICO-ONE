@@ -18,8 +18,8 @@ class FirebaseRtdbService(
 ) {
 
     companion object {
-        const val DEFAULT_PRIMARY_URL = "https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne"
-        const val DEFAULT_SECONDARY_URL = "https://monico-one-default-rtdb.firebaseio.com/MonicoOne"
+        const val DEFAULT_PRIMARY_URL = "https://monico-one-default-rtdb.firebaseio.com/MonicoOne"
+        
 
         @Volatile
         var currentDatabaseUrl: String = DEFAULT_PRIMARY_URL
