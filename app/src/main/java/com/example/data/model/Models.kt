@@ -16,7 +16,7 @@ data class MenuItem(
     val icon: String = "fa-folder",
     val url: String = "",
     val images: List<String> = emptyList(),
-    val allowedRole: String = "ALL",
+    val allowedRole: String = "PALL",
     val month: String = "",
     val date: String = "",
     val color: String = "",

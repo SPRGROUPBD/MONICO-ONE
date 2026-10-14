@@ -87,8 +87,8 @@ fun NotificationsDialog(
     val userNotifications = remember(notifications, userRole) {
         notifications.filter { notif ->
             notif.targetRole.equals("ALL", ignoreCase = true) ||
-                    notif.targetRole.equals("EVERYONE", ignoreCase = true) ||
-                    notif.targetRole.contains(userRole, ignoreCase = true)
+                    notif.targetRole.contains(userRole, ignoreCase = true) ||
+                    notif.targetRole.contains("PALL", ignoreCase = true)
         }
     }
 

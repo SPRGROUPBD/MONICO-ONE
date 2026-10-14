@@ -103,8 +103,8 @@ fun DashboardScreen(
         val role = userRole
         notifications.count { notif ->
             val matches = notif.targetRole.equals("ALL", ignoreCase = true) ||
-                    notif.targetRole.equals("EVERYONE", ignoreCase = true) ||
-                    notif.targetRole.contains(role, ignoreCase = true)
+                    notif.targetRole.contains(role, ignoreCase = true) ||
+                    notif.targetRole.contains("PALL", ignoreCase = true)
             val isRead = readNotificationIds.contains(notif.id) || (notif.readBy[emp] == true)
             matches && !isRead
         }
@@ -123,7 +123,7 @@ fun DashboardScreen(
 
     // Role & User Group Configuration:
     // 1. Super Admin: সম্পূর্ণ অ্যাপের নিয়ন্ত্রণ
-    // 2. Everyone (ALL): MPO, AM, TM, RSM, DA, ADIC, DIC, Super Admin
+    // 2. Everyone: MPO, AM, TM, RSM, DA, ADIC, DIC, Super Admin
     // 3. MPO: MPO-এর জন্য নির্ধারিত Feature ও Access
     // 4. Supervisor: AM, TM, RSM
     // 5. DA (Delivery Assistant): নির্ধারিত Delivery Assistant Feature
@@ -134,12 +134,13 @@ fun DashboardScreen(
         val roleStr = itemAllowedRole.trim()
         if (roleStr.isBlank() ||
             roleStr.equals("ALL", ignoreCase = true) ||
-            roleStr.equals("EVERYONE", ignoreCase = true)) {
+            roleStr.equals("EVERYONE", ignoreCase = true) ||
+            roleStr.equals("PALL+SALL", ignoreCase = true)) {
             return true
         }
 
         val tokens = roleStr.split(",", "+").map { it.trim().uppercase() }
-        if (tokens.any { it == "ALL" || it == "EVERYONE" }) {
+        if (tokens.any { it == "ALL" || it == "EVERYONE" || it == "PALL+SALL" }) {
             return true
         }
 
@@ -159,6 +160,12 @@ fun DashboardScreen(
         if (tokens.any { it == "DA" || it == "DELIVERY_ASSISTANT" || it == "DELIVERY ASSISTANT" } && isUserDA) {
             return true
         }
+
+        // Legacy groups
+        val primaryRoles = listOf("MPO", "AM", "RSM", "TM", "SUPER_ADMIN", "SUPERVISOR")
+        val specialRoles = listOf("DIC", "ADIC", "DA", "SUPER_ADMIN")
+        if (tokens.contains("PALL") && userRole in primaryRoles) return true
+        if (tokens.contains("SALL") && userRole in specialRoles) return true
 
         return tokens.contains(userRole)
     }
@@ -228,15 +235,17 @@ fun DashboardScreen(
                         }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                        NavigationDrawerItem(
-                            icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MonicoBlue) },
-                            label = { Text("অ্যাডমিন প্যানেল (Admin Console)", fontWeight = FontWeight.SemiBold) },
-                            selected = false,
-                            onClick = {
-                                scope.launch { drawerState.close() }
-                                onOpenAdminPanel()
-                            }
-                        )
+                        if (isSuperAdmin) {
+                            NavigationDrawerItem(
+                                icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MonicoBlue) },
+                                label = { Text("অ্যাডমিন প্যানেল (Admin Console)", fontWeight = FontWeight.SemiBold) },
+                                selected = false,
+                                onClick = {
+                                    scope.launch { drawerState.close() }
+                                    onOpenAdminPanel()
+                                }
+                            )
+                        }
 
                         NavigationDrawerItem(
                             icon = { Icon(Icons.Default.Security, contentDescription = null, tint = MonicoGreen) },
@@ -277,7 +286,7 @@ fun DashboardScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
-                            text = "Version 1.0.1 (Mobile Firebase)\n© 2026 Monico One",
+                            text = "Version 1.0.0 (Mobile Firebase)\n© 2026 Monico One",
                             fontSize = 10.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -451,7 +460,7 @@ fun DashboardScreen(
                                         }
                                     }
 
-                                    if (isSuperAdmin || isDIC) {
+                                    if (isSuperAdmin) {
                                         IconButton(
                                             onClick = onOpenAdminPanel,
                                             modifier = Modifier.size(34.dp)

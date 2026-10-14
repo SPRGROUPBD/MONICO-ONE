@@ -218,8 +218,6 @@ fun ContentViewerScreen(
                         settings.allowContentAccess = true
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-                        settings.setSupportMultipleWindows(true)
-                        settings.javaScriptCanOpenWindowsAutomatically = true
 
                         setDownloadListener { downloadUrl, _, _, _, _ ->
                             try {
@@ -276,9 +274,7 @@ fun ContentViewerScreen(
                                     }
                                     return true
                                 }
-                                // All web URLs open in the same WebView (same tab)
-                                view?.loadUrl(reqUrl)
-                                return true
+                                return false
                             }
                         }
 
@@ -288,29 +284,6 @@ fun ContentViewerScreen(
                                 if (newProgress >= 100) {
                                     isLoading = false
                                 }
-                            }
-
-                            override fun onCreateWindow(
-                                view: WebView?,
-                                isDialog: Boolean,
-                                isUserGesture: Boolean,
-                                resultMsg: android.os.Message?
-                            ): Boolean {
-                                // Redirect popup or target=_blank into same WebView
-                                val newWebView = WebView(view!!.context)
-                                newWebView.webViewClient = object : WebViewClient() {
-                                    override fun shouldOverrideUrlLoading(v: WebView?, req: WebResourceRequest?): Boolean {
-                                        val target = req?.url?.toString() ?: ""
-                                        if (target.isNotBlank()) {
-                                            view.loadUrl(target)
-                                        }
-                                        return true
-                                    }
-                                }
-                                val transport = resultMsg?.obj as? WebView.WebViewTransport
-                                transport?.webView = newWebView
-                                resultMsg?.sendToTarget()
-                                return true
                             }
                         }
 

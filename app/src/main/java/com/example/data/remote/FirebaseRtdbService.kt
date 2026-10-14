@@ -13,17 +13,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-class FirebaseRtdbService(
-    private val getCustomUrl: (() -> String?)? = null
-) {
-
-    companion object {
-        const val DEFAULT_PRIMARY_URL = "https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne"
-        
-
-        @Volatile
-        var currentDatabaseUrl: String = DEFAULT_PRIMARY_URL
-    }
+class FirebaseRtdbService {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(12, TimeUnit.SECONDS)
@@ -31,24 +21,8 @@ class FirebaseRtdbService(
         .writeTimeout(12, TimeUnit.SECONDS)
         .build()
 
-    val baseUrl: String
-        get() = getCustomUrl?.invoke()?.trim()?.removeSuffix("/")?.takeIf { it.isNotBlank() } ?: currentDatabaseUrl
+    private val baseUrl = "https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne"
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
-
-    suspend fun testConnection(url: String): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val clean = url.trim().removeSuffix("/")
-            val req = Request.Builder().url("$clean/users.json?shallow=true").get().build()
-            val res = client.newCall(req).execute()
-            if (res.isSuccessful) return@withContext true
-
-            val req2 = Request.Builder().url("$clean.json?shallow=true").get().build()
-            val res2 = client.newCall(req2).execute()
-            res2.isSuccessful
-        } catch (e: Exception) {
-            false
-        }
-    }
 
     fun fetchStringProperty(url: String): String? {
         return try {
@@ -151,20 +125,37 @@ class FirebaseRtdbService(
             val body = res.body?.string() ?: return@withContext result
             if (body == "null" || body.isBlank()) return@withContext result
 
-            val json = JSONObject(body)
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val uObj = json.optJSONObject(key)
-                if (uObj != null) {
-                    result[key.uppercase()] = User(
-                        employeeId = uObj.optString("employeeId", key).uppercase(),
-                        fullName = uObj.optString("fullName", key),
+            val trimmed = body.trim()
+            if (trimmed.startsWith("[")) {
+                val arr = JSONArray(trimmed)
+                for (i in 0 until arr.length()) {
+                    val uObj = arr.optJSONObject(i) ?: continue
+                    val empId = uObj.optString("employeeId", i.toString()).uppercase()
+                    result[empId] = User(
+                        employeeId = empId,
+                        fullName = uObj.optString("fullName", empId),
                         password = uObj.optString("password", ""),
                         role = uObj.optString("role", "MPO"),
                         status = uObj.optString("status", "active"),
                         profilePic = uObj.optString("profilePic", "")
                     )
+                }
+            } else {
+                val json = JSONObject(trimmed)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val uObj = json.optJSONObject(key)
+                    if (uObj != null) {
+                        result[key.uppercase()] = User(
+                            employeeId = uObj.optString("employeeId", key).uppercase(),
+                            fullName = uObj.optString("fullName", key),
+                            password = uObj.optString("password", ""),
+                            role = uObj.optString("role", "MPO"),
+                            status = uObj.optString("status", "active"),
+                            profilePic = uObj.optString("profilePic", "")
+                        )
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -173,57 +164,15 @@ class FirebaseRtdbService(
         result
     }
 
-    private fun parseMenusFromJson(json: JSONObject, list: MutableList<MenuItem>) {
-        val keys = json.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            val obj = json.optJSONObject(key) ?: continue
-            val filesObj = obj.optJSONObject("files")
-            if (filesObj != null) {
-                val fKeys = filesObj.keys()
-                val groupKey = when {
-                    key.startsWith("Grid", ignoreCase = true) -> key.lowercase()
-                    else -> obj.optString("group", key.lowercase())
-                }
-                while (fKeys.hasNext()) {
-                    val fKey = fKeys.next()
-                    val fObj = filesObj.optJSONObject(fKey) ?: continue
-                    val fName = fObj.optString("name", fObj.optString("title", fKey))
-                    val fUrl = fObj.optString("url", "")
-                    val isEnabled = fObj.optBoolean("enabled", true)
-                    val imgList = mutableListOf<String>()
-                    val fLower = fUrl.lowercase()
-                    if (fUrl.isNotBlank() && (fLower.endsWith(".png") || fLower.endsWith(".jpg") || fLower.endsWith(".jpeg") || fLower.endsWith(".webp") || fLower.startsWith("data:image"))) {
-                        imgList.add(fUrl)
-                    }
-                    val seenMap = mutableMapOf<String, Boolean>()
-                    val seenObj = fObj.optJSONObject("seenBy") ?: obj.optJSONObject("seenBy")
-                    if (seenObj != null) {
-                        val sKeys = seenObj.keys()
-                        while (sKeys.hasNext()) {
-                            val sk = sKeys.next()
-                            seenMap[sk] = seenObj.optBoolean(sk, true)
-                        }
-                    }
-                    list.add(
-                        MenuItem(
-                            id = "${key}_$fKey",
-                            group = groupKey,
-                            title = fName,
-                            icon = if (groupKey == "grid1") "fa-link" else "fa-folder",
-                            url = fUrl,
-                            images = imgList,
-                            allowedRole = fObj.optString("allowedRole", obj.optString("allowedRole", "PALL")),
-                            month = fObj.optString("month", obj.optString("month", "")),
-                            date = fObj.optString("date", obj.optString("date", "")),
-                            color = fObj.optString("color", obj.optString("color", "")),
-                            isPinned = fObj.optBoolean("isPinned", false),
-                            status = if (isEnabled) "active" else "inactive",
-                            seenBy = seenMap
-                        )
-                    )
-                }
-            } else {
+    suspend fun fetchMenus(): List<MenuItem> = withContext(Dispatchers.IO) {
+        val list = mutableListOf<MenuItem>()
+        try {
+            val req = Request.Builder().url("$baseUrl/menus.json").get().build()
+            val res = client.newCall(req).execute()
+            val body = res.body?.string() ?: return@withContext list
+            if (body == "null" || body.isBlank()) return@withContext list
+
+            fun parseMenu(key: String, obj: JSONObject): MenuItem {
                 val imgList = mutableListOf<String>()
                 val imgArr = obj.optJSONArray("images")
                 if (imgArr != null) {
@@ -242,52 +191,43 @@ class FirebaseRtdbService(
                     }
                 }
 
-                list.add(
-                    MenuItem(
-                        id = key,
-                        group = obj.optString("group", "grid1"),
-                        title = obj.optString("title", ""),
-                        icon = obj.optString("icon", "fa-folder"),
-                        url = obj.optString("url", ""),
-                        images = imgList,
-                        allowedRole = obj.optString("allowedRole", "PALL"),
-                        month = obj.optString("month", ""),
-                        date = obj.optString("date", ""),
-                        color = obj.optString("color", ""),
-                        isPinned = obj.optBoolean("isPinned", false),
-                        status = obj.optString("status", "active"),
-                        seenBy = seenMap
-                    )
+                val rawId = obj.optString("id").trim()
+                val itemId = if (rawId.isNotBlank()) rawId else key.trim().ifBlank { java.util.UUID.randomUUID().toString() }
+                return MenuItem(
+                    id = itemId,
+                    group = obj.optString("group", "grid1"),
+                    title = obj.optString("title", ""),
+                    icon = obj.optString("icon", "fa-folder"),
+                    url = obj.optString("url", ""),
+                    images = imgList,
+                    allowedRole = obj.optString("allowedRole", "PALL"),
+                    month = obj.optString("month", ""),
+                    date = obj.optString("date", ""),
+                    color = obj.optString("color", ""),
+                    isPinned = obj.optBoolean("isPinned", false),
+                    status = obj.optString("status", "active"),
+                    seenBy = seenMap
                 )
             }
-        }
-    }
 
-    suspend fun fetchMenus(): List<MenuItem> = withContext(Dispatchers.IO) {
-        val list = mutableListOf<MenuItem>()
-        try {
-            val req = Request.Builder().url("$baseUrl/menus.json").get().build()
-            val res = client.newCall(req).execute()
-            val body = res.body?.string()
-            if (!body.isNullOrBlank() && body != "null") {
-                val json = JSONObject(body)
-                parseMenusFromJson(json, list)
+            val trimmed = body.trim()
+            if (trimmed.startsWith("[")) {
+                val arr = JSONArray(trimmed)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    list.add(parseMenu(i.toString(), obj))
+                }
+            } else {
+                val json = JSONObject(trimmed)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val obj = json.optJSONObject(key) ?: continue
+                    list.add(parseMenu(key, obj))
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
-        }
-
-        // Also check DB/Menus if list is still empty
-        if (list.isEmpty()) {
-            try {
-                val reqDb = Request.Builder().url("$baseUrl/DB/Menus.json").get().build()
-                val resDb = client.newCall(reqDb).execute()
-                val bodyDb = resDb.body?.string()
-                if (!bodyDb.isNullOrBlank() && bodyDb != "null") {
-                    val jsonDb = JSONObject(bodyDb)
-                    parseMenusFromJson(jsonDb, list)
-                }
-            } catch (_: Exception) {}
         }
         list
     }
@@ -300,18 +240,23 @@ class FirebaseRtdbService(
             val body = res.body?.string() ?: return@withContext list
             if (body == "null" || body.isBlank()) return@withContext list
 
-            val json = JSONObject(body)
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val obj = json.optJSONObject(key) ?: continue
-                list.add(
-                    SliderItem(
-                        id = key,
-                        title = obj.optString("title", ""),
-                        image = obj.optString("image", "")
-                    )
-                )
+            val trimmed = body.trim()
+            if (trimmed.startsWith("[")) {
+                val arr = JSONArray(trimmed)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    val id = obj.optString("id", i.toString()).ifBlank { i.toString() }
+                    list.add(SliderItem(id = id, title = obj.optString("title", ""), image = obj.optString("image", "")))
+                }
+            } else {
+                val json = JSONObject(trimmed)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val obj = json.optJSONObject(key) ?: continue
+                    val id = obj.optString("id", key).ifBlank { key }
+                    list.add(SliderItem(id = id, title = obj.optString("title", ""), image = obj.optString("image", "")))
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -327,17 +272,23 @@ class FirebaseRtdbService(
             val body = res.body?.string() ?: return@withContext list
             if (body == "null" || body.isBlank()) return@withContext list
 
-            val json = JSONObject(body)
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val obj = json.optJSONObject(key) ?: continue
-                list.add(
-                    NoticeItem(
-                        id = key,
-                        text = obj.optString("text", "")
-                    )
-                )
+            val trimmed = body.trim()
+            if (trimmed.startsWith("[")) {
+                val arr = JSONArray(trimmed)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    val id = obj.optString("id", i.toString()).ifBlank { i.toString() }
+                    list.add(NoticeItem(id = id, text = obj.optString("text", "")))
+                }
+            } else {
+                val json = JSONObject(trimmed)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val obj = json.optJSONObject(key) ?: continue
+                    val id = obj.optString("id", key).ifBlank { key }
+                    list.add(NoticeItem(id = id, text = obj.optString("text", "")))
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -353,21 +304,33 @@ class FirebaseRtdbService(
             val body = res.body?.string() ?: return@withContext list
             if (body == "null" || body.isBlank()) return@withContext list
 
-            val json = JSONObject(body)
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val obj = json.optJSONObject(key) ?: continue
-                list.add(
-                    PopupNotice(
-                        id = key,
-                        title = obj.optString("title", ""),
-                        body = obj.optString("body", ""),
-                        status = obj.optString("status", "active"),
-                        type = obj.optString("type", "general"),
-                        image = obj.optString("image", "")
-                    )
+            val trimmed = body.trim()
+            fun parsePopup(key: String, obj: JSONObject): PopupNotice {
+                val id = obj.optString("id", key).ifBlank { key }
+                return PopupNotice(
+                    id = id,
+                    title = obj.optString("title", ""),
+                    body = obj.optString("body", ""),
+                    status = obj.optString("status", "active"),
+                    type = obj.optString("type", "general"),
+                    image = obj.optString("image", "")
                 )
+            }
+
+            if (trimmed.startsWith("[")) {
+                val arr = JSONArray(trimmed)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    list.add(parsePopup(i.toString(), obj))
+                }
+            } else {
+                val json = JSONObject(trimmed)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val obj = json.optJSONObject(key) ?: continue
+                    list.add(parsePopup(key, obj))
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -446,22 +409,43 @@ class FirebaseRtdbService(
             val body = res.body?.string() ?: return@withContext list
             if (body == "null" || body.isBlank()) return@withContext list
 
-            val json = JSONObject(body)
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val obj = json.optJSONObject(key) ?: continue
-                list.add(
-                    SidebarMenuItem(
-                        id = key,
-                        name = obj.optString("name", ""),
-                        url = obj.optString("url", ""),
-                        icon = obj.optString("icon", "fa-link"),
-                        status = obj.optString("status", "active"),
-                        allowedRole = obj.optString("allowedRole", "SUPER_ADMIN,DIC"),
-                        order = obj.optInt("order", 0)
+            val trimmed = body.trim()
+            if (trimmed.startsWith("[")) {
+                val arr = JSONArray(trimmed)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    val id = obj.optString("id", i.toString()).ifBlank { i.toString() }
+                    list.add(
+                        SidebarMenuItem(
+                            id = id,
+                            name = obj.optString("name", ""),
+                            url = obj.optString("url", ""),
+                            icon = obj.optString("icon", "fa-link"),
+                            status = obj.optString("status", "active"),
+                            allowedRole = obj.optString("allowedRole", "SUPER_ADMIN,DIC"),
+                            order = obj.optInt("order", i)
+                        )
                     )
-                )
+                }
+            } else {
+                val json = JSONObject(trimmed)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val obj = json.optJSONObject(key) ?: continue
+                    val id = obj.optString("id", key).ifBlank { key }
+                    list.add(
+                        SidebarMenuItem(
+                            id = id,
+                            name = obj.optString("name", ""),
+                            url = obj.optString("url", ""),
+                            icon = obj.optString("icon", "fa-link"),
+                            status = obj.optString("status", "active"),
+                            allowedRole = obj.optString("allowedRole", "SUPER_ADMIN,DIC"),
+                            order = obj.optInt("order", 0)
+                        )
+                    )
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -524,6 +508,7 @@ class FirebaseRtdbService(
     suspend fun saveMenuItem(menu: MenuItem): Boolean = withContext(Dispatchers.IO) {
         try {
             val json = JSONObject()
+                .put("id", menu.id)
                 .put("group", menu.group)
                 .put("title", menu.title)
                 .put("icon", menu.icon)
@@ -539,8 +524,9 @@ class FirebaseRtdbService(
             menu.images.forEach { arr.put(it) }
             json.put("images", arr)
 
-            val targetUrl = if (menu.id.isNotEmpty()) "$baseUrl/menus/${menu.id}.json" else "$baseUrl/menus.json"
-            val req = if (menu.id.isNotEmpty()) {
+            val cleanId = if (menu.id.isNotBlank()) java.net.URLEncoder.encode(menu.id.trim(), "UTF-8") else ""
+            val targetUrl = if (cleanId.isNotEmpty()) "$baseUrl/menus/$cleanId.json" else "$baseUrl/menus.json"
+            val req = if (cleanId.isNotEmpty()) {
                 Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
             } else {
                 Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
@@ -554,8 +540,10 @@ class FirebaseRtdbService(
     }
 
     suspend fun deleteMenuItem(menuId: String): Boolean = withContext(Dispatchers.IO) {
+        if (menuId.isBlank()) return@withContext false
         try {
-            val req = Request.Builder().url("$baseUrl/menus/$menuId.json").delete().build()
+            val cleanId = java.net.URLEncoder.encode(menuId.trim(), "UTF-8")
+            val req = Request.Builder().url("$baseUrl/menus/$cleanId.json").delete().build()
             client.newCall(req).execute().isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
@@ -565,15 +553,18 @@ class FirebaseRtdbService(
 
     suspend fun saveUser(user: User): Boolean = withContext(Dispatchers.IO) {
         try {
+            val cleanEmpId = user.employeeId.trim().uppercase()
+            if (cleanEmpId.isBlank()) return@withContext false
+            val encodedEmpId = java.net.URLEncoder.encode(cleanEmpId, "UTF-8")
             val json = JSONObject()
-                .put("employeeId", user.employeeId.uppercase())
+                .put("employeeId", cleanEmpId)
                 .put("fullName", user.fullName)
                 .put("password", user.password)
                 .put("role", user.role)
                 .put("status", user.status)
                 .put("profilePic", user.profilePic)
             val req = Request.Builder()
-                .url("$baseUrl/users/${user.employeeId.uppercase()}.json")
+                .url("$baseUrl/users/$encodedEmpId.json")
                 .put(json.toString().toRequestBody(jsonMedia))
                 .build()
             client.newCall(req).execute().isSuccessful
@@ -584,8 +575,10 @@ class FirebaseRtdbService(
     }
 
     suspend fun deleteUser(employeeId: String): Boolean = withContext(Dispatchers.IO) {
+        if (employeeId.isBlank()) return@withContext false
         try {
-            val req = Request.Builder().url("$baseUrl/users/$employeeId.json").delete().build()
+            val cleanId = java.net.URLEncoder.encode(employeeId.trim().uppercase(), "UTF-8")
+            val req = Request.Builder().url("$baseUrl/users/$cleanId.json").delete().build()
             client.newCall(req).execute().isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
@@ -596,10 +589,12 @@ class FirebaseRtdbService(
     suspend fun saveSlider(slider: SliderItem): Boolean = withContext(Dispatchers.IO) {
         try {
             val json = JSONObject()
+                .put("id", slider.id)
                 .put("title", slider.title)
                 .put("image", slider.image)
-            val targetUrl = if (slider.id.isNotEmpty()) "$baseUrl/sliders/${slider.id}.json" else "$baseUrl/sliders.json"
-            val req = if (slider.id.isNotEmpty()) {
+            val cleanId = if (slider.id.isNotBlank()) java.net.URLEncoder.encode(slider.id.trim(), "UTF-8") else ""
+            val targetUrl = if (cleanId.isNotEmpty()) "$baseUrl/sliders/$cleanId.json" else "$baseUrl/sliders.json"
+            val req = if (cleanId.isNotEmpty()) {
                 Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
             } else {
                 Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
@@ -612,8 +607,10 @@ class FirebaseRtdbService(
     }
 
     suspend fun deleteSlider(id: String): Boolean = withContext(Dispatchers.IO) {
+        if (id.isBlank()) return@withContext false
         try {
-            val req = Request.Builder().url("$baseUrl/sliders/$id.json").delete().build()
+            val cleanId = java.net.URLEncoder.encode(id.trim(), "UTF-8")
+            val req = Request.Builder().url("$baseUrl/sliders/$cleanId.json").delete().build()
             client.newCall(req).execute().isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
@@ -623,9 +620,10 @@ class FirebaseRtdbService(
 
     suspend fun saveNotice(text: String, id: String = ""): Boolean = withContext(Dispatchers.IO) {
         try {
-            val json = JSONObject().put("text", text)
-            val targetUrl = if (id.isNotEmpty()) "$baseUrl/notices/$id.json" else "$baseUrl/notices.json"
-            val req = if (id.isNotEmpty()) {
+            val json = JSONObject().put("id", id).put("text", text)
+            val cleanId = if (id.isNotBlank()) java.net.URLEncoder.encode(id.trim(), "UTF-8") else ""
+            val targetUrl = if (cleanId.isNotEmpty()) "$baseUrl/notices/$cleanId.json" else "$baseUrl/notices.json"
+            val req = if (cleanId.isNotEmpty()) {
                 Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
             } else {
                 Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
@@ -638,8 +636,10 @@ class FirebaseRtdbService(
     }
 
     suspend fun deleteNotice(id: String): Boolean = withContext(Dispatchers.IO) {
+        if (id.isBlank()) return@withContext false
         try {
-            val req = Request.Builder().url("$baseUrl/notices/$id.json").delete().build()
+            val cleanId = java.net.URLEncoder.encode(id.trim(), "UTF-8")
+            val req = Request.Builder().url("$baseUrl/notices/$cleanId.json").delete().build()
             client.newCall(req).execute().isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
@@ -650,13 +650,15 @@ class FirebaseRtdbService(
     suspend fun savePopup(popup: PopupNotice): Boolean = withContext(Dispatchers.IO) {
         try {
             val json = JSONObject()
+                .put("id", popup.id)
                 .put("title", popup.title)
                 .put("body", popup.body)
                 .put("status", popup.status)
                 .put("type", popup.type)
                 .put("image", popup.image)
-            val targetUrl = if (popup.id.isNotEmpty()) "$baseUrl/popup_notices/${popup.id}.json" else "$baseUrl/popup_notices.json"
-            val req = if (popup.id.isNotEmpty()) {
+            val cleanId = if (popup.id.isNotBlank()) java.net.URLEncoder.encode(popup.id.trim(), "UTF-8") else ""
+            val targetUrl = if (cleanId.isNotEmpty()) "$baseUrl/popup_notices/$cleanId.json" else "$baseUrl/popup_notices.json"
+            val req = if (cleanId.isNotEmpty()) {
                 Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
             } else {
                 Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
@@ -669,8 +671,10 @@ class FirebaseRtdbService(
     }
 
     suspend fun deletePopup(id: String): Boolean = withContext(Dispatchers.IO) {
+        if (id.isBlank()) return@withContext false
         try {
-            val req = Request.Builder().url("$baseUrl/popup_notices/$id.json").delete().build()
+            val cleanId = java.net.URLEncoder.encode(id.trim(), "UTF-8")
+            val req = Request.Builder().url("$baseUrl/popup_notices/$cleanId.json").delete().build()
             client.newCall(req).execute().isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
@@ -681,14 +685,16 @@ class FirebaseRtdbService(
     suspend fun saveContentCard(path: String, card: ContentCard): Boolean = withContext(Dispatchers.IO) {
         try {
             val json = JSONObject()
+                .put("id", card.id)
                 .put("title", card.title)
                 .put("url", card.url)
                 .put("image", card.image)
             val arr = JSONArray()
             card.images.forEach { arr.put(it) }
             json.put("images", arr)
-            val targetUrl = if (card.id.isNotEmpty()) "$baseUrl/$path/${card.id}.json" else "$baseUrl/$path.json"
-            val req = if (card.id.isNotEmpty()) {
+            val cleanId = if (card.id.isNotBlank()) java.net.URLEncoder.encode(card.id.trim(), "UTF-8") else ""
+            val targetUrl = if (cleanId.isNotEmpty()) "$baseUrl/$path/$cleanId.json" else "$baseUrl/$path.json"
+            val req = if (cleanId.isNotEmpty()) {
                 Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
             } else {
                 Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
@@ -701,8 +707,10 @@ class FirebaseRtdbService(
     }
 
     suspend fun deleteContentCard(path: String, id: String): Boolean = withContext(Dispatchers.IO) {
+        if (id.isBlank()) return@withContext false
         try {
-            val req = Request.Builder().url("$baseUrl/$path/$id.json").delete().build()
+            val cleanId = java.net.URLEncoder.encode(id.trim(), "UTF-8")
+            val req = Request.Builder().url("$baseUrl/$path/$cleanId.json").delete().build()
             client.newCall(req).execute().isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
@@ -713,14 +721,16 @@ class FirebaseRtdbService(
     suspend fun saveSidebarMenu(menu: SidebarMenuItem): Boolean = withContext(Dispatchers.IO) {
         try {
             val json = JSONObject()
+                .put("id", menu.id)
                 .put("name", menu.name)
                 .put("url", menu.url)
                 .put("icon", menu.icon)
                 .put("status", menu.status)
                 .put("allowedRole", menu.allowedRole)
                 .put("order", menu.order)
-            val targetUrl = if (menu.id.isNotEmpty()) "$baseUrl/sidebar_menus/${menu.id}.json" else "$baseUrl/sidebar_menus.json"
-            val req = if (menu.id.isNotEmpty()) {
+            val cleanId = if (menu.id.isNotBlank()) java.net.URLEncoder.encode(menu.id.trim(), "UTF-8") else ""
+            val targetUrl = if (cleanId.isNotEmpty()) "$baseUrl/sidebar_menus/$cleanId.json" else "$baseUrl/sidebar_menus.json"
+            val req = if (cleanId.isNotEmpty()) {
                 Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
             } else {
                 Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
@@ -737,9 +747,10 @@ class FirebaseRtdbService(
             coroutineScope {
                 menus.mapIndexed { idx, item ->
                     async {
+                        val cleanId = java.net.URLEncoder.encode(item.id.trim(), "UTF-8")
                         val patchJson = JSONObject().put("order", idx).toString()
                         val req = Request.Builder()
-                            .url("$baseUrl/sidebar_menus/${item.id}.json")
+                            .url("$baseUrl/sidebar_menus/$cleanId.json")
                             .patch(patchJson.toRequestBody(jsonMedia))
                             .build()
                         client.newCall(req).execute().isSuccessful
@@ -753,8 +764,10 @@ class FirebaseRtdbService(
     }
 
     suspend fun deleteSidebarMenu(id: String): Boolean = withContext(Dispatchers.IO) {
+        if (id.isBlank()) return@withContext false
         try {
-            val req = Request.Builder().url("$baseUrl/sidebar_menus/$id.json").delete().build()
+            val cleanId = java.net.URLEncoder.encode(id.trim(), "UTF-8")
+            val req = Request.Builder().url("$baseUrl/sidebar_menus/$cleanId.json").delete().build()
             client.newCall(req).execute().isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
@@ -770,12 +783,7 @@ class FirebaseRtdbService(
             val body = res.body?.string() ?: return@withContext list
             if (body == "null" || body.isBlank()) return@withContext list
 
-            val json = JSONObject(body)
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val obj = json.optJSONObject(key) ?: continue
-
+            fun parseNotif(key: String, obj: JSONObject): NotificationItem {
                 val readMap = mutableMapOf<String, Boolean>()
                 val readObj = obj.optJSONObject("readBy")
                 if (readObj != null) {
@@ -786,20 +794,36 @@ class FirebaseRtdbService(
                     }
                 }
 
-                list.add(
-                    NotificationItem(
-                        id = key,
-                        title = obj.optString("title", ""),
-                        message = obj.optString("message", ""),
-                        timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
-                        dateFormatted = obj.optString("dateFormatted", ""),
-                        targetRole = obj.optString("targetRole", "ALL"),
-                        type = obj.optString("type", "info"),
-                        senderName = obj.optString("senderName", "Super Admin"),
-                        targetUrl = obj.optString("targetUrl", ""),
-                        readBy = readMap
-                    )
+                val notifId = obj.optString("id", key).ifBlank { key }
+                return NotificationItem(
+                    id = notifId,
+                    title = obj.optString("title", ""),
+                    message = obj.optString("message", ""),
+                    timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
+                    dateFormatted = obj.optString("dateFormatted", ""),
+                    targetRole = obj.optString("targetRole", "ALL"),
+                    type = obj.optString("type", "info"),
+                    senderName = obj.optString("senderName", "Super Admin"),
+                    targetUrl = obj.optString("targetUrl", ""),
+                    readBy = readMap
                 )
+            }
+
+            val trimmed = body.trim()
+            if (trimmed.startsWith("[")) {
+                val arr = JSONArray(trimmed)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    list.add(parseNotif(i.toString(), obj))
+                }
+            } else {
+                val json = JSONObject(trimmed)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val obj = json.optJSONObject(key) ?: continue
+                    list.add(parseNotif(key, obj))
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -810,6 +834,7 @@ class FirebaseRtdbService(
     suspend fun saveNotification(item: NotificationItem): Boolean = withContext(Dispatchers.IO) {
         try {
             val json = JSONObject()
+                .put("id", item.id)
                 .put("title", item.title)
                 .put("message", item.message)
                 .put("timestamp", item.timestamp)
@@ -823,8 +848,9 @@ class FirebaseRtdbService(
             item.readBy.forEach { (k, v) -> readObj.put(k, v) }
             json.put("readBy", readObj)
 
-            val targetUrl = if (item.id.isNotEmpty()) "$baseUrl/notifications/${item.id}.json" else "$baseUrl/notifications.json"
-            val req = if (item.id.isNotEmpty()) {
+            val cleanId = if (item.id.isNotBlank()) java.net.URLEncoder.encode(item.id.trim(), "UTF-8") else ""
+            val targetUrl = if (cleanId.isNotEmpty()) "$baseUrl/notifications/$cleanId.json" else "$baseUrl/notifications.json"
+            val req = if (cleanId.isNotEmpty()) {
                 Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
             } else {
                 Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
@@ -837,8 +863,10 @@ class FirebaseRtdbService(
     }
 
     suspend fun deleteNotification(id: String): Boolean = withContext(Dispatchers.IO) {
+        if (id.isBlank()) return@withContext false
         try {
-            val req = Request.Builder().url("$baseUrl/notifications/$id.json").delete().build()
+            val cleanId = java.net.URLEncoder.encode(id.trim(), "UTF-8")
+            val req = Request.Builder().url("$baseUrl/notifications/$cleanId.json").delete().build()
             client.newCall(req).execute().isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()

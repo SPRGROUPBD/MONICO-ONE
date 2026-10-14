@@ -19,9 +19,7 @@ class NotificationSyncWorker(
             val empId = prefs.getString("user_emp_id", null) ?: return@withContext Result.success()
             val role = prefs.getString("user_role", "MPO") ?: "MPO"
 
-            val service = FirebaseRtdbService(
-                getCustomUrl = { prefs.getString("custom_rtdb_url", null) }
-            )
+            val service = FirebaseRtdbService()
             val notifications = service.fetchNotifications()
 
             if (notifications.isNotEmpty()) {
