@@ -178,7 +178,7 @@ fun DashboardScreen(
     val filteredMenus = remember(accessibleMenus, searchQuery, selectedMonth) {
         accessibleMenus.filter { item ->
             val matchQuery = searchQuery.isBlank() || item.title.contains(searchQuery, ignoreCase = true)
-            val matchMonth = selectedMonth == "ALL" || item.month.equals(selectedMonth, ignoreCase = true) || item.group == "grid1"
+            val matchMonth = selectedMonth == "ALL" || item.month.isBlank() || item.month.equals(selectedMonth, ignoreCase = true) || item.group == "grid1"
             matchQuery && matchMonth
         }
     }
