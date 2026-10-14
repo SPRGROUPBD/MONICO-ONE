@@ -235,17 +235,15 @@ fun DashboardScreen(
                         }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                        if (isSuperAdmin) {
-                            NavigationDrawerItem(
-                                icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MonicoBlue) },
-                                label = { Text("অ্যাডমিন প্যানেল (Admin Console)", fontWeight = FontWeight.SemiBold) },
-                                selected = false,
-                                onClick = {
-                                    scope.launch { drawerState.close() }
-                                    onOpenAdminPanel()
-                                }
-                            )
-                        }
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MonicoBlue) },
+                            label = { Text("অ্যাডমিন প্যানেল (Admin Console)", fontWeight = FontWeight.SemiBold) },
+                            selected = false,
+                            onClick = {
+                                scope.launch { drawerState.close() }
+                                onOpenAdminPanel()
+                            }
+                        )
 
                         NavigationDrawerItem(
                             icon = { Icon(Icons.Default.Security, contentDescription = null, tint = MonicoGreen) },
@@ -460,7 +458,7 @@ fun DashboardScreen(
                                         }
                                     }
 
-                                    if (isSuperAdmin) {
+                                    if (isSuperAdmin || isDIC) {
                                         IconButton(
                                             onClick = onOpenAdminPanel,
                                             modifier = Modifier.size(34.dp)
