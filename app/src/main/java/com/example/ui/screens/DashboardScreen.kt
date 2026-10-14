@@ -284,7 +284,7 @@ fun DashboardScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
-                            text = "Version 1.0.0 (Mobile Firebase)\n© 2026 Monico One",
+                            text = "Version 1.0.3 (Mobile Firebase)\n© 2026 Monico One",
                             fontSize = 10.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -24,7 +24,30 @@ class MonicoRepository(private val context: Context) {
     }
 
     private val prefs: SharedPreferences = context.getSharedPreferences("monico_one_prefs", Context.MODE_PRIVATE)
-    val service = FirebaseRtdbService()
+    val service = FirebaseRtdbService(
+        getCustomUrl = { prefs.getString("custom_rtdb_url", null) }
+    )
+
+    fun getActiveDatabaseUrl(): String {
+        return prefs.getString("custom_rtdb_url", FirebaseRtdbService.DEFAULT_PRIMARY_URL) ?: FirebaseRtdbService.DEFAULT_PRIMARY_URL
+    }
+
+    suspend fun updateDatabaseUrl(newUrl: String): Boolean {
+        val clean = newUrl.trim().removeSuffix("/")
+        val ok = service.testConnection(clean)
+        if (ok) {
+            prefs.edit().putString("custom_rtdb_url", clean).apply()
+            FirebaseRtdbService.currentDatabaseUrl = clean
+            syncAll()
+        }
+        return ok
+    }
+
+    suspend fun resetDatabaseUrl() {
+        prefs.edit().remove("custom_rtdb_url").apply()
+        FirebaseRtdbService.currentDatabaseUrl = FirebaseRtdbService.DEFAULT_PRIMARY_URL
+        syncAll()
+    }
 
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
@@ -593,29 +616,21 @@ class MonicoRepository(private val context: Context) {
                 val notifDeferred = async { service.fetchNotifications() }
 
                 val m = menusDeferred.await()
-                if (m.isNotEmpty()) {
-                    val sortedMenus = sortMenusDescending(m)
-                    _menus.value = sortedMenus
-                    saveMenusToCache(sortedMenus)
-                }
+                val sortedMenus = sortMenusDescending(m)
+                _menus.value = sortedMenus
+                saveMenusToCache(sortedMenus)
 
                 val s = slidersDeferred.await()
-                if (s.isNotEmpty()) {
-                    _sliders.value = s.reversed()
-                    saveSlidersToCache(_sliders.value)
-                }
+                _sliders.value = s.reversed()
+                saveSlidersToCache(_sliders.value)
 
                 val n = noticesDeferred.await()
-                if (n.isNotEmpty()) {
-                    _notices.value = n.reversed()
-                    saveNoticesToCache(_notices.value)
-                }
+                _notices.value = n.reversed()
+                saveNoticesToCache(_notices.value)
 
                 val p = popupsDeferred.await()
-                if (p.isNotEmpty()) {
-                    _popups.value = p
-                    savePopupsToCache(_popups.value)
-                }
+                _popups.value = p
+                savePopupsToCache(_popups.value)
 
                 val prod = prodDeferred.await()
                 _productCards.value = sortCardsDescending(prod)
@@ -630,20 +645,20 @@ class MonicoRepository(private val context: Context) {
                 saveCardsToCache("cache_target_sheets", _targetSheets.value)
 
                 val side = sideDeferred.await()
-                if (side.isNotEmpty()) _sidebarMenus.value = side
+                if (side.isNotEmpty() || _sidebarMenus.value.isNotEmpty()) {
+                    _sidebarMenus.value = side
+                }
 
                 val notifs = notifDeferred.await()
-                if (notifs.isNotEmpty()) {
-                    _notifications.value = notifs
-                    val cur = _currentUser.value
-                    if (cur != null) {
-                        NotificationHelper.checkAndNotifyNewItems(
-                            context = context,
-                            userRole = cur.role,
-                            userEmpId = cur.employeeId,
-                            items = notifs
-                        )
-                    }
+                _notifications.value = notifs
+                val cur = _currentUser.value
+                if (cur != null && notifs.isNotEmpty()) {
+                    NotificationHelper.checkAndNotifyNewItems(
+                        context = context,
+                        userRole = cur.role,
+                        userEmpId = cur.employeeId,
+                        items = notifs
+                    )
                 }
 
                 // If super admin, fetch users list in background for Admin Panel without blocking main sync

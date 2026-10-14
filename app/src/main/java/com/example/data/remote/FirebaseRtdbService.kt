@@ -13,7 +13,17 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-class FirebaseRtdbService {
+class FirebaseRtdbService(
+    private val getCustomUrl: (() -> String?)? = null
+) {
+
+    companion object {
+        const val DEFAULT_PRIMARY_URL = "https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne"
+        const val DEFAULT_SECONDARY_URL = "https://monico-one-default-rtdb.firebaseio.com/MonicoOne"
+
+        @Volatile
+        var currentDatabaseUrl: String = DEFAULT_PRIMARY_URL
+    }
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(12, TimeUnit.SECONDS)
@@ -21,8 +31,24 @@ class FirebaseRtdbService {
         .writeTimeout(12, TimeUnit.SECONDS)
         .build()
 
-    private val baseUrl = "https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne"
+    val baseUrl: String
+        get() = getCustomUrl?.invoke()?.trim()?.removeSuffix("/")?.takeIf { it.isNotBlank() } ?: currentDatabaseUrl
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
+
+    suspend fun testConnection(url: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val clean = url.trim().removeSuffix("/")
+            val req = Request.Builder().url("$clean/users.json?shallow=true").get().build()
+            val res = client.newCall(req).execute()
+            if (res.isSuccessful) return@withContext true
+
+            val req2 = Request.Builder().url("$clean.json?shallow=true").get().build()
+            val res2 = client.newCall(req2).execute()
+            res2.isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     fun fetchStringProperty(url: String): String? {
         return try {
@@ -147,19 +173,57 @@ class FirebaseRtdbService {
         result
     }
 
-    suspend fun fetchMenus(): List<MenuItem> = withContext(Dispatchers.IO) {
-        val list = mutableListOf<MenuItem>()
-        try {
-            val req = Request.Builder().url("$baseUrl/menus.json").get().build()
-            val res = client.newCall(req).execute()
-            val body = res.body?.string() ?: return@withContext list
-            if (body == "null" || body.isBlank()) return@withContext list
-
-            val json = JSONObject(body)
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val obj = json.optJSONObject(key) ?: continue
+    private fun parseMenusFromJson(json: JSONObject, list: MutableList<MenuItem>) {
+        val keys = json.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val obj = json.optJSONObject(key) ?: continue
+            val filesObj = obj.optJSONObject("files")
+            if (filesObj != null) {
+                val fKeys = filesObj.keys()
+                val groupKey = when {
+                    key.startsWith("Grid", ignoreCase = true) -> key.lowercase()
+                    else -> obj.optString("group", key.lowercase())
+                }
+                while (fKeys.hasNext()) {
+                    val fKey = fKeys.next()
+                    val fObj = filesObj.optJSONObject(fKey) ?: continue
+                    val fName = fObj.optString("name", fObj.optString("title", fKey))
+                    val fUrl = fObj.optString("url", "")
+                    val isEnabled = fObj.optBoolean("enabled", true)
+                    val imgList = mutableListOf<String>()
+                    val fLower = fUrl.lowercase()
+                    if (fUrl.isNotBlank() && (fLower.endsWith(".png") || fLower.endsWith(".jpg") || fLower.endsWith(".jpeg") || fLower.endsWith(".webp") || fLower.startsWith("data:image"))) {
+                        imgList.add(fUrl)
+                    }
+                    val seenMap = mutableMapOf<String, Boolean>()
+                    val seenObj = fObj.optJSONObject("seenBy") ?: obj.optJSONObject("seenBy")
+                    if (seenObj != null) {
+                        val sKeys = seenObj.keys()
+                        while (sKeys.hasNext()) {
+                            val sk = sKeys.next()
+                            seenMap[sk] = seenObj.optBoolean(sk, true)
+                        }
+                    }
+                    list.add(
+                        MenuItem(
+                            id = "${key}_$fKey",
+                            group = groupKey,
+                            title = fName,
+                            icon = if (groupKey == "grid1") "fa-link" else "fa-folder",
+                            url = fUrl,
+                            images = imgList,
+                            allowedRole = fObj.optString("allowedRole", obj.optString("allowedRole", "PALL")),
+                            month = fObj.optString("month", obj.optString("month", "")),
+                            date = fObj.optString("date", obj.optString("date", "")),
+                            color = fObj.optString("color", obj.optString("color", "")),
+                            isPinned = fObj.optBoolean("isPinned", false),
+                            status = if (isEnabled) "active" else "inactive",
+                            seenBy = seenMap
+                        )
+                    )
+                }
+            } else {
                 val imgList = mutableListOf<String>()
                 val imgArr = obj.optJSONArray("images")
                 if (imgArr != null) {
@@ -196,8 +260,34 @@ class FirebaseRtdbService {
                     )
                 )
             }
+        }
+    }
+
+    suspend fun fetchMenus(): List<MenuItem> = withContext(Dispatchers.IO) {
+        val list = mutableListOf<MenuItem>()
+        try {
+            val req = Request.Builder().url("$baseUrl/menus.json").get().build()
+            val res = client.newCall(req).execute()
+            val body = res.body?.string()
+            if (!body.isNullOrBlank() && body != "null") {
+                val json = JSONObject(body)
+                parseMenusFromJson(json, list)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+
+        // Also check DB/Menus if list is still empty
+        if (list.isEmpty()) {
+            try {
+                val reqDb = Request.Builder().url("$baseUrl/DB/Menus.json").get().build()
+                val resDb = client.newCall(reqDb).execute()
+                val bodyDb = resDb.body?.string()
+                if (!bodyDb.isNullOrBlank() && bodyDb != "null") {
+                    val jsonDb = JSONObject(bodyDb)
+                    parseMenusFromJson(jsonDb, list)
+                }
+            } catch (_: Exception) {}
         }
         list
     }
