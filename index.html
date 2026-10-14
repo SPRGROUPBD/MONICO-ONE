@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monico One - ওয়েব অ্যাডমিন কনসোল v1.0.3</title>
+    <title>Monico One - ওয়েব অ্যাডমিন কনসোল</title>
     <!-- Favicon -->
     <link rel="icon" href="https://img.icons8.com/color/96/server.png" type="image/png">
     <!-- Google Fonts -->
@@ -39,12 +39,13 @@
             min-height: 100vh;
         }
 
-        /* Sidebar Styling - Fully scrollable up and down */
+        /* Sidebar Styling */
         .sidebar {
             width: 270px;
             background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
             color: #f8fafc;
             height: 100vh;
+            height: 100dvh;
             max-height: 100vh;
             position: fixed;
             top: 0;
@@ -53,38 +54,37 @@
             z-index: 1040;
             overflow-y: auto;
             overflow-x: hidden;
-            overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
             box-shadow: 4px 0 16px rgba(0,0,0,0.06);
             transition: all 0.3s ease;
             display: flex;
             flex-direction: column;
+            overscroll-behavior: contain;
         }
 
-        .sidebar::-webkit-scrollbar,
-        .sidebar-nav::-webkit-scrollbar {
+        .sidebar::-webkit-scrollbar {
             width: 6px;
         }
-        .sidebar::-webkit-scrollbar-track,
-        .sidebar-nav::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.6);
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
         }
-        .sidebar::-webkit-scrollbar-thumb,
-        .sidebar-nav::-webkit-scrollbar-thumb {
-            background: rgba(148, 163, 184, 0.45);
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
             border-radius: 4px;
         }
-        .sidebar::-webkit-scrollbar-thumb:hover,
-        .sidebar-nav::-webkit-scrollbar-thumb:hover {
-            background: #0284c7;
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.7);
         }
 
         .sidebar .brand {
-            padding: 16px 20px;
+            padding: 18px 20px;
             display: flex;
             align-items: center;
             gap: 12px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
+            position: sticky;
+            top: 0;
+            background: #0f172a;
+            z-index: 10;
             flex-shrink: 0;
         }
 
@@ -99,17 +99,14 @@
             font-size: 22px;
             color: white;
             box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+            flex-shrink: 0;
         }
 
         .sidebar-nav {
-            padding: 14px 12px 100px; /* generous bottom padding so user can scroll down to the last item */
+            padding: 16px 12px 100px;
             list-style: none;
             margin: 0;
             flex: 1 1 auto;
-            overflow-y: auto;
-            overflow-x: hidden;
-            overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
         }
 
         .sidebar-nav .nav-category {
@@ -319,168 +316,118 @@
             font-size: 11px;
         }
 
-        /* Mobile Backdrop Overlay */
-        .sidebar-backdrop {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(15, 23, 42, 0.65);
-            backdrop-filter: blur(4px);
-            z-index: 1035;
-            transition: opacity 0.3s ease;
-        }
-        .sidebar-backdrop.show {
-            display: block;
-        }
-
-        /* Mobile Quick Nav Pills Bar */
-        .mobile-quick-nav {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            white-space: nowrap;
-            padding: 8px 4px 12px 4px;
-            margin-bottom: 16px;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-        .mobile-quick-nav::-webkit-scrollbar {
-            display: none;
-        }
-        .mobile-nav-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 14px;
-            background: white;
-            color: #334155;
-            border: 1px solid #e2e8f0;
-            border-radius: 50px;
-            font-size: 12.5px;
-            font-weight: 600;
-            text-decoration: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            transition: all 0.2s;
-            flex-shrink: 0;
-            cursor: pointer;
-        }
-        .mobile-nav-btn.active {
-            background: #0284c7;
-            color: white;
-            border-color: #0284c7;
-            box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35);
-        }
-
-        /* Responsive Table & Cards */
-        .table-responsive {
-            -webkit-overflow-scrolling: touch;
-            border-radius: 12px;
-        }
-        .table-custom {
-            min-width: 720px;
-        }
-
-        /* Mobile Responsive Adjustments */
         @media (max-width: 992px) {
             .sidebar {
-                left: -280px;
-                width: 280px;
-                z-index: 1050;
+                left: -270px;
             }
             .sidebar.show {
                 left: 0;
             }
             .main-wrapper {
                 margin-left: 0;
-                padding: 12px 10px;
-            }
-            .top-header {
-                padding: 12px 14px;
-                border-radius: 12px;
-                margin-bottom: 12px;
-            }
-            .card-custom {
-                border-radius: 12px;
-                margin-bottom: 16px;
-            }
-            .card-custom .card-header {
-                padding: 14px 16px;
-                flex-direction: column;
-                align-items: stretch;
-                gap: 10px;
-            }
-            .card-custom .card-header .d-flex {
-                width: 100%;
-                justify-content: space-between;
-                flex-wrap: wrap;
-                gap: 8px;
-            }
-            .card-custom .card-header select,
-            .card-custom .card-header input {
-                flex: 1 1 120px;
-                width: auto !important;
-            }
-            .card-custom .card-header .btn {
-                width: 100%;
-                justify-content: center;
-                padding-top: 8px;
-                padding-bottom: 8px;
-            }
-            .btn-action {
-                width: 38px;
-                height: 38px;
-                font-size: 14px;
-            }
-            .modal-dialog {
-                margin: 8px;
-                max-width: calc(100% - 16px);
-            }
-            .modal-content {
-                border-radius: 14px;
-            }
-            .modal-body {
-                padding: 14px !important;
-                max-height: calc(100vh - 130px);
-                overflow-y: auto;
+                padding: 16px;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- BACKDROP FOR MOBILE SIDEBAR -->
-    <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+    <!-- 0. SUPER ADMIN ACCESS GATE -->
+    <div id="admin-auth-gate" class="min-vh-100 d-flex align-items-center justify-content-center p-3" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0369a1 100%); overflow-y: auto;">
+        <div class="card border-0 shadow-lg rounded-4 overflow-hidden my-auto" style="max-width: 460px; width: 100%; background: #ffffff;">
+            <div class="p-4 text-center text-white" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white text-primary mb-3 shadow" style="width: 64px; height: 64px; font-size: 26px;">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h4 class="fw-bold m-0">Monico One Admin</h4>
+                <p class="small text-white-50 m-0 mt-1">সুপার অ্যাডমিন সিকিউরিটি গেটওয়ে</p>
+                <div class="badge bg-danger text-white mt-2 px-3 py-1 rounded-pill" style="font-size: 11px;">
+                    <i class="fa-solid fa-lock me-1"></i> শুধুমাত্র Super Admin অ্যাক্সেস
+                </div>
+            </div>
+
+            <div class="p-4">
+                <!-- Denied box if non-super-admin user is logged in -->
+                <div id="gate-denied-box" class="alert alert-danger rounded-3 d-none mb-3">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-danger mt-1 fs-5"></i>
+                        <div>
+                            <div class="fw-bold text-danger">প্রবেশাধিকার অস্বীকৃত</div>
+                            <div class="small mt-1 text-dark" id="gate-denied-msg">
+                                সাধারণ ইউজারদের জন্য অ্যাডমিন প্যানেল অ্যাক্সেস সংরক্ষিত নয়।
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Super Admin Login Form -->
+                <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">
+                            <i class="fa-solid fa-user me-1 text-primary"></i> সুপার অ্যাডমিন আইডি
+                        </label>
+                        <input type="text" class="form-control form-control-lg fs-6" id="gate-emp-id" placeholder="যেমন: 1001 বা ADMIN" required autofocus autocomplete="username">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">
+                            <i class="fa-solid fa-key me-1 text-primary"></i> পাসওয়ার্ড
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control form-control-lg fs-6" id="gate-password" placeholder="••••••••" required autocomplete="current-password">
+                            <button class="btn btn-outline-secondary" type="button" onclick="toggleGatePasswordVisibility()" title="পাসওয়ার্ড দেখুন">
+                                <i class="fa-solid fa-eye" id="gate-toggle-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="gate-error-alert" class="alert alert-danger py-2 small d-none mb-3"></div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2" id="gate-login-btn">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>অ্যাডমিন প্যানেলে প্রবেশ করুন</span>
+                    </button>
+                </form>
+
+                <div class="text-center mt-3 pt-3 border-top">
+                    <a href="website.html" class="btn btn-light btn-sm text-secondary rounded-pill px-3 fw-semibold text-decoration-none">
+                        <i class="fa-solid fa-arrow-left me-1"></i> ওয়েবসাইটে ফিরে যান (Website View)
+                    </a>
+                </div>
+            </div>
+            <div class="bg-light px-4 py-3 text-center border-top">
+                <small class="text-muted" style="font-size: 11px;">
+                    <i class="fa-solid fa-circle-info me-1"></i> সাধারণ বা অননুমোদিত ইউজারদের প্রবেশ কঠোরভাবে নিষিদ্ধ।
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN ADMIN APP WRAPPER (Shown only to authenticated Super Admin) -->
+    <div id="admin-app-root" style="display: none;">
 
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
-        <div class="brand justify-content-between">
-            <div class="d-flex align-items-center gap-2">
-                <div class="brand-icon">
-                    <i class="fa-solid fa-layer-group"></i>
-                </div>
-                <div>
-                    <h5 class="m-0 fw-bold">Monico One</h5>
-                    <small class="text-white-50" style="font-size: 11px;">Admin Console Web v1.0.3</small>
-                </div>
+        <div class="brand">
+            <div class="brand-icon">
+                <i class="fa-solid fa-layer-group"></i>
             </div>
-            <!-- Mobile Close Button -->
-            <button class="btn btn-sm btn-outline-light d-lg-none rounded-circle" style="width: 32px; height: 32px; padding: 0;" onclick="toggleSidebar(false)" title="বন্ধ করুন">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-
-        <!-- Quick View Site Action in Sidebar -->
-        <div class="px-3 pt-2 pb-2 border-bottom border-secondary border-opacity-25 flex-shrink-0">
-            <button class="btn btn-sm btn-outline-info w-100 rounded-pill py-1 text-white border-white-50 d-flex align-items-center justify-content-center gap-2" onclick="viewLiveSite()" title="ওয়েবসাইট দেখুন / View Site">
-                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                <span style="font-size: 12px; font-weight: 600;">View Site (ওয়েবসাইট)</span>
-            </button>
+            <div>
+                <h5 class="m-0 fw-bold">Monico One</h5>
+                <small class="text-white-50" style="font-size: 11px;">Admin Console Web</small>
+            </div>
         </div>
 
         <ul class="sidebar-nav">
+            <li class="nav-category">লাইভ ওয়েবসাইট</li>
+            <li>
+                <a class="nav-link" href="website.html">
+                    <i class="fa-solid fa-globe text-primary"></i>
+                    <span>ওয়েবসাইট ভিউ (Live Portal)</span>
+                    <i class="fa-solid fa-chevron-right ms-auto small text-muted"></i>
+                </a>
+            </li>
+
             <li class="nav-category">মেইন ড্যাশবোর্ড</li>
             <li>
                 <a class="nav-link active" onclick="switchTab('dashboard')">
@@ -493,7 +440,7 @@
             <li>
                 <a class="nav-link" onclick="switchTab('sidebar-menus')">
                     <i class="fa-solid fa-arrow-down-up-across-line text-warning"></i>
-                    <span>সাইডবার মেনু (ক্রম বিন্যাস)</span>
+                    <span>সাইডবার মেনু (উপর/নিচ)</span>
                     <span class="badge bg-warning text-dark" id="badge-sidebar-count">0</span>
                 </a>
             </li>
@@ -502,7 +449,7 @@
             <li>
                 <a class="nav-link" onclick="switchTab('menus')">
                     <i class="fa-solid fa-folder-tree text-info"></i>
-                    <span>মেনু ফাইল ও সার্কুলার (Grids 1-6)</span>
+                    <span>মেনু ফাইল (Grids 1-5)</span>
                     <span class="badge bg-info" id="badge-menus-count">0</span>
                 </a>
             </li>
@@ -552,12 +499,6 @@
                 </a>
             </li>
             <li>
-                <a class="nav-link" onclick="switchTab('website-view')">
-                    <i class="fa-solid fa-globe text-primary"></i>
-                    <span>ওয়েবসাইট ভিউ (Web View)</span>
-                </a>
-            </li>
-            <li>
                 <a class="nav-link" onclick="switchTab('settings')">
                     <i class="fa-solid fa-database text-white-50"></i>
                     <span>ডাটাবেজ ও ব্যাকআপ</span>
@@ -571,72 +512,39 @@
 
         <!-- TOP HEADER -->
         <header class="top-header">
-            <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-outline-secondary d-lg-none" onclick="toggleSidebar()" title="মেনু খুলুন">
-                    <i class="fa-solid fa-bars fa-lg"></i>
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-outline-secondary d-lg-none" onclick="toggleSidebar()">
+                    <i class="fa-solid fa-bars"></i>
                 </button>
                 <div>
-                    <h5 class="fw-bold m-0" id="page-title" style="font-size: 16px;">ওভারভিউ ড্যাশবোর্ড</h5>
-                    <small class="text-muted d-none d-sm-inline">Monico One Cloud Database Management Panel (v1.0.3)</small>
+                    <h5 class="fw-bold m-0" id="page-title">ওভারভিউ ড্যাশবোর্ড</h5>
+                    <small class="text-muted">Monico One Cloud Database Management Panel</small>
                 </div>
             </div>
 
-            <div class="d-flex align-items-center gap-2">
-                <!-- VIEW SITE BUTTON -->
-                <button class="btn btn-outline-primary d-flex align-items-center gap-2 px-3 py-1 rounded-pill fw-semibold shadow-sm" onclick="viewLiveSite()" title="ওয়েবসাইট দেখুন (View Site)" id="btn-view-site">
-                    <i class="fa-solid fa-arrow-up-right-from-square text-primary"></i>
-                    <span style="font-size: 13px;">View Site</span>
-                </button>
-
-                <div class="d-flex align-items-center gap-2 px-2 px-md-3 py-1 bg-light rounded-pill border" role="button" onclick="switchTab('settings')" title="ডাটাবেজ সেটিংস ও নতুন ডাটাবেজ যোগ" style="cursor: pointer;">
-                    <i class="fa-solid fa-database text-primary" style="font-size: 11px;"></i>
+            <div class="d-flex align-items-center gap-3">
+                <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1 bg-light rounded-pill border">
                     <span class="spinner-grow spinner-grow-sm text-success" role="status" style="width: 8px; height: 8px;"></span>
-                    <small class="fw-semibold text-secondary" id="db-status-text" style="font-size: 11px;">কানেক্টেড</small>
+                    <small class="fw-semibold text-secondary" id="db-status-text">কানেক্টেড (Firebase RTDB)</small>
                 </div>
-
-                <button class="btn btn-primary d-flex align-items-center gap-1 px-3 py-1 rounded-pill" onclick="fetchAllData(true)">
+                <div class="d-flex align-items-center gap-2 px-3 py-1 bg-primary bg-opacity-10 rounded-pill border border-primary border-opacity-25" id="admin-user-header-badge">
+                    <i class="fa-solid fa-user-shield text-primary"></i>
+                    <span class="small fw-bold text-primary" id="admin-header-user-name">Super Admin</span>
+                    <span class="badge bg-danger rounded-pill" style="font-size: 10px;">SUPER_ADMIN</span>
+                    <button class="btn btn-sm btn-outline-danger border-0 rounded-circle p-1 ms-1" onclick="handleAdminLogout()" title="লগআউট">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
+                </div>
+                <a href="website.html" class="btn btn-outline-primary d-flex align-items-center gap-2 px-3 rounded-pill text-decoration-none">
+                    <i class="fa-solid fa-globe"></i>
+                    <span class="d-none d-sm-inline">ওয়েবসাইট ভিউ</span>
+                </a>
+                <button class="btn btn-primary d-flex align-items-center gap-2 px-3 rounded-pill" onclick="fetchAllData(true)">
                     <i class="fa-solid fa-rotate" id="refresh-icon"></i>
-                    <span class="d-none d-sm-inline" style="font-size: 12px;">রিফ্রেশ</span>
+                    <span class="d-none d-sm-inline">রিফ্রেশ</span>
                 </button>
             </div>
         </header>
-
-        <!-- MOBILE HORIZONTAL QUICK NAV (TOUCH-FRIENDLY PILLS) -->
-        <div class="mobile-quick-nav d-lg-none">
-            <button class="mobile-nav-btn active" id="mbtn-dashboard" onclick="switchTab('dashboard')">
-                <i class="fa-solid fa-gauge-high"></i> ওভারভিউ
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-sidebar-menus" onclick="switchTab('sidebar-menus')">
-                <i class="fa-solid fa-arrow-down-up-across-line text-warning"></i> সাইডবার মেনু
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-menus" onclick="switchTab('menus')">
-                <i class="fa-solid fa-folder-tree text-info"></i> মেনু ফাইল (Grids 1-6)
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-website-view" onclick="switchTab('website-view')">
-                <i class="fa-solid fa-globe text-primary"></i> ওয়েবসাইট ভিউ
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-cards" onclick="switchTab('cards')">
-                <i class="fa-solid fa-id-card text-success"></i> কার্ডসমূহ
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-sliders" onclick="switchTab('sliders')">
-                <i class="fa-solid fa-images text-primary"></i> স্লাইডার
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-notices" onclick="switchTab('notices')">
-                <i class="fa-solid fa-bullhorn text-danger"></i> স্ক্রোল নোটিশ
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-popups" onclick="switchTab('popups')">
-                <i class="fa-solid fa-window-restore text-warning"></i> পপআপ
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-notifications" onclick="switchTab('notifications')">
-                <i class="fa-solid fa-bell text-info"></i> পুশ নোটিফিকেশন
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-users" onclick="switchTab('users')">
-                <i class="fa-solid fa-users-gear text-secondary"></i> ইউজার ও রোল
-            </button>
-            <button class="mobile-nav-btn" id="mbtn-settings" onclick="switchTab('settings')">
-                <i class="fa-solid fa-database text-muted"></i> ডাটাবেজ
-            </button>
-        </div>
 
         <!-- 1. DASHBOARD OVERVIEW TAB -->
         <div id="tab-dashboard" class="tab-content-panel">
@@ -657,7 +565,7 @@
                             <i class="fa-solid fa-folder-open"></i>
                         </div>
                         <h3 class="fw-bold m-0" id="stat-menus">0</h3>
-                        <div class="text-muted mt-1 small">মেনু ফাইল (Grids 1-6)</div>
+                        <div class="text-muted mt-1 small">মেনু ফাইল (Grids 1-5)</div>
                         <a href="javascript:void(0)" onclick="switchTab('menus')" class="small text-decoration-none fw-semibold text-info mt-2 d-inline-block">ফাইল ম্যানেজ করুন &rarr;</a>
                     </div>
                 </div>
@@ -719,29 +627,12 @@
                                         </div>
                                     </button>
                                 </div>
+                                <div class="col-md-6">
                                     <button class="btn btn-outline-danger w-100 p-3 text-start d-flex align-items-center gap-3 rounded-3" onclick="openSendNotificationModal()">
                                         <i class="fa-solid fa-paper-plane fa-2x text-danger"></i>
                                         <div>
                                             <div class="fw-bold">তাত্ক্ষণিক নোটিফিকেশন পাঠান</div>
                                             <small class="text-muted">সকল এমপ্লয়ির মোবাইলে রিয়েলটাইম অ্যালার্ট</small>
-                                        </div>
-                                    </button>
-                                </div>
-                                <div class="col-md-6">
-                                    <button class="btn btn-outline-primary w-100 p-3 text-start d-flex align-items-center gap-3 rounded-3" onclick="viewLiveSite()">
-                                        <i class="fa-solid fa-arrow-up-right-from-square fa-2x text-primary"></i>
-                                        <div>
-                                            <div class="fw-bold">View Site (ওয়েবসাইট দেখুন)</div>
-                                            <small class="text-muted">ইনডেক্স থেকেই একই ট্যাবে লাইভ ওয়েবসাইট পোর্টাল খুলুন</small>
-                                        </div>
-                                    </button>
-                                </div>
-                                <div class="col-md-6">
-                                    <button class="btn btn-outline-secondary w-100 p-3 text-start d-flex align-items-center gap-3 rounded-3" onclick="switchTab('settings')">
-                                        <i class="fa-solid fa-database fa-2x text-secondary"></i>
-                                        <div>
-                                            <div class="fw-bold">নতুন ডাটাবেজ যোগ ও পরিবর্তন</div>
-                                            <small class="text-muted">অন্যান্য RTDB সংযোগ তৈরি বা সক্রিয় করুন</small>
                                         </div>
                                     </button>
                                 </div>
@@ -827,7 +718,7 @@
             <div class="card-custom">
                 <div class="card-header">
                     <div>
-                        <h6 class="card-title"><i class="fa-solid fa-folder-tree text-info"></i> মেনু ফাইল ও সার্কুলার (Grids 1-6)</h6>
+                        <h6 class="card-title"><i class="fa-solid fa-folder-tree text-info"></i> মেনু ফাইল ও সার্কুলার (Grids 1-5)</h6>
                         <small class="text-muted">PDF ফাইল, সার্কুলার, বোনাস শিট এবং গ্রুপভিত্তিক ফাইল পরিচালনা করুন</small>
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
@@ -1080,119 +971,45 @@
             </div>
         </div>
 
-        <!-- 10. SETTINGS & MULTI-DATABASE MANAGEMENT TAB -->
+        <!-- 10. SETTINGS & BACKUP TAB -->
         <div id="tab-settings" class="tab-content-panel d-none">
-            <!-- Active Database Status Bar -->
-            <div class="card-custom mb-4 border-primary shadow-sm">
-                <div class="card-body p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="icon-box bg-primary bg-opacity-10 text-primary fs-3 p-3 rounded-3">
-                            <i class="fa-solid fa-server"></i>
-                        </div>
-                        <div>
-                            <span class="badge bg-success mb-1" id="active-db-badge"><i class="fa-solid fa-circle-check me-1"></i>Active Database</span>
-                            <h5 class="fw-bold mb-1" id="active-db-name">কুষ্টিয়া ডিপো (Kushtia Depot)</h5>
-                            <code class="text-primary text-break" id="active-db-url-display">https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne</code>
-                        </div>
-                    </div>
-                    <div class="d-flex gap-2 align-items-center flex-wrap">
-                        <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="testActiveDbConnection()">
-                            <i class="fa-solid fa-heart-pulse me-1"></i> কানেকশন পিং টেস্ট
-                        </button>
-                        <button class="btn btn-primary btn-sm rounded-pill px-3" onclick="fetchAllData(true)">
-                            <i class="fa-solid fa-rotate me-1"></i> রিলোড ডাটা
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <div class="row g-4">
-                <!-- ADD NEW DATABASE CARD -->
                 <div class="col-lg-6">
-                    <div class="card-custom h-100">
-                        <div class="card-header bg-primary bg-opacity-10 border-0">
-                            <h6 class="card-title text-primary"><i class="fa-solid fa-plus-circle me-1"></i> নতুন ডাটাবেজ যোগ করুন (Add New Database)</h6>
+                    <div class="card-custom">
+                        <div class="card-header">
+                            <h6 class="card-title"><i class="fa-solid fa-download text-primary"></i> সম্পূর্ণ ডাটাবেজ ব্যাকআপ</h6>
                         </div>
                         <div class="card-body p-4">
                             <p class="text-muted small">
-                                এখানে আপনি নতুন কোনো Firebase Realtime Database URL যোগ করতে পারেন। নতুন ডাটাবেজ যোগ করার পর সাথে সাথে কানেকশন টেস্ট করে সক্রিয় করতে পারবেন।
+                                Firebase Realtime Database এর সকল নোড (Users, Menus, Sidebar Menus, Sliders, Notices, Notifications) এক ক্লিকে সম্পূর্ণ JSON ফরম্যাটে আপনার কম্পিউটারে ডাউনলোড করে ব্যাকআপ রাখুন।
                             </p>
-                            <form onsubmit="handleAddNewDatabase(event)">
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">ডাটাবেজ নাম / টাইটেল *</label>
-                                    <input type="text" class="form-control" id="new-db-name" placeholder="যেমন: ঢাকা ডিপো / প্রোডাকশন ক্লাউড / New DB" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Firebase RTDB Base URL *</label>
-                                    <div class="input-group">
-                                        <input type="url" class="form-control" id="new-db-url" placeholder="https://your-db-default-rtdb.firebaseio.com/MonicoOne" required>
-                                        <button class="btn btn-outline-secondary" type="button" onclick="testInputDbConnection()">
-                                            <i class="fa-solid fa-vial me-1"></i> টেস্ট
-                                        </button>
-                                    </div>
-                                    <small class="text-muted">ফরম্যাট: <code>https://&lt;project&gt;-default-rtdb.firebaseio.com/&lt;Node&gt;</code></small>
-                                </div>
-                                <div id="test-connection-result" class="mb-3 d-none"></div>
-                                <div class="d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary rounded-pill px-4">
-                                        <i class="fa-solid fa-floppy-disk me-1"></i> ডাটাবেজ সেভ ও সক্রিয় করুন
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" onclick="resetNewDbForm()">
-                                        ক্লিয়ার
-                                    </button>
-                                </div>
-                            </form>
+                            <button class="btn btn-outline-primary d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold" onclick="downloadBackupJson()">
+                                <i class="fa-solid fa-file-arrow-down fa-lg"></i>
+                                <span>ব্যাকআপ ডাউনলোড করুন (.json)</span>
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- SAVED DATABASES LIST CARD -->
                 <div class="col-lg-6">
-                    <div class="card-custom h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="card-title mb-0"><i class="fa-solid fa-database text-secondary me-1"></i> সংরক্ষিত ডাটাবেজ তালিকা</h6>
-                            <span class="badge bg-light text-dark border" id="saved-db-count">2টি ডাটাবেজ</span>
-                        </div>
-                        <div class="card-body p-3">
-                            <div class="table-responsive">
-                                <table class="table table-hover table-custom align-middle" style="min-width: 480px;">
-                                    <thead>
-                                        <tr>
-                                            <th>ডাটাবেজ নাম</th>
-                                            <th>URL ও স্ট্যাটাস</th>
-                                            <th class="text-end">অ্যাকশন</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbody-saved-databases">
-                                        <!-- populated dynamically -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- DATABASE BACKUP & RESTORE -->
-                <div class="col-12">
                     <div class="card-custom">
                         <div class="card-header">
-                            <h6 class="card-title"><i class="fa-solid fa-download text-success me-1"></i> সম্পূর্ণ ডাটাবেজ ব্যাকআপ ডাউনলোড</h6>
+                            <h6 class="card-title"><i class="fa-solid fa-sliders text-secondary"></i> ডাটাবেজ কনফিগারেশন</h6>
                         </div>
-                        <div class="card-body p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <p class="text-muted small mb-0" style="max-width: 600px;">
-                                সক্রিয় ডাটাবেজের সকল তথ্য (মেনু, সাইডবার, ইউজার, নোটিফিকেশন, স্লাইডার, কার্ড ইত্যাদি) একক JSON ফাইলে ডাউনলোড করে কম্পিউটারে নিরাপদে সংরক্ষণ করুন।
-                            </p>
-                            <button class="btn btn-success d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold text-white shadow-sm" onclick="downloadBackupJson()">
-                                <i class="fa-solid fa-file-arrow-down fa-lg"></i>
-                                <span>সম্পূর্ণ ব্যাকআপ ডাউনলোড (.json)</span>
-                            </button>
+                        <div class="card-body p-4">
+                            <label class="form-label small fw-semibold text-muted">Firebase RTDB Base URL:</label>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="custom-db-url" value="https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne">
+                                <button class="btn btn-primary" onclick="saveCustomDbUrl()">সেভ করুন</button>
+                            </div>
+                            <small class="text-muted">ডিফল্ট এন্ডপয়েন্ট: <code>https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne</code></small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-      
+    </div>
 
     <!-- ==================== MODALS ==================== -->
 
@@ -1745,6 +1562,25 @@
         </div>
     </div>
 
+    <!-- 7B. CARD IMAGE PREVIEW MODAL -->
+    <div class="modal fade" id="modalCardPreview" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-primary text-white border-0 py-3 px-4">
+                    <h6 class="modal-title fw-bold m-0" id="modalCardPreviewTitle"><i class="fa-solid fa-images me-2"></i> কার্ডের ছবি</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center bg-light">
+                    <div id="cardPreviewContainer" class="d-flex flex-column align-items-center gap-3"></div>
+                </div>
+                <div class="modal-footer border-0 bg-white justify-content-between">
+                    <small class="text-muted" id="cardPreviewCount"></small>
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">বন্ধ করুন</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 8. SEND NOTIFICATION MODAL -->
     <div class="modal fade" id="modalNotification" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -1795,7 +1631,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> <!-- /#admin-app-root -->
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -1833,11 +1669,151 @@
             modals.notice = new bootstrap.Modal(document.getElementById('modalNotice'));
             modals.popup = new bootstrap.Modal(document.getElementById('modalPopup'));
             modals.card = new bootstrap.Modal(document.getElementById('modalCard'));
+            modals.cardPreview = new bootstrap.Modal(document.getElementById('modalCardPreview'));
             modals.notification = new bootstrap.Modal(document.getElementById('modalNotification'));
 
-            initDatabasesList();
-            fetchAllData();
+            const customDbEl = document.getElementById('custom-db-url');
+            if (customDbEl) customDbEl.value = BASE_URL;
+
+            // Enforce Super Admin Access
+            checkAdminAuth();
         });
+
+        // ==================== SUPER ADMIN AUTHENTICATION & ACCESS CONTROL ====================
+        function checkAdminAuth() {
+            const savedUserStr = localStorage.getItem('MONICO_LOGGED_USER');
+            const gate = document.getElementById('admin-auth-gate');
+            const appRoot = document.getElementById('admin-app-root');
+            const deniedBox = document.getElementById('gate-denied-box');
+            const deniedMsg = document.getElementById('gate-denied-msg');
+
+            if (!savedUserStr) {
+                // No user logged in
+                gate.classList.remove('d-none');
+                appRoot.style.display = 'none';
+                deniedBox.classList.add('d-none');
+                return false;
+            }
+
+            try {
+                const u = JSON.parse(savedUserStr);
+                const role = (u.role || '').trim().toUpperCase();
+                if (role === 'SUPER_ADMIN' || role === 'SUPER ADMIN') {
+                    // Authorized Super Admin!
+                    unlockAdminPanel(u);
+                    return true;
+                } else {
+                    // Non-super-admin user logged in - Block Admin access!
+                    gate.classList.remove('d-none');
+                    appRoot.style.display = 'none';
+                    deniedMsg.innerHTML = `আপনি বর্তমানে <strong>${escapeHtml(u.fullName || u.employeeId)}</strong> হিসেবে লগইন আছেন (রোল: <span class="badge bg-secondary">${escapeHtml(u.role || 'USER')}</span>)।<br>ওয়েবসাইটের সাধারণ ইউজারদের জন্য অ্যাডমিন প্যানেল অ্যাক্সেস সংরক্ষিত নয়। অ্যাডমিন অ্যাক্সেস শুধুমাত্র <strong>Super Admin</strong> এর জন্য অনুমোদিত।`;
+                    deniedBox.classList.remove('d-none');
+                    return false;
+                }
+            } catch(e) {
+                gate.classList.remove('d-none');
+                appRoot.style.display = 'none';
+                deniedBox.classList.add('d-none');
+                return false;
+            }
+        }
+
+        function unlockAdminPanel(user) {
+            const gate = document.getElementById('admin-auth-gate');
+            const appRoot = document.getElementById('admin-app-root');
+            gate.classList.add('d-none');
+            appRoot.style.display = 'block';
+
+            // Update top header user info
+            const nameEl = document.getElementById('admin-header-user-name');
+            if (nameEl) {
+                nameEl.innerText = user.fullName || user.employeeId;
+            }
+
+            // Fetch all admin data now that authentication is verified
+            fetchAllData();
+        }
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const empId = document.getElementById('gate-emp-id').value.trim();
+            const pass = document.getElementById('gate-password').value.trim();
+            const errBox = document.getElementById('gate-error-alert');
+            const btn = document.getElementById('gate-login-btn');
+
+            errBox.classList.add('d-none');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>যাচাই করা হচ্ছে...';
+
+            try {
+                const res = await fetch(`${BASE_URL}/users.json`);
+                if (!res.ok) throw new Error('ডাটাবেজ কানেকশন সমস্যা! স্ট্যাটাস: ' + res.status);
+                const usersData = await res.json() || {};
+                state.users = usersData;
+
+                let matchedUser = null;
+                Object.keys(usersData).forEach(k => {
+                    const u = usersData[k];
+                    if ((u.employeeId || k).toLowerCase() === empId.toLowerCase() && String(u.password).trim() === pass) {
+                        matchedUser = { employeeId: u.employeeId || k, ...u };
+                    }
+                });
+
+                if (!matchedUser) {
+                    errBox.innerText = 'ভুল এমপ্লয়ি আইডি বা পাসওয়ার্ড!';
+                    errBox.classList.remove('d-none');
+                    return;
+                }
+
+                const role = (matchedUser.role || '').trim().toUpperCase();
+                if (role !== 'SUPER_ADMIN' && role !== 'SUPER ADMIN') {
+                    errBox.innerHTML = `<strong>অ্যাক্সেস অস্বীকৃত!</strong> এই অ্যাকাউন্টের রোল হলো <strong>${escapeHtml(matchedUser.role || 'USER')}</strong>। অ্যাডমিন প্যানেল শুধুমাত্র <strong>Super Admin</strong> এর জন্য অনুমোদিত। সাধারণ ইউজারদের প্রবেশ নিষেধ।`;
+                    errBox.classList.remove('d-none');
+                    return;
+                }
+
+                // Super Admin validated
+                localStorage.setItem('MONICO_LOGGED_USER', JSON.stringify(matchedUser));
+                showToast(`স্বাগতম, Super Admin ${matchedUser.fullName || matchedUser.employeeId}!`);
+                unlockAdminPanel(matchedUser);
+            } catch(err) {
+                console.error(err);
+                errBox.innerText = 'লগইন ব্যর্থ হয়েছে: ' + (err.message || 'নেটওয়ার্ক সমস্যা');
+                errBox.classList.remove('d-none');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i><span>অ্যাডমিন প্যানেলে প্রবেশ করুন</span>';
+            }
+        }
+
+        function handleAdminLogout() {
+            if (!confirm('আপনি কি অ্যাডমিন কনসোল থেকে লগআউট করতে চান?')) return;
+            localStorage.removeItem('MONICO_LOGGED_USER');
+            showToast('অ্যাডমিন প্যানেল থেকে সফলভাবে লগআউট হয়েছে।');
+            const gate = document.getElementById('admin-auth-gate');
+            const appRoot = document.getElementById('admin-app-root');
+            const deniedBox = document.getElementById('gate-denied-box');
+            appRoot.style.display = 'none';
+            gate.classList.remove('d-none');
+            deniedBox.classList.add('d-none');
+            const passInput = document.getElementById('gate-password');
+            if (passInput) passInput.value = '';
+        }
+
+        function toggleGatePasswordVisibility() {
+            const passInput = document.getElementById('gate-password');
+            const icon = document.getElementById('gate-toggle-icon');
+            if (!passInput || !icon) return;
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
 
         function showToast(msg, isError = false) {
             Toastify({
@@ -1855,51 +1831,29 @@
             }).showToast();
         }
 
-        function toggleSidebar(forceState) {
-            const sidebar = document.getElementById('sidebar');
-            const backdrop = document.getElementById('sidebar-backdrop');
-            const isShowing = forceState !== undefined ? forceState : !sidebar.classList.contains('show');
-            if (isShowing) {
-                sidebar.classList.add('show');
-                if (backdrop) backdrop.classList.add('show');
-                document.body.style.overflow = 'hidden';
-            } else {
-                sidebar.classList.remove('show');
-                if (backdrop) backdrop.classList.remove('show');
-                document.body.style.overflow = '';
-            }
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
         }
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content-panel').forEach(el => el.classList.add('d-none'));
             document.querySelectorAll('.sidebar-nav .nav-link').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.mobile-nav-btn').forEach(el => el.classList.remove('active'));
 
             const target = document.getElementById(`tab-${tabId}`);
             if (target) target.classList.remove('d-none');
 
-            // Set active sidebar nav link
+            // Set active nav link
             const links = document.querySelectorAll('.sidebar-nav .nav-link');
             links.forEach(l => {
-                if (l.getAttribute('onclick')?.includes(`'${tabId}'`)) {
+                if (l.getAttribute('onclick')?.includes(tabId)) {
                     l.classList.add('active');
                 }
             });
 
-            // Set active mobile pill nav button
-            const mbtn = document.getElementById(`mbtn-${tabId}`);
-            if (mbtn) {
-                mbtn.classList.add('active');
-                try {
-                    mbtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                } catch (_) {}
-            }
-
             const titles = {
                 'dashboard': 'ওভারভিউ ড্যাশবোর্ড',
                 'sidebar-menus': 'সাইডবার মেনু ও ক্রম বিন্যাস (Reorder Up/Down)',
-                'menus': 'মেনু ফাইল ও সার্কুলার (Grids 1-6)',
-                'website-view': 'ওয়েবসাইট ভিউয়ার ও পোর্টাল (Website View)',
+                'menus': 'মেনু ফাইল ও সার্কুলার (Grids 1-5)',
                 'cards': 'প্রোডাক্ট ও ট্রেনিং কার্ড',
                 'sliders': 'ব্যানার স্লাইডার',
                 'notices': 'স্ক্রোল নোটিশ',
@@ -1910,73 +1864,8 @@
             };
             document.getElementById('page-title').innerText = titles[tabId] || 'অ্যাডমিন কনসোল';
 
-            // Always dismiss sidebar on mobile after choosing a tab
-            toggleSidebar(false);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        // ==================== WEBSITE VIEWER HELPERS ====================
-        function viewLiveSite() {
-            const liveSiteUrl = 'https://sprgroupbd.github.io/MONICO-ONE/website.html';
-            openUrlInWebTab(liveSiteUrl, 'Monico One Website');
-            showToast('ওয়েবসাইট ভিউয়ারে লোড হচ্ছে...');
-        }
-
-        function openUrlInWebTab(url, title = '') {
-            if (!url) return;
-            switchTab('website-view');
-            const input = document.getElementById('web-viewer-input');
-            const frame = document.getElementById('web-viewer-frame');
-            const loader = document.getElementById('iframe-loader');
-            const directLink = document.getElementById('btn-direct-browser-link');
-            if (input) input.value = url;
-            if (directLink) directLink.href = url;
-            if (loader) loader.classList.remove('d-none');
-            if (frame) {
-                frame.src = url;
-            }
-        }
-
-        function loadWebInIframe() {
-            const input = document.getElementById('web-viewer-input');
-            const frame = document.getElementById('web-viewer-frame');
-            const loader = document.getElementById('iframe-loader');
-            let url = (input?.value || '').trim();
-            if (!url) return;
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'https://' + url;
-                if (input) input.value = url;
-            }
-            if (loader) loader.classList.remove('d-none');
-            if (frame) frame.src = url;
-        }
-
-        function reloadWebIframe() {
-            const frame = document.getElementById('web-viewer-frame');
-            const loader = document.getElementById('iframe-loader');
-            if (frame) {
-                if (loader) loader.classList.remove('d-none');
-                frame.src = frame.src;
-            }
-        }
-
-        function openCurrentInSameTab() {
-            const input = document.getElementById('web-viewer-input');
-            const url = (input?.value || '').trim();
-            if (url) {
-                window.location.href = url;
-            }
-        }
-
-        function copyCurrentWebUrl() {
-            const input = document.getElementById('web-viewer-input');
-            const url = (input?.value || '').trim();
-            if (url) {
-                navigator.clipboard.writeText(url).then(() => {
-                    showToast('লিংক সফলভাবে কপি করা হয়েছে', 'success');
-                }).catch(() => {
-                    showToast('কপি করা সম্ভব হয়নি', 'error');
-                });
+            if (window.innerWidth < 992) {
+                document.getElementById('sidebar').classList.remove('show');
             }
         }
 
@@ -2079,52 +1968,31 @@
                 if (sbRes) {
                     Object.keys(sbRes).forEach(k => {
                         const it = sbRes[k];
-                        if (it) state.sidebarMenus.push({ id: k, ...it, order: it.order ?? 0 });
+                        if (it) {
+                            state.sidebarMenus.push({
+                                ...it,
+                                id: k,
+                                order: (typeof it.order === 'number') ? it.order : (parseInt(it.order, 10) || 0)
+                            });
+                        }
                     });
-                    state.sidebarMenus.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+                    state.sidebarMenus.sort((a, b) => {
+                        const ordA = Number(a.order ?? 0);
+                        const ordB = Number(b.order ?? 0);
+                        if (ordA !== ordB) return ordA - ordB;
+                        return String(a.name || '').localeCompare(String(b.name || ''));
+                    });
                 }
 
                 // 2. Menus
                 state.menus = [];
-                function parseMenusIntoState(src) {
-                    if (!src) return;
-                    Object.keys(src).forEach(k => {
-                        const it = src[k];
-                        if (!it) return;
-                        if (it.files && typeof it.files === 'object') {
-                            const groupKey = k.toLowerCase().startsWith('grid') ? k.toLowerCase() : (it.group || k.toLowerCase());
-                            Object.keys(it.files).forEach(fk => {
-                                const f = it.files[fk];
-                                if (!f) return;
-                                state.menus.push({
-                                    id: `${k}_${fk}`,
-                                    gridId: k,
-                                    fileId: fk,
-                                    group: groupKey,
-                                    title: f.name || f.title || fk,
-                                    url: f.url || '',
-                                    icon: groupKey === 'grid1' ? 'fa-link' : 'fa-folder',
-                                    status: f.enabled === false ? 'inactive' : 'active',
-                                    allowedRole: f.allowedRole || it.allowedRole || 'PALL',
-                                    month: f.month || it.month || '',
-                                    date: f.date || it.date || '',
-                                    isPinned: !!(f.isPinned || it.isPinned),
-                                    images: f.images || (f.url ? [f.url] : [])
-                                });
-                            });
-                        } else {
-                            state.menus.push({ id: k, ...it });
-                        }
+                if (mRes) {
+                    Object.keys(mRes).forEach(k => {
+                        const it = mRes[k];
+                        if (it) state.menus.push({ id: k, ...it });
                     });
+                    sortDescendingZtoA(state.menus);
                 }
-                if (mRes) parseMenusIntoState(mRes);
-                if (state.menus.length === 0) {
-                    try {
-                        const dbMenuRes = await fetch(`${BASE_URL}/DB/Menus.json`).then(r => r.json()).catch(() => null);
-                        if (dbMenuRes) parseMenusIntoState(dbMenuRes);
-                    } catch (_) {}
-                }
-                sortDescendingZtoA(state.menus);
 
                 // 3. Sliders
                 state.sliders = [];
@@ -2262,7 +2130,7 @@
                 <tr>
                     <td><span class="order-badge">#${index + 1}</span></td>
                     <td class="fw-bold">${escapeHtml(item.name || '')}</td>
-                    <td><a href="javascript:void(0)" onclick="openUrlInWebTab('${escapeHtml(item.url || '')}', '${escapeHtml(item.name || '')}')" class="text-primary text-decoration-none small text-truncate d-inline-block" style="max-width: 200px;" title="একই ট্যাবে ওয়েবসাইট দেখুন"><i class="fa-solid fa-globe me-1"></i>${escapeHtml(item.url || '')}</a></td>
+                    <td><a href="${escapeHtml(item.url || '#')}" target="_blank" class="text-primary text-decoration-none small text-truncate d-inline-block" style="max-width: 200px;">${escapeHtml(item.url || '')}</a></td>
                     <td><code>${escapeHtml(item.icon || 'fa-globe')}</code></td>
                     <td><span class="badge bg-light text-dark border">${escapeHtml(item.allowedRole || 'SUPER_ADMIN,DIC')}</span></td>
                     <td>
@@ -2271,18 +2139,20 @@
                         </span>
                     </td>
                     <td class="text-center">
-                        <button class="btn-action btn-up me-1" title="উপরে তুলুন" ${isFirst ? 'disabled style="opacity:0.3;"' : ''} onclick="moveSidebarItem(${index}, -1)">
-                            <i class="fa-solid fa-arrow-up"></i>
-                        </button>
-                        <button class="btn-action btn-down" title="নিচে নামান" ${isLast ? 'disabled style="opacity:0.3;"' : ''} onclick="moveSidebarItem(${index}, 1)">
-                            <i class="fa-solid fa-arrow-down"></i>
-                        </button>
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <button type="button" class="btn-action btn-up" title="উপরে তুলুন" ${isFirst ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="event.stopPropagation(); moveSidebarItem(${index}, -1);">
+                                <i class="fa-solid fa-arrow-up"></i>
+                            </button>
+                            <button type="button" class="btn-action btn-down" title="নিচে নামান" ${isLast ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="event.stopPropagation(); moveSidebarItem(${index}, 1);">
+                                <i class="fa-solid fa-arrow-down"></i>
+                            </button>
+                        </div>
                     </td>
                     <td class="text-end">
-                        <button class="btn-action btn-edit me-1" title="এডিট" onclick="openEditSidebarModal('${item.id}')">
+                        <button type="button" class="btn-action btn-edit me-1" title="এডিট" onclick="openEditSidebarModal('${escapeHtml(item.id)}')">
                             <i class="fa-solid fa-pen"></i>
                         </button>
-                        <button class="btn-action btn-del" title="ডিলিট" onclick="deleteSidebarItem('${item.id}', '${escapeHtml(item.name || '')}')">
+                        <button type="button" class="btn-action btn-del" title="ডিলিট" onclick="deleteSidebarItem('${escapeHtml(item.id)}', '${escapeHtml(item.name || '')}')">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </td>
@@ -2292,35 +2162,68 @@
             tbody.innerHTML = html;
         }
 
+        let isReorderingSidebar = false;
         async function moveSidebarItem(index, delta) {
+            if (isReorderingSidebar) return;
+            index = parseInt(index, 10);
+            delta = parseInt(delta, 10);
             const targetIndex = index + delta;
+            if (isNaN(index) || isNaN(targetIndex)) return;
             if (targetIndex < 0 || targetIndex >= state.sidebarMenus.length) return;
+
+            isReorderingSidebar = true;
 
             // Swap in local array
             const temp = state.sidebarMenus[index];
             state.sidebarMenus[index] = state.sidebarMenus[targetIndex];
             state.sidebarMenus[targetIndex] = temp;
 
-            // Update order properties
-            state.sidebarMenus.forEach((it, idx) => it.order = idx);
+            // Re-assign sequential order numbers
+            state.sidebarMenus.forEach((it, idx) => {
+                it.order = idx;
+            });
 
+            // Immediately update the table UI so the user sees instant response
             renderSidebarMenusTable();
             showToast('ক্রম পরিবর্তন করা হচ্ছে...');
 
             try {
-                // Update in Firebase RTDB
-                await Promise.all(state.sidebarMenus.map((it, idx) => {
-                    return fetch(`${BASE_URL}/sidebar_menus/${it.id}.json`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ order: idx })
+                // Multi-path patch to /sidebar_menus.json
+                const multiPatch = {};
+                state.sidebarMenus.forEach((it, idx) => {
+                    const cleanKey = String(it.id).trim();
+                    multiPatch[`${cleanKey}/order`] = idx;
+                });
+
+                const patchRes = await fetch(`${BASE_URL}/sidebar_menus.json`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(multiPatch)
+                });
+
+                if (!patchRes.ok) {
+                    // Fallback to individual node updates if multiPatch is rejected
+                    const promises = state.sidebarMenus.map((it, idx) => {
+                        const cleanKey = encodeURIComponent(String(it.id).trim());
+                        return fetch(`${BASE_URL}/sidebar_menus/${cleanKey}.json`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ order: idx })
+                        });
                     });
-                }));
+                    const resList = await Promise.all(promises);
+                    if (resList.some(r => !r.ok)) {
+                        throw new Error('সার্ভারে ডাটা সংরক্ষণ ব্যর্থ হয়েছে!');
+                    }
+                }
+
                 showToast('সাইডবার মেনুর ক্রম সফলভাবে আপডেট হয়েছে!');
             } catch (err) {
-                console.error(err);
+                console.error('moveSidebarItem error:', err);
                 showToast('ক্রম আপডেট করতে ব্যর্থ: ' + err.message, true);
                 fetchAllData();
+            } finally {
+                isReorderingSidebar = false;
             }
         }
 
@@ -2369,7 +2272,7 @@
             const targetId = id || ('-SM' + Date.now());
 
             try {
-                const res = await fetch(`${BASE_URL}/sidebar_menus/${targetId}.json`, {
+                const res = await fetch(`${BASE_URL}/sidebar_menus/${encodeURIComponent(targetId)}.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -2390,7 +2293,7 @@
             if (!confirm(`আপনি কি "${name}" সাইডবার মেনুটি ডিলিট করতে চান?`)) return;
 
             try {
-                const res = await fetch(`${BASE_URL}/sidebar_menus/${id}.json`, { method: 'DELETE' });
+                const res = await fetch(`${BASE_URL}/sidebar_menus/${encodeURIComponent(id)}.json`, { method: 'DELETE' });
                 if (res.ok) {
                     showToast('সাইডবার মেনু মুছে ফেলা হয়েছে!');
                     fetchAllData();
@@ -2447,13 +2350,13 @@
                         ${isGrid1 ? `
                             <span class="badge bg-info bg-opacity-10 text-info border border-info mb-1"><i class="fa-solid fa-link me-1"></i> প্রাইমারি মেনু</span><br>
                             <span class="badge bg-light text-dark border me-1"><code><i class="fa-solid ${escapeHtml(iconClass)} me-1"></i>${escapeHtml(m.icon || 'fa-folder')}</code></span>
-                            ${hasUrl ? `<a href="javascript:void(0)" onclick="openUrlInWebTab('${escapeHtml(m.url)}', '${escapeHtml(m.title)}')" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;" title="একই ট্যাবে ওয়েবসাইট দেখুন"><i class="fa-solid fa-globe me-1"></i>${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
+                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
                         ` : (isPdf ? `
                             <span class="badge ${isGrid6Pdf ? 'bg-success' : 'bg-danger'} mb-1"><i class="fa-solid fa-file-pdf me-1"></i> ${isGrid6Pdf ? 'স্টক রিপোর্ট PDF' : 'সেলস রিপোর্ট PDF'}</span><br>
-                            ${hasUrl ? `<a href="javascript:void(0)" onclick="openUrlInWebTab('${escapeHtml(m.url)}', '${escapeHtml(m.title)}')" class="${isGrid6Pdf ? 'text-success' : 'text-danger'} small text-truncate d-inline-block" style="max-width: 180px;" title="একই ট্যাবে ওয়েবসাইট দেখুন"><i class="fa-solid fa-file-pdf me-1"></i>${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
+                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="${isGrid6Pdf ? 'text-success' : 'text-danger'} small text-truncate d-inline-block" style="max-width: 180px;"><i class="fa-solid fa-link me-1"></i> ${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
                         ` : `
                             <span class="badge bg-primary mb-1"><i class="fa-solid fa-image me-1"></i> ছবি ফাইল (${imgCount}টি)</span><br>
-                            ${hasUrl ? `<a href="javascript:void(0)" onclick="openUrlInWebTab('${escapeHtml(m.url)}', '${escapeHtml(m.title)}')" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;" title="একই ট্যাবে দেখুন"><i class="fa-solid fa-globe me-1"></i>${escapeHtml(m.url)}</a>` : '<span class="text-muted small">গ্যালারি ছবি</span>'}
+                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">গ্যালারি ছবি</span>'}
                         `)}
                     </td>
                     <td>${isGrid1 ? '-' : (isPdf ? '-' : `<span class="badge bg-light text-dark border">${imgCount || (hasUrl ? 1 : 0)}টি ছবি</span>`)}</td>
@@ -3098,12 +3001,24 @@
 
             let html = '';
             list.forEach(c => {
+                const imgList = (Array.isArray(c.images) ? c.images : []).filter(s => typeof s === 'string' && s.trim());
+                if (c.image && typeof c.image === 'string' && c.image.trim() && !imgList.includes(c.image.trim())) {
+                    imgList.unshift(c.image.trim());
+                }
+                const hasImgs = imgList.length > 0;
+
                 html += `
                 <tr>
                     <td><code>${escapeHtml(c.id)}</code></td>
                     <td class="fw-bold">${escapeHtml(c.title || '')}</td>
-                    <td>${c.url ? `<a href="javascript:void(0)" onclick="openUrlInWebTab('${escapeHtml(c.url)}', '${escapeHtml(c.title || '')}')" class="small text-truncate d-inline-block text-primary" style="max-width:200px;" title="একই ট্যাবে ওয়েবসাইট দেখুন"><i class="fa-solid fa-globe me-1"></i>${escapeHtml(c.url)}</a>` : '-'}</td>
-                    <td>${c.image ? `<a href="${escapeHtml(c.image)}" target="_blank" class="small">ছবি দেখুন</a>` : '-'}</td>
+                    <td><a href="${escapeHtml(c.url || '#')}" target="_blank" class="small text-truncate d-inline-block" style="max-width:200px;">${escapeHtml(c.url || '-')}</a></td>
+                    <td>
+                        ${hasImgs ? `
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0 fw-semibold" onclick="viewCardImageModal('${escapeHtml(c.id)}')">
+                                <i class="fa-solid fa-image me-1"></i>ছবি দেখুন (${imgList.length})
+                            </button>
+                        ` : '<span class="text-muted small">-</span>'}
+                    </td>
                     <td class="text-end">
                         <button class="btn-action btn-edit me-1" onclick="openEditCardModal('${c.id}')"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn-action btn-del" onclick="deleteCard('${c.id}', '${escapeHtml(c.title || '')}')"><i class="fa-solid fa-trash"></i></button>
@@ -3112,6 +3027,40 @@
                 `;
             });
             tbody.innerHTML = html;
+        }
+
+        function viewCardImageModal(cardId) {
+            const list = state.cards[state.currentCardType] || [];
+            const c = list.find(it => it.id === cardId);
+            if (!c) return;
+
+            const imgList = (Array.isArray(c.images) ? c.images : []).filter(s => typeof s === 'string' && s.trim());
+            if (c.image && typeof c.image === 'string' && c.image.trim() && !imgList.includes(c.image.trim())) {
+                imgList.unshift(c.image.trim());
+            }
+
+            if (!imgList.length) {
+                showToast('কোনো ছবি পাওয়া যায়নি!', true);
+                return;
+            }
+
+            document.getElementById('modalCardPreviewTitle').innerText = c.title || 'কার্ডের ছবি';
+            document.getElementById('cardPreviewCount').innerText = `মোট ${imgList.length}টি ছবি উপলব্ধ`;
+
+            const container = document.getElementById('cardPreviewContainer');
+            container.innerHTML = '';
+
+            imgList.forEach((img, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'w-100 bg-white p-2 rounded-3 border shadow-sm text-center';
+                wrapper.innerHTML = `
+                    <div class="small fw-semibold text-muted mb-2 text-start">ছবি #${idx + 1}</div>
+                    <img src="${escapeHtml(img)}" class="rounded-3 img-fluid shadow-sm" style="max-height: 500px; object-fit: contain;" alt="Image ${idx + 1}" onerror="this.src='https://placehold.co/400x300?text=IMG+Error'">
+                `;
+                container.appendChild(wrapper);
+            });
+
+            modals.cardPreview.show();
         }
 
         function compressImage(file, maxWidth = 1080, quality = 0.75) {
@@ -3781,218 +3730,13 @@
             }
         }
 
-        // ==================== MULTI-DATABASE MANAGEMENT ====================
-        const DEFAULT_DATABASES = [
-            {
-                name: 'কুষ্টিয়া ডিপো (Kushtia Depot - Live)',
-                url: 'https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne',
-                isDefault: true
-            }
-        ];
-
-        function getSavedDatabases() {
-            try {
-                const stored = localStorage.getItem('MONICO_DATABASES_LIST');
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-                }
-            } catch (_) {}
-            return [...DEFAULT_DATABASES];
-        }
-
-        function saveDatabasesList(list) {
-            localStorage.setItem('MONICO_DATABASES_LIST', JSON.stringify(list));
-        }
-
-        function initDatabasesList() {
-            updateActiveDbHeader();
-            renderDatabasesList();
-        }
-
-        function updateActiveDbHeader() {
-            const list = getSavedDatabases();
-            const cleanBase = BASE_URL.trim().replace(/\/$/, '');
-            const current = list.find(d => d.url.trim().replace(/\/$/, '') === cleanBase) || {
-                name: cleanBase.includes('kushtia') ? 'Kushtia Depot' : 'Custom RTDB',
-                url: BASE_URL
-            };
-
-            const headerStatus = document.getElementById('db-status-text');
-            if (headerStatus) headerStatus.innerText = current.name.split('(')[0].trim();
-
-            const activeName = document.getElementById('active-db-name');
-            if (activeName) activeName.innerText = current.name;
-
-            const activeUrl = document.getElementById('active-db-url-display');
-            if (activeUrl) activeUrl.innerText = BASE_URL;
-        }
-
-        function renderDatabasesList() {
-            const tbody = document.getElementById('tbody-saved-databases');
-            const countBadge = document.getElementById('saved-db-count');
-            if (!tbody) return;
-
-            const list = getSavedDatabases();
-            if (countBadge) countBadge.innerText = `${list.length}টি ডাটাবেজ`;
-
-            let html = '';
-            list.forEach((db, idx) => {
-                const isActive = (db.url.trim().replace(/\/$/, '') === BASE_URL.trim().replace(/\/$/, ''));
-                html += `
-                <tr class="${isActive ? 'table-primary bg-opacity-25' : ''}">
-                    <td>
-                        <div class="fw-bold d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-server ${isActive ? 'text-primary' : 'text-muted'}"></i>
-                            ${escapeHtml(db.name)}
-                            ${isActive ? '<span class="badge bg-success" style="font-size:10px;">সক্রিয়</span>' : ''}
-                        </div>
-                    </td>
-                    <td>
-                        <code class="small text-break">${escapeHtml(db.url)}</code>
-                        <div id="ping-status-${idx}" class="small text-muted mt-1"><i class="fa-solid fa-circle text-secondary me-1" style="font-size:8px;"></i>অনির্ধারিত</div>
-                    </td>
-                    <td class="text-end">
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-secondary" onclick="testDbConnection('${escapeHtml(db.url)}', 'ping-status-${idx}')" title="পিং টেস্ট">
-                                <i class="fa-solid fa-vial"></i>
-                            </button>
-                            ${!isActive ? `
-                            <button class="btn btn-primary" onclick="switchDatabase('${escapeHtml(db.url)}', '${escapeHtml(db.name)}')" title="সক্রিয় করুন">
-                                সক্রিয়
-                            </button>` : `
-                            <button class="btn btn-success" disabled>
-                                <i class="fa-solid fa-check"></i>
-                            </button>`}
-                            ${!db.isDefault ? `
-                            <button class="btn btn-outline-danger" onclick="deleteCustomDatabase(${idx})" title="মুছে ফেলুন">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>` : ''}
-                        </div>
-                    </td>
-                </tr>
-                `;
-            });
-            tbody.innerHTML = html;
-        }
-
-        async function testDbConnection(url, statusElementId) {
-            const el = statusElementId ? document.getElementById(statusElementId) : null;
-            if (el) el.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span> টেস্ট হচ্ছে...';
-
-            const start = Date.now();
-            const cleanUrl = url.trim().replace(/\/$/, '');
-            try {
-                const res = await fetch(`${cleanUrl}/users.json?shallow=true`, { method: 'GET' });
-                const elapsed = Date.now() - start;
-                if (res.ok) {
-                    if (el) el.innerHTML = `<span class="text-success"><i class="fa-solid fa-circle-check me-1"></i>কানেক্টেড (${elapsed}ms)</span>`;
-                    return { success: true, latency: elapsed };
-                } else {
-                    if (el) el.innerHTML = `<span class="text-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>স্ট্যাটাস ${res.status}</span>`;
-                    return { success: false, status: res.status };
-                }
-            } catch (err) {
-                if (el) el.innerHTML = `<span class="text-danger"><i class="fa-solid fa-circle-xmark me-1"></i>ত্রুটি: ${err.message}</span>`;
-                return { success: false, error: err.message };
-            }
-        }
-
-        async function testActiveDbConnection() {
-            showToast('সক্রিয় ডাটাবেজে পিং টেস্ট করা হচ্ছে...');
-            const result = await testDbConnection(BASE_URL);
-            if (result.success) {
-                showToast(`ডাটাবেজ কানেক্টেড! রেসপন্স টাইম: ${result.latency}ms`);
-            } else {
-                showToast('কানেকশন টেস্ট ব্যর্থ: ' + (result.error || result.status), true);
-            }
-        }
-
-        async function testInputDbConnection() {
-            const url = document.getElementById('new-db-url')?.value.trim();
-            const resultBox = document.getElementById('test-connection-result');
-            if (!url) {
-                showToast('দয়া করে একটি বৈধ RTDB URL লিখুন!', true);
-                return;
-            }
-            if (resultBox) {
-                resultBox.className = 'alert alert-info py-2 small mb-3';
-                resultBox.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>কানেকশন টেস্ট করা হচ্ছে...';
-                resultBox.classList.remove('d-none');
-            }
-
-            const result = await testDbConnection(url);
-            if (resultBox) {
-                if (result.success) {
-                    resultBox.className = 'alert alert-success py-2 small mb-3';
-                    resultBox.innerHTML = `<i class="fa-solid fa-circle-check me-2"></i>ডাটাবেজ সফলভাবে কানেক্টেড! রেসপন্স টাইম: ${result.latency}ms`;
-                } else {
-                    resultBox.className = 'alert alert-danger py-2 small mb-3';
-                    resultBox.innerHTML = `<i class="fa-solid fa-circle-xmark me-2"></i>কানেকশন ব্যর্থ: ${result.error || result.status || 'অজানা ত্রুটি'}`;
-                }
-            }
-        }
-
-        function handleAddNewDatabase(e) {
-            e.preventDefault();
-            const name = document.getElementById('new-db-name')?.value.trim();
-            let url = document.getElementById('new-db-url')?.value.trim();
-            if (!name || !url) {
-                showToast('নাম এবং URL উভয়ই পূরণ করুন!', true);
-                return;
-            }
-            url = url.endsWith('/') ? url.slice(0, -1) : url;
-
-            const list = getSavedDatabases();
-            const existingIdx = list.findIndex(d => d.url.toLowerCase() === url.toLowerCase());
-            if (existingIdx >= 0) {
-                list[existingIdx].name = name;
-            } else {
-                list.push({ name, url, isDefault: false });
-            }
-            saveDatabasesList(list);
-
-            switchDatabase(url, name);
-            resetNewDbForm();
-            showToast(`নতুন ডাটাবেজ "${name}" সফলভাবে যুক্ত ও সক্রিয় করা হয়েছে!`);
-        }
-
-        function resetNewDbForm() {
-            const n = document.getElementById('new-db-name');
-            const u = document.getElementById('new-db-url');
-            const r = document.getElementById('test-connection-result');
-            if (n) n.value = '';
-            if (u) u.value = '';
-            if (r) {
-                r.className = 'mb-3 d-none';
-                r.innerHTML = '';
-            }
-        }
-
-        function switchDatabase(url, name) {
+        function saveCustomDbUrl() {
+            const url = document.getElementById('custom-db-url').value.trim();
+            if (!url) return;
             BASE_URL = url.endsWith('/') ? url.slice(0, -1) : url;
             localStorage.setItem('MONICO_RTDB_URL', BASE_URL);
-            updateActiveDbHeader();
-            renderDatabasesList();
-            showToast(`ডাটাবেজ পরিবর্তন করা হয়েছে: ${name || BASE_URL}`);
-            fetchAllData(true);
-        }
-
-        function deleteCustomDatabase(index) {
-            const list = getSavedDatabases();
-            const target = list[index];
-            if (!target || target.isDefault) return;
-            if (!confirm(`"${target.name}" ডাটাবেজটি তালিকা থেকে মুছে ফেলতে চান?`)) return;
-
-            list.splice(index, 1);
-            saveDatabasesList(list);
-
-            if (target.url.trim().replace(/\/$/, '') === BASE_URL.trim().replace(/\/$/, '')) {
-                switchDatabase(DEFAULT_DATABASES[0].url, DEFAULT_DATABASES[0].name);
-            } else {
-                renderDatabasesList();
-            }
-            showToast('ডাটাবেজ মুছে ফেলা হয়েছে!');
+            showToast('ডাটাবেজ URL সেভ করা হয়েছে!');
+            fetchAllData();
         }
 
         function escapeHtml(str) {
