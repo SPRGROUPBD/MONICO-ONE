@@ -151,8 +151,8 @@ object NotificationHelper {
         items.forEach { notif ->
             val matchesRole = isSuperAdmin ||
                     notif.targetRole.equals("ALL", ignoreCase = true) ||
-                    notif.targetRole.contains(cleanRole, ignoreCase = true) ||
-                    notif.targetRole.contains("PALL", ignoreCase = true)
+                    notif.targetRole.equals("EVERYONE", ignoreCase = true) ||
+                    notif.targetRole.contains(cleanRole, ignoreCase = true)
 
             if (matchesRole && !isAlreadyNotified(context, notif.id)) {
                 // If it wasn't read yet by this user, show popup notification with sound

@@ -542,7 +542,6 @@ private fun MenuEditDialog(
         "MPO" to "MPO (MPO-এর নির্ধারিত Feature)",
         "DA" to "DA (Delivery Assistant Feature)",
         "SUPER_ADMIN" to "Super Admin (সম্পূর্ণ নিয়ন্ত্রণ)",
-        "PALL+SALL" to "Everyone (PALL+SALL)",
         "DIC" to "DIC Only"
     )
 
@@ -558,7 +557,7 @@ private fun MenuEditDialog(
     val initialRoleSet = remember(item) {
         val r = item?.allowedRole?.trim() ?: "ALL"
         when {
-            r.isBlank() || r.equals("ALL", true) || r.equals("EVERYONE", true) || r.equals("PALL+SALL", true) -> {
+            r.isBlank() || r.equals("ALL", true) || r.equals("EVERYONE", true) -> {
                 setOf("SUPER_ADMIN", "MPO", "AM", "TM", "RSM", "DA", "ADIC", "DIC")
             }
             r.equals("SUPERVISOR", true) -> {

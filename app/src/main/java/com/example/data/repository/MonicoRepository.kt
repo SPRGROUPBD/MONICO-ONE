@@ -24,29 +24,8 @@ class MonicoRepository(private val context: Context) {
     }
 
     private val prefs: SharedPreferences = context.getSharedPreferences("monico_one_prefs", Context.MODE_PRIVATE)
-    val service = FirebaseRtdbService(
-        getCustomUrl = { prefs.getString("custom_rtdb_url", null) }
-    )
-
-    fun getActiveDatabaseUrl(): String {
-        return prefs.getString("custom_rtdb_url", FirebaseRtdbService.DEFAULT_PRIMARY_URL) ?: FirebaseRtdbService.DEFAULT_PRIMARY_URL
-    }
-
-    suspend fun updateDatabaseUrl(newUrl: String): Boolean {
-        val clean = newUrl.trim().removeSuffix("/")
-        val ok = service.testConnection(clean)
-        if (ok) {
-            prefs.edit().putString("custom_rtdb_url", clean).apply()
-            FirebaseRtdbService.currentDatabaseUrl = clean
-            syncAll()
-        }
-        return ok
-    }
-
-    suspend fun resetDatabaseUrl() {
-        prefs.edit().remove("custom_rtdb_url").apply()
-        FirebaseRtdbService.currentDatabaseUrl = FirebaseRtdbService.DEFAULT_PRIMARY_URL
-        syncAll()
+    val service = FirebaseRtdbService {
+        prefs.getString("custom_rtdb_url", null)
     }
 
     private val _currentUser = MutableStateFlow<User?>(null)
@@ -1134,8 +1113,8 @@ class MonicoRepository(private val context: Context) {
 
         return _notifications.value.count { notif ->
             val matchesRole = notif.targetRole.equals("ALL", ignoreCase = true) ||
-                    notif.targetRole.contains(upperRole, ignoreCase = true) ||
-                    notif.targetRole.contains("PALL", ignoreCase = true)
+                    notif.targetRole.equals("EVERYONE", ignoreCase = true) ||
+                    notif.targetRole.contains(upperRole, ignoreCase = true)
 
             val isRead = readIds.contains(notif.id) || (notif.readBy[upperEmp] == true)
             matchesRole && !isRead
@@ -1188,5 +1167,20 @@ class MonicoRepository(private val context: Context) {
     suspend fun deleteNotification(id: String): Boolean {
         _notifications.value = _notifications.value.filter { it.id != id }
         return service.deleteNotification(id)
+    }
+
+    fun getCustomDatabaseUrl(): String {
+        return prefs.getString("custom_rtdb_url", null) ?: FirebaseRtdbService.DEFAULT_PRIMARY_URL
+    }
+
+    fun setCustomDatabaseUrl(url: String) {
+        val clean = url.trim().removeSuffix("/")
+        if (clean.isBlank() || clean == FirebaseRtdbService.DEFAULT_PRIMARY_URL) {
+            prefs.edit().remove("custom_rtdb_url").apply()
+            FirebaseRtdbService.currentDatabaseUrl = FirebaseRtdbService.DEFAULT_PRIMARY_URL
+        } else {
+            prefs.edit().putString("custom_rtdb_url", clean).apply()
+            FirebaseRtdbService.currentDatabaseUrl = clean
+        }
     }
 }
