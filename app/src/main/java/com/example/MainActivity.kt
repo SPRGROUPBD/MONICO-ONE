@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 sealed class ScreenState {
     data object Dashboard : ScreenState()
     data class ContentViewer(val title: String, val url: String) : ScreenState()
+    data object AdminPanel : ScreenState()
 }
 
 class MainActivity : ComponentActivity() {
@@ -191,6 +192,12 @@ class MainActivity : ComponentActivity() {
                                         viewerImages = images
                                         isImageViewerOpen = true
                                     },
+                                    onOpenAdminPanel = {
+                                        val role = repository.currentUser.value?.role?.trim()?.uppercase() ?: ""
+                                        if (role == "SUPER_ADMIN" || role == "SUPER ADMIN") {
+                                            currentScreen = ScreenState.AdminPanel
+                                        }
+                                    },
                                     initialShowNotifications = triggerNotificationsDialog
                                 )
                             }
@@ -198,6 +205,12 @@ class MainActivity : ComponentActivity() {
                                 ContentViewerScreen(
                                     title = screen.title,
                                     url = screen.url,
+                                    onBack = { currentScreen = ScreenState.Dashboard }
+                                )
+                            }
+                            is ScreenState.AdminPanel -> {
+                                AdminPanelScreen(
+                                    repository = repository,
                                     onBack = { currentScreen = ScreenState.Dashboard }
                                 )
                             }
