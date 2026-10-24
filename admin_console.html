@@ -1647,6 +1647,23 @@
         // RTDB BASE URL
         let BASE_URL = localStorage.getItem('MONICO_RTDB_URL') || 'https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne';
 
+        // Realtime sync notification trigger for mobile app and web clients
+        async function notifyRealtimeSync(changeType) {
+            try {
+                await fetch(`${BASE_URL}/sync_meta.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lastUpdated: Date.now(),
+                        changeType: changeType || 'general',
+                        source: 'web_admin'
+                    })
+                });
+            } catch (e) {
+                console.warn('Realtime sync meta notification error:', e);
+            }
+        }
+
         // Local state cache
         let state = {
             sidebarMenus: [],
@@ -2382,6 +2399,7 @@
                     showToast(id ? 'সাইডবার মেনু আপডেট হয়েছে!' : 'নতুন সাইডবার মেনু যোগ হয়েছে!');
                     modals.sidebar.hide();
                     fetchAllData();
+                    notifyRealtimeSync('sidebar_menus');
                 } else {
                     showToast('সংরক্ষণ ব্যর্থ হয়েছে!', true);
                 }
@@ -2399,6 +2417,7 @@
                 if (res.ok) {
                     showToast('সাইডবার মেনু মুছে ফেলা হয়েছে!');
                     fetchAllData();
+                    notifyRealtimeSync('sidebar_menus');
                 } else {
                     showToast('ডিলিট করতে ব্যর্থ হয়েছে!', true);
                 }
@@ -2897,7 +2916,8 @@
                 allowedRole,
                 isPinned,
                 status,
-                icon: finalIcon
+                icon: finalIcon,
+                updatedAt: Date.now()
             };
             const targetId = id || ('-M' + Date.now());
 
@@ -2911,6 +2931,7 @@
                     showToast('মেনু ফাইল সংরক্ষিত হয়েছে!');
                     modals.menu.hide();
                     fetchAllData();
+                    notifyRealtimeSync('menus');
                 } else {
                     showToast('সংরক্ষণ ব্যর্থ হয়েছে!', true);
                 }
@@ -2928,6 +2949,7 @@
                 if (res.ok) {
                     showToast('ফাইল মুছে ফেলা হয়েছে!');
                     fetchAllData();
+                    notifyRealtimeSync('menus');
                 } else {
                     showToast('ডিলিট ব্যর্থ হয়েছে!', true);
                 }
@@ -3322,6 +3344,7 @@
                     showToast('কার্ড সংরক্ষিত হয়েছে!');
                     modals.card.hide();
                     fetchAllData();
+                    notifyRealtimeSync('cards');
                 } else {
                     showToast('সংরক্ষণ ব্যর্থ!', true);
                 }
@@ -3345,6 +3368,7 @@
                 if (res.ok) {
                     showToast('কার্ড মুছে ফেলা হয়েছে!');
                     fetchAllData();
+                    notifyRealtimeSync('cards');
                 } else {
                     showToast('ডিলিট ব্যর্থ!', true);
                 }
@@ -3461,6 +3485,7 @@
                     showToast('স্লাইডার সংরক্ষিত হয়েছে!');
                     modals.slider.hide();
                     fetchAllData();
+                    notifyRealtimeSync('sliders');
                 } else {
                     showToast('সংরক্ষণ ব্যর্থ!', true);
                 }
@@ -3478,6 +3503,7 @@
                 if (res.ok) {
                     showToast('স্লাইডার মুছে ফেলা হয়েছে!');
                     fetchAllData();
+                    notifyRealtimeSync('sliders');
                 } else {
                     showToast('ডিলিট ব্যর্থ!', true);
                 }
@@ -3552,6 +3578,7 @@
                     showToast('নোটিশ সংরক্ষিত হয়েছে!');
                     modals.notice.hide();
                     fetchAllData();
+                    notifyRealtimeSync('notices');
                 } else {
                     showToast('সংরক্ষণ ব্যর্থ!', true);
                 }
@@ -3569,6 +3596,7 @@
                 if (res.ok) {
                     showToast('নোটিশ মুছে ফেলা হয়েছে!');
                     fetchAllData();
+                    notifyRealtimeSync('notices');
                 } else {
                     showToast('ডিলিট ব্যর্থ!', true);
                 }

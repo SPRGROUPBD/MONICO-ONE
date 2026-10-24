@@ -1495,7 +1495,63 @@
 
             // Fetch live data from Firebase RTDB
             fetchWebsiteData();
+
+            // Start Realtime sync listener via SSE EventSource + fast background check
+            startRealtimeSyncListener();
         });
+
+        // ==================== REALTIME SYNC LISTENER ====================
+        let realtimeSyncEventSource = null;
+        let lastRealtimeSyncTimestamp = 0;
+
+        function startRealtimeSyncListener() {
+            if (realtimeSyncEventSource) {
+                try { realtimeSyncEventSource.close(); } catch(e) {}
+            }
+
+            try {
+                if (typeof EventSource !== 'undefined') {
+                    realtimeSyncEventSource = new EventSource(`${BASE_URL}/sync_meta.json`);
+                    let isFirst = true;
+                    realtimeSyncEventSource.addEventListener('put', function(e) {
+                        if (isFirst) { isFirst = false; return; }
+                        try {
+                            const data = JSON.parse(e.data);
+                            const ts = (data && data.data && data.data.lastUpdated) || (data && data.lastUpdated) || Date.now();
+                            if (ts > lastRealtimeSyncTimestamp) {
+                                lastRealtimeSyncTimestamp = ts;
+                                console.log('Realtime sync update triggered from SSE put event');
+                                fetchWebsiteData(false);
+                            }
+                        } catch(err) {
+                            fetchWebsiteData(false);
+                        }
+                    });
+                    realtimeSyncEventSource.addEventListener('patch', function(e) {
+                        console.log('Realtime sync update triggered from SSE patch event');
+                        fetchWebsiteData(false);
+                    });
+                }
+            } catch(e) {
+                console.warn('Realtime EventSource initialization skipped:', e);
+            }
+
+            // Gentle background interval (every 12 seconds) as reliable fallback
+            if (!window._realtimeSyncInterval) {
+                window._realtimeSyncInterval = setInterval(async () => {
+                    try {
+                        const res = await fetch(`${BASE_URL}/sync_meta/lastUpdated.json`);
+                        const remoteTs = await res.json();
+                        if (remoteTs && remoteTs > lastRealtimeSyncTimestamp) {
+                            lastRealtimeSyncTimestamp = remoteTs;
+                            fetchWebsiteData(false);
+                        }
+                    } catch(e) {
+                        // ignore network transient failures
+                    }
+                }, 12000);
+            }
+        }
 
         // ==================== TOAST & NOTIFICATIONS ====================
         function showToast(msg, isError = false) {

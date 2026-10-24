@@ -66,33 +66,75 @@ class MonicoRepository(private val context: Context) {
         NotificationHelper.scheduleBackgroundSync(context)
         loadSessionFromLocal()
         loadCacheFromLocal()
-        startPeriodicNotificationPolling()
+        startRealtimeSyncEngine()
     }
 
+    private var lastKnownSyncTimestamp: Long = 0L
+
     /**
-     * Periodically checks for new notifications from Firebase RTDB while app is running,
-     * triggering system popup notifications with Ting sound and lockscreen display.
+     * Intelligent Realtime Sync Engine:
+     * - Every 5-6s: checks /sync_meta/lastUpdated.json (<50 bytes, ~20ms).
+     *   If admin modified any file on web, triggers instant sync!
+     * - Shallow-key comparison on /menus.json?shallow=true (~600 bytes).
+     *   If files added or deleted, triggers instant sync!
+     * - Periodic safety full sync every 30s.
+     * - Checks & plays audio notifications with popup for new messages.
      */
-    private fun startPeriodicNotificationPolling() {
+    private fun startRealtimeSyncEngine() {
         repoScope.launch {
+            // Initial sync if user session already exists
+            val initialUser = _currentUser.value
+            if (initialUser != null) {
+                try { syncAll() } catch (_: Exception) {}
+            }
+
+            var loopCounter = 0
             while (isActive) {
-                delay(20_000L) // Poll every 20 seconds
-                val user = _currentUser.value
-                if (user != null) {
-                    try {
+                delay(6_000L) // 6-second heartbeat check
+                loopCounter++
+                val curUser = _currentUser.value ?: continue
+
+                try {
+                    var needsSync = false
+
+                    // 1. Check sync_meta timestamp from Firebase RTDB
+                    val remoteMetaTs = service.fetchSyncMetaTimestamp()
+                    if (remoteMetaTs != null && remoteMetaTs > lastKnownSyncTimestamp) {
+                        lastKnownSyncTimestamp = remoteMetaTs
+                        needsSync = true
+                    }
+
+                    // 2. Check if menus key count or items changed via shallow keys (~600 bytes)
+                    if (!needsSync) {
+                        val remoteKeys = service.fetchMenusShallowKeys()
+                        val localKeys = _menus.value.map { it.id }.toSet()
+                        if (remoteKeys.isNotEmpty() && remoteKeys != localKeys) {
+                            needsSync = true
+                        }
+                    }
+
+                    // 3. Fallback periodic sync every 30 seconds (every 5 loops of 6s)
+                    if (loopCounter % 5 == 0) {
+                        needsSync = true
+                    }
+
+                    if (needsSync) {
+                        syncAll()
+                    } else {
+                        // Light background check for incoming notifications
                         val freshNotifs = service.fetchNotifications()
                         if (freshNotifs.isNotEmpty()) {
                             _notifications.value = freshNotifs
                             NotificationHelper.checkAndNotifyNewItems(
                                 context = context,
-                                userRole = user.role,
-                                userEmpId = user.employeeId,
+                                userRole = curUser.role,
+                                userEmpId = curUser.employeeId,
                                 items = freshNotifs
                             )
                         }
-                    } catch (e: Exception) {
-                        // ignore background network transient errors
                     }
+                } catch (e: Exception) {
+                    // Ignore background network transient errors
                 }
             }
         }
@@ -525,7 +567,12 @@ class MonicoRepository(private val context: Context) {
         _menus.value = sorted
         saveMenusToCache(sorted)
 
-        return service.saveMenuItem(itemToSave)
+        val success = service.saveMenuItem(itemToSave)
+        if (success) {
+            lastKnownSyncTimestamp = System.currentTimeMillis()
+            service.notifySyncMeta("menus")
+        }
+        return success
     }
 
     suspend fun deleteMenuItem(id: String): Boolean {
@@ -534,7 +581,12 @@ class MonicoRepository(private val context: Context) {
         _menus.value = sorted
         saveMenusToCache(sorted)
 
-        return service.deleteMenuItem(id)
+        val success = service.deleteMenuItem(id)
+        if (success) {
+            lastKnownSyncTimestamp = System.currentTimeMillis()
+            service.notifySyncMeta("menus")
+        }
+        return success
     }
 
     suspend fun saveSidebarMenu(item: SidebarMenuItem): Boolean {
@@ -545,12 +597,16 @@ class MonicoRepository(private val context: Context) {
         if (idx != -1) list[idx] = itemToSave else list.add(itemToSave)
         _sidebarMenus.value = list
 
-        return service.saveSidebarMenu(itemToSave)
+        val success = service.saveSidebarMenu(itemToSave)
+        if (success) service.notifySyncMeta("sidebar_menus")
+        return success
     }
 
     suspend fun deleteSidebarMenu(id: String): Boolean {
         _sidebarMenus.value = _sidebarMenus.value.filter { it.id != id }
-        return service.deleteSidebarMenu(id)
+        val success = service.deleteSidebarMenu(id)
+        if (success) service.notifySyncMeta("sidebar_menus")
+        return success
     }
 
     suspend fun saveSlider(slider: SliderItem): Boolean {
@@ -561,12 +617,16 @@ class MonicoRepository(private val context: Context) {
         if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
         _sliders.value = list
 
-        return service.saveSlider(itemToSave)
+        val success = service.saveSlider(itemToSave)
+        if (success) service.notifySyncMeta("sliders")
+        return success
     }
 
     suspend fun deleteSlider(id: String): Boolean {
         _sliders.value = _sliders.value.filter { it.id != id }
-        return service.deleteSlider(id)
+        val success = service.deleteSlider(id)
+        if (success) service.notifySyncMeta("sliders")
+        return success
     }
 
     suspend fun saveNotice(text: String, id: String = ""): Boolean {
@@ -577,12 +637,16 @@ class MonicoRepository(private val context: Context) {
         if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
         _notices.value = list
 
-        return service.saveNotice(text, targetId)
+        val success = service.saveNotice(text, targetId)
+        if (success) service.notifySyncMeta("notices")
+        return success
     }
 
     suspend fun deleteNotice(id: String): Boolean {
         _notices.value = _notices.value.filter { it.id != id }
-        return service.deleteNotice(id)
+        val success = service.deleteNotice(id)
+        if (success) service.notifySyncMeta("notices")
+        return success
     }
 
     suspend fun savePopup(popup: PopupNotice): Boolean {
@@ -593,12 +657,16 @@ class MonicoRepository(private val context: Context) {
         if (idx != -1) list[idx] = itemToSave else list.add(0, itemToSave)
         _popups.value = list
 
-        return service.savePopup(itemToSave)
+        val success = service.savePopup(itemToSave)
+        if (success) service.notifySyncMeta("popups")
+        return success
     }
 
     suspend fun deletePopup(id: String): Boolean {
         _popups.value = _popups.value.filter { it.id != id }
-        return service.deletePopup(id)
+        val success = service.deletePopup(id)
+        if (success) service.notifySyncMeta("popups")
+        return success
     }
 
     suspend fun saveCard(path: String, card: ContentCard): Boolean {
@@ -624,7 +692,9 @@ class MonicoRepository(private val context: Context) {
                 _targetSheets.value = list
             }
         }
-        return service.saveContentCard(path, itemToSave)
+        val success = service.saveContentCard(path, itemToSave)
+        if (success) service.notifySyncMeta("cards")
+        return success
     }
 
     suspend fun deleteCard(path: String, id: String): Boolean {
@@ -633,7 +703,9 @@ class MonicoRepository(private val context: Context) {
             "product_training_cards" -> _trainingCards.value = _trainingCards.value.filter { it.id != id }
             "product_target_sheets" -> _targetSheets.value = _targetSheets.value.filter { it.id != id }
         }
-        return service.deleteContentCard(path, id)
+        val success = service.deleteContentCard(path, id)
+        if (success) service.notifySyncMeta("cards")
+        return success
     }
 
     suspend fun saveUser(user: User): Boolean {

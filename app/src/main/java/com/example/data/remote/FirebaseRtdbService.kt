@@ -16,13 +16,60 @@ import java.util.concurrent.TimeUnit
 class FirebaseRtdbService {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(12, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .writeTimeout(12, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
     private val baseUrl = "https://kushtia-depot-default-rtdb.firebaseio.com/MonicoOne"
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
+
+    suspend fun fetchSyncMetaTimestamp(): Long? = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder().url("$baseUrl/sync_meta/lastUpdated.json").get().build()
+            val res = client.newCall(req).execute()
+            val body = res.body?.string()?.trim()
+            body?.toLongOrNull()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun fetchMenusShallowKeys(): Set<String> = withContext(Dispatchers.IO) {
+        val set = mutableSetOf<String>()
+        try {
+            val req = Request.Builder().url("$baseUrl/menus.json?shallow=true").get().build()
+            val res = client.newCall(req).execute()
+            val body = res.body?.string() ?: return@withContext set
+            if (body.startsWith("{")) {
+                val json = JSONObject(body)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    set.add(keys.next())
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        set
+    }
+
+    suspend fun notifySyncMeta(changeType: String = "general"): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val json = JSONObject()
+                .put("lastUpdated", System.currentTimeMillis())
+                .put("changeType", changeType)
+                .put("source", "android_app")
+                .toString()
+            val req = Request.Builder()
+                .url("$baseUrl/sync_meta.json")
+                .put(json.toRequestBody(jsonMedia))
+                .build()
+            client.newCall(req).execute().isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     fun fetchStringProperty(url: String): String? {
         return try {

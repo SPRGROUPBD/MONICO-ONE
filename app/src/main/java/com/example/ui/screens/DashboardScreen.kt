@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -495,13 +496,18 @@ fun DashboardScreen(
             },
             modifier = Modifier.fillMaxSize().testTag("dashboard_screen")
         ) { innerPadding ->
-            LazyColumn(
+            PullToRefreshBox(
+                isRefreshing = isSyncing,
+                onRefresh = { scope.launch { repository.syncAll() } },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(14.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(innerPadding)
             ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                 // 1. Sliders Banner Carousel
                 if (sliders.isNotEmpty()) {
                     item {
@@ -814,6 +820,7 @@ fun DashboardScreen(
                     }
                 }
             }
+        }
         }
     }
 
