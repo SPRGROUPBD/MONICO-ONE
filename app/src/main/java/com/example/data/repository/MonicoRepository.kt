@@ -5,12 +5,17 @@ import android.content.SharedPreferences
 import com.example.data.model.*
 import com.example.data.remote.FirebaseRtdbService
 import com.example.utils.NotificationHelper
+import com.example.utils.PdfUtils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
+import android.net.Uri
+import android.util.Base64
+import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,77 +71,23 @@ class MonicoRepository(private val context: Context) {
         NotificationHelper.scheduleBackgroundSync(context)
         loadSessionFromLocal()
         loadCacheFromLocal()
-        startRealtimeSyncEngine()
+        startStartupSync()
     }
 
     private var lastKnownSyncTimestamp: Long = 0L
 
     /**
-     * Intelligent Realtime Sync Engine:
-     * - Every 5-6s: checks /sync_meta/lastUpdated.json (<50 bytes, ~20ms).
-     *   If admin modified any file on web, triggers instant sync!
-     * - Shallow-key comparison on /menus.json?shallow=true (~600 bytes).
-     *   If files added or deleted, triggers instant sync!
-     * - Periodic safety full sync every 30s.
-     * - Checks & plays audio notifications with popup for new messages.
+     * App Startup Sync Engine:
+     * As requested ("app barbar sync hobe na sudu open er somoy sync hobe"):
+     * The app syncs only when opened (on initial startup / login),
+     * and on explicit user pull-to-refresh / admin save operations.
+     * No repeated background polling loops or continuous network jitter.
      */
-    private fun startRealtimeSyncEngine() {
+    private fun startStartupSync() {
         repoScope.launch {
-            // Initial sync if user session already exists
-            val initialUser = _currentUser.value
-            if (initialUser != null) {
-                try { syncAll() } catch (_: Exception) {}
-            }
-
-            var loopCounter = 0
-            while (isActive) {
-                delay(6_000L) // 6-second heartbeat check
-                loopCounter++
-                val curUser = _currentUser.value ?: continue
-
-                try {
-                    var needsSync = false
-
-                    // 1. Check sync_meta timestamp from Firebase RTDB
-                    val remoteMetaTs = service.fetchSyncMetaTimestamp()
-                    if (remoteMetaTs != null && remoteMetaTs > lastKnownSyncTimestamp) {
-                        lastKnownSyncTimestamp = remoteMetaTs
-                        needsSync = true
-                    }
-
-                    // 2. Check if menus key count or items changed via shallow keys (~600 bytes)
-                    if (!needsSync) {
-                        val remoteKeys = service.fetchMenusShallowKeys()
-                        val localKeys = _menus.value.map { it.id }.toSet()
-                        if (remoteKeys.isNotEmpty() && remoteKeys != localKeys) {
-                            needsSync = true
-                        }
-                    }
-
-                    // 3. Fallback periodic sync every 30 seconds (every 5 loops of 6s)
-                    if (loopCounter % 5 == 0) {
-                        needsSync = true
-                    }
-
-                    if (needsSync) {
-                        syncAll()
-                    } else {
-                        // Light background check for incoming notifications
-                        val freshNotifs = service.fetchNotifications()
-                        if (freshNotifs.isNotEmpty()) {
-                            _notifications.value = freshNotifs
-                            NotificationHelper.checkAndNotifyNewItems(
-                                context = context,
-                                userRole = curUser.role,
-                                userEmpId = curUser.employeeId,
-                                items = freshNotifs
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    // Ignore background network transient errors
-                }
-            }
+            try {
+                syncAll()
+            } catch (_: Exception) {}
         }
     }
 
@@ -156,7 +107,7 @@ class MonicoRepository(private val context: Context) {
     }
 
     private fun loadCacheFromLocal() {
-        val menuJson = prefs.getString("cache_menus", null)
+        val menuJson = prefs.getString("cache_menus_meta", null)
         if (!menuJson.isNullOrEmpty()) {
             try {
                 val arr = JSONArray(menuJson)
@@ -166,7 +117,10 @@ class MonicoRepository(private val context: Context) {
                     val imgArr = obj.optJSONArray("images")
                     val imgList = mutableListOf<String>()
                     if (imgArr != null) {
-                        for (j in 0 until imgArr.length()) imgList.add(imgArr.getString(j))
+                        for (j in 0 until imgArr.length()) {
+                            val s = imgArr.optString(j)
+                            if (!s.isNullOrBlank()) imgList.add(s)
+                        }
                     }
                     list.add(
                         MenuItem(
@@ -190,6 +144,48 @@ class MonicoRepository(private val context: Context) {
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        } else {
+            // Safe cleanup for legacy giant string in SharedPreferences
+            try {
+                val legacyJson = prefs.getString("cache_menus", null)
+                if (!legacyJson.isNullOrEmpty() && legacyJson.length < 500_000) {
+                    val arr = JSONArray(legacyJson)
+                    val list = mutableListOf<MenuItem>()
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        val imgArr = obj.optJSONArray("images")
+                        val imgList = mutableListOf<String>()
+                        if (imgArr != null) {
+                            for (j in 0 until imgArr.length()) {
+                                val s = imgArr.optString(j)
+                                if (!s.isNullOrBlank()) imgList.add(s)
+                            }
+                        }
+                        list.add(
+                            MenuItem(
+                                id = obj.optString("id"),
+                                group = obj.optString("group"),
+                                title = obj.optString("title"),
+                                icon = obj.optString("icon"),
+                                url = obj.optString("url"),
+                                images = imgList,
+                                allowedRole = obj.optString("allowedRole"),
+                                month = obj.optString("month"),
+                                date = obj.optString("date"),
+                                color = obj.optString("color"),
+                                isPinned = obj.optBoolean("isPinned"),
+                                status = obj.optString("status")
+                            )
+                        )
+                    }
+                    if (list.isNotEmpty()) {
+                        _menus.value = sortMenusDescending(list)
+                    }
+                }
+                prefs.edit().remove("cache_menus").apply()
+            } catch (_: Throwable) {
+                try { prefs.edit().remove("cache_menus").apply() } catch (_: Throwable) {}
             }
         }
     }
@@ -419,8 +415,8 @@ class MonicoRepository(private val context: Context) {
                 val m = menusDeferred.await()
                 if (m.isNotEmpty()) {
                     val sortedMenus = sortMenusDescending(m)
-                    _menus.value = sortedMenus
-                    saveMenusToCache(sortedMenus)
+                    val optimized = optimizeAndCacheMenus(sortedMenus)
+                    _menus.value = optimized
                 }
 
                 val s = slidersDeferred.await()
@@ -433,13 +429,13 @@ class MonicoRepository(private val context: Context) {
                 if (p.isNotEmpty()) _popups.value = p
 
                 val prod = prodDeferred.await()
-                if (prod.isNotEmpty()) _productCards.value = prod.reversed()
+                if (prod.isNotEmpty()) _productCards.value = optimizeContentCards(prod.reversed(), "prod")
 
                 val train = trainDeferred.await()
-                if (train.isNotEmpty()) _trainingCards.value = train.reversed()
+                if (train.isNotEmpty()) _trainingCards.value = optimizeContentCards(train.reversed(), "train")
 
                 val target = targetDeferred.await()
-                if (target.isNotEmpty()) _targetSheets.value = target.reversed()
+                if (target.isNotEmpty()) _targetSheets.value = optimizeContentCards(target.reversed(), "target")
 
                 val side = sideDeferred.await()
                 if (side.isNotEmpty()) _sidebarMenus.value = side
@@ -489,32 +485,181 @@ class MonicoRepository(private val context: Context) {
         }
     }
 
-    private fun saveMenusToCache(list: List<MenuItem>) {
-        try {
-            val arr = JSONArray()
-            list.forEach { m ->
-                val obj = JSONObject()
-                    .put("id", m.id)
-                    .put("group", m.group)
-                    .put("title", m.title)
-                    .put("icon", m.icon)
-                    .put("url", m.url)
-                    .put("allowedRole", m.allowedRole)
-                    .put("month", m.month)
-                    .put("date", m.date)
-                    .put("color", m.color)
-                    .put("isPinned", m.isPinned)
-                    .put("status", m.status)
-
-                val imgArr = JSONArray()
-                m.images.forEach { imgArr.put(it) }
-                obj.put("images", imgArr)
-                arr.put(obj)
+    private fun resolveFileUriToBase64(uriStr: String): String {
+        if (!uriStr.startsWith("file://")) return uriStr
+        return try {
+            val path = Uri.parse(uriStr).path ?: uriStr.removePrefix("file://")
+            val f = File(path)
+            if (f.exists() && f.length() > 0) {
+                val bytes = f.readBytes()
+                val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                if (PdfUtils.isPdf(uriStr) || f.name.endsWith(".pdf", ignoreCase = true)) {
+                    "data:application/pdf;base64,$b64"
+                } else if (f.name.endsWith(".png", ignoreCase = true)) {
+                    "data:image/png;base64,$b64"
+                } else {
+                    "data:image/jpeg;base64,$b64"
+                }
+            } else {
+                uriStr
             }
-            prefs.edit().putString("cache_menus", arr.toString()).apply()
+        } catch (_: Exception) {
+            uriStr
+        }
+    }
+
+    private fun cachePayloadIfLarge(itemId: String, keySuffix: String, rawData: String): String {
+        val trimmed = rawData.trim()
+        if (trimmed.length <= 1024) return trimmed
+
+        // CRITICAL: NEVER cache online HTTP, HTTPS, go: shortcuts, or content:// URIs to local files!
+        if (trimmed.startsWith("http://", ignoreCase = true) ||
+            trimmed.startsWith("https://", ignoreCase = true) ||
+            trimmed.startsWith("go:", ignoreCase = true) ||
+            trimmed.startsWith("content://", ignoreCase = true)
+        ) {
+            return trimmed
+        }
+
+        // If already a valid file:// URI, return directly
+        if (trimmed.startsWith("file://")) {
+            val path = Uri.parse(trimmed).path ?: trimmed.removePrefix("file://")
+            if (File(path).exists()) return trimmed
+        }
+
+        val safeId = itemId.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+        val cacheDir = File(context.filesDir, "menu_cache").apply { if (!exists()) mkdirs() }
+
+        // Determine if base64 PDF
+        val isPdf = trimmed.startsWith("data:application/pdf", ignoreCase = true) ||
+                trimmed.startsWith("data:pdf", ignoreCase = true) ||
+                trimmed.startsWith("JVBERi") ||
+                (trimmed.contains(";base64,") && trimmed.substringBefore(";base64,").contains("pdf", ignoreCase = true))
+
+        // Determine if base64 Image
+        val isImg = trimmed.startsWith("data:image/", ignoreCase = true) ||
+                trimmed.startsWith("/9j/") || trimmed.startsWith("iVBORw") || trimmed.startsWith("R0lGOD")
+
+        if (isPdf || isImg) {
+            // Compute deterministic content hash (length + hash code) so edited files NEVER serve stale cache
+            val contentHash = ((trimmed.length.toLong() and 0xFFFFFL) shl 24) xor (trimmed.hashCode().toLong() and 0xFFFFFFL)
+            val hashStr = contentHash.toString(16)
+            val ext = if (isPdf) "pdf" else if (trimmed.contains("image/png") || trimmed.startsWith("iVBORw")) "png" else "jpg"
+            val targetFile = File(cacheDir, "menu_${safeId}_${keySuffix}_${hashStr}.$ext")
+
+            if (targetFile.exists() && targetFile.length() > 0L) {
+                return "file://${targetFile.absolutePath}"
+            }
+
+            try {
+                val base64Part = if (trimmed.contains(";base64,")) {
+                    trimmed.substringAfter(";base64,")
+                } else if (trimmed.startsWith("data:", ignoreCase = true)) {
+                    trimmed.substringAfter(",")
+                } else {
+                    trimmed
+                }.trim().replace("\n", "").replace("\r", "").replace(" ", "")
+
+                val bytes = Base64.decode(base64Part, Base64.DEFAULT)
+                FileOutputStream(targetFile).use { it.write(bytes) }
+
+                // Prune old stale cache files for this item & suffix to prevent disk bloat
+                val prefix = "menu_${safeId}_${keySuffix}_"
+                cacheDir.listFiles { _, name -> name.startsWith(prefix) && name != targetFile.name }?.forEach { it.delete() }
+                // Also clean legacy unhashed cache files
+                File(cacheDir, "menu_${safeId}_${keySuffix}.pdf").delete()
+                File(cacheDir, "menu_${safeId}_${keySuffix}.jpg").delete()
+                File(cacheDir, "menu_${safeId}_${keySuffix}.png").delete()
+                File(cacheDir, "menu_${safeId}_${keySuffix}.dat").delete()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            if (targetFile.exists() && targetFile.length() > 0L) {
+                return "file://${targetFile.absolutePath}"
+            }
+        }
+
+        return trimmed
+    }
+
+    private fun optimizeAndCacheMenus(list: List<MenuItem>): List<MenuItem> {
+        val optimizedList = mutableListOf<MenuItem>()
+        val arr = JSONArray()
+        for (m in list) {
+            val optUrl = if (m.url.isNotBlank() && m.url.length > 1024) {
+                cachePayloadIfLarge(m.id, "url", m.url)
+            } else {
+                m.url
+            }
+
+            val optImages = m.images.mapIndexed { idx, img ->
+                if (img.isNotBlank() && img.length > 1024) {
+                    cachePayloadIfLarge(m.id, "img_$idx", img)
+                } else {
+                    img
+                }
+            }
+
+            val optItem = m.copy(url = optUrl, images = optImages)
+            optimizedList.add(optItem)
+
+            val obj = JSONObject()
+                .put("id", optItem.id)
+                .put("group", optItem.group)
+                .put("title", optItem.title)
+                .put("icon", optItem.icon)
+                .put("url", optItem.url)
+                .put("allowedRole", optItem.allowedRole)
+                .put("month", optItem.month)
+                .put("date", optItem.date)
+                .put("color", optItem.color)
+                .put("isPinned", optItem.isPinned)
+                .put("status", optItem.status)
+
+            val imgArr = JSONArray()
+            optItem.images.forEach { imgArr.put(it) }
+            obj.put("images", imgArr)
+            arr.put(obj)
+        }
+
+        try {
+            prefs.edit()
+                .putString("cache_menus_meta", arr.toString())
+                .remove("cache_menus")
+                .apply()
         } catch (e: Exception) {
             e.printStackTrace()
         }
+
+        return optimizedList
+    }
+
+    private fun optimizeContentCards(cards: List<ContentCard>, prefix: String): List<ContentCard> {
+        return cards.map { card ->
+            val optUrl = if (card.url.isNotBlank() && card.url.length > 1024) {
+                cachePayloadIfLarge(card.id, "${prefix}_url", card.url)
+            } else {
+                card.url
+            }
+            val optImages = card.images.mapIndexed { idx, img ->
+                if (img.isNotBlank() && img.length > 1024) {
+                    cachePayloadIfLarge(card.id, "${prefix}_img_$idx", img)
+                } else {
+                    img
+                }
+            }
+            val optImage = if (card.image.isNotBlank() && card.image.length > 1024) {
+                cachePayloadIfLarge(card.id, "${prefix}_image", card.image)
+            } else {
+                card.image
+            }
+            card.copy(url = optUrl, images = optImages, image = optImage)
+        }
+    }
+
+    private fun saveMenusToCache(list: List<MenuItem>): List<MenuItem> {
+        return optimizeAndCacheMenus(list)
     }
 
     suspend fun markMenuSeen(menuId: String) {
@@ -564,10 +709,15 @@ class MonicoRepository(private val context: Context) {
             currentList.add(0, itemToSave)
         }
         val sorted = sortMenusDescending(currentList)
-        _menus.value = sorted
-        saveMenusToCache(sorted)
+        val optimized = optimizeAndCacheMenus(sorted)
+        _menus.value = optimized
 
-        val success = service.saveMenuItem(itemToSave)
+        // Convert any local file:// URIs back to portable base64 for cloud database sync
+        val cloudUrl = resolveFileUriToBase64(itemToSave.url)
+        val cloudImages = itemToSave.images.map { resolveFileUriToBase64(it) }
+        val cloudItem = itemToSave.copy(url = cloudUrl, images = cloudImages)
+
+        val success = service.saveMenuItem(cloudItem)
         if (success) {
             lastKnownSyncTimestamp = System.currentTimeMillis()
             service.notifySyncMeta("menus")
@@ -578,8 +728,8 @@ class MonicoRepository(private val context: Context) {
     suspend fun deleteMenuItem(id: String): Boolean {
         val currentList = _menus.value.filter { it.id != id }
         val sorted = sortMenusDescending(currentList)
-        _menus.value = sorted
-        saveMenusToCache(sorted)
+        val optimized = optimizeAndCacheMenus(sorted)
+        _menus.value = optimized
 
         val success = service.deleteMenuItem(id)
         if (success) {
@@ -692,7 +842,14 @@ class MonicoRepository(private val context: Context) {
                 _targetSheets.value = list
             }
         }
-        val success = service.saveContentCard(path, itemToSave)
+
+        // Convert any local file:// URIs back to portable base64 for cloud database sync
+        val cloudUrl = resolveFileUriToBase64(itemToSave.url)
+        val cloudImage = resolveFileUriToBase64(itemToSave.image)
+        val cloudImages = itemToSave.images.map { resolveFileUriToBase64(it) }
+        val cloudCard = itemToSave.copy(url = cloudUrl, image = cloudImage, images = cloudImages)
+
+        val success = service.saveContentCard(path, cloudCard)
         if (success) service.notifySyncMeta("cards")
         return success
     }

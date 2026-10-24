@@ -305,6 +305,11 @@ fun AdminPanelScreen(
                         products = productCards,
                         trainings = trainingCards,
                         targets = targetSheets,
+                        onAddNew = { path ->
+                            editingCardPath = path
+                            editingCardItem = null
+                            showCardDialog = true
+                        },
                         onEdit = { path, card ->
                             editingCardPath = path
                             editingCardItem = card
@@ -570,9 +575,12 @@ private fun MenuEditDialog(
     var icon by remember { mutableStateOf(item?.icon ?: "fa-folder") }
     var isPinned by remember { mutableStateOf(item?.isPinned ?: false) }
 
-    // External URL (clean, only if not base64)
+    // External URL (clean, only if not base64 and not local file)
     var externalUrl by remember {
-        mutableStateOf(if (item?.url?.startsWith("data:") == true) "" else item?.url ?: "")
+        mutableStateOf(
+            if (item?.url?.startsWith("data:") == true || item?.url?.startsWith("file:") == true) ""
+            else item?.url ?: ""
+        )
     }
 
     // Attached PDF data (from device or existing item)
@@ -1457,6 +1465,7 @@ private fun CardEditDialog(
                 val res = PdfUtils.readPdfUriToBase64(context, it)
                 if (res != null) {
                     cardImages = listOf(res.first)
+                    cardUrl = res.first
                 }
                 isProcessing = false
             }
@@ -1504,9 +1513,51 @@ private fun CardEditDialog(
                 OutlinedTextField(
                     value = cardTitle,
                     onValueChange = { cardTitle = it },
-                    label = { Text("কার্ডের নাম / প্রোডাক্ট নাম") },
+                    label = { Text("কার্ডের নাম / প্রোডাক্ট নাম *") },
+                    placeholder = { Text("উদাঃ টার্গেট শিট মার্চ ২০২৬") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Device Photo and PDF Picker Buttons
+                Text("ডিভাইস থেকে ফাইল নির্বাচন করুন:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { cardPhotoPicker.launch("image/*") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("ছবি আপলোড", fontSize = 11.sp)
+                    }
+
+                    OutlinedButton(
+                        onClick = { cardPdfPicker.launch("application/pdf") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("PDF আপলোড", fontSize = 11.sp)
+                    }
+                }
+
+                if (isProcessing) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MonicoBlue)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("ফাইল প্রসেসিং হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন", fontSize = 11.sp, color = MonicoBlue)
+                    }
+                }
 
                 // Direct PDF / Image URL inputs
                 var urlInputText by remember { mutableStateOf("") }
@@ -1518,8 +1569,8 @@ private fun CardEditDialog(
                     OutlinedTextField(
                         value = urlInputText,
                         onValueChange = { urlInputText = it },
-                        label = { Text("ছবি বা PDF লিংক যোগ করুন (URL)") },
-                        placeholder = { Text("https://example.com/item.jpg বা .pdf") },
+                        label = { Text("ওয়েব URL / ইমেজ লিংক") },
+                        placeholder = { Text("https://example.com/file.pdf বা .jpg") },
                         leadingIcon = {
                             Icon(Icons.Default.AddLink, contentDescription = null, tint = MonicoBlue)
                         },
@@ -1529,8 +1580,13 @@ private fun CardEditDialog(
                     Button(
                         onClick = {
                             val trimmed = urlInputText.trim()
-                            if (trimmed.isNotBlank() && !cardImages.contains(trimmed)) {
-                                cardImages = cardImages + trimmed
+                            if (trimmed.isNotBlank()) {
+                                if (trimmed.endsWith(".pdf", ignoreCase = true) || trimmed.contains("pdf", ignoreCase = true)) {
+                                    cardUrl = trimmed
+                                }
+                                if (!cardImages.contains(trimmed)) {
+                                    cardImages = cardImages + trimmed
+                                }
                                 urlInputText = ""
                             }
                         },
@@ -1543,17 +1599,22 @@ private fun CardEditDialog(
                 }
 
                 if (cardImages.isNotEmpty()) {
-                    Text("সংযুক্ত পেজ (${cardImages.size}টি):", fontSize = 10.sp, color = MonicoGreen, fontWeight = FontWeight.Bold)
+                    Text("সংযুক্ত ফাইল / পেজ (${cardImages.size}টি):", fontSize = 10.sp, color = MonicoGreen, fontWeight = FontWeight.Bold)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(cardImages) { itemData ->
-                            Box(modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp))) {
-                                if (PdfUtils.isPdf(itemData)) {
+                            Box(modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp))) {
+                                if (PdfUtils.isPdf(itemData) || itemData.endsWith(".pdf", ignoreCase = true)) {
                                     Surface(
                                         color = MonicoRed,
                                         modifier = Modifier.fillMaxSize()
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Color.White)
+                                        Column(
+                                            modifier = Modifier.fillMaxSize(),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                                            Text("PDF FILE", fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 } else {
@@ -1565,8 +1626,11 @@ private fun CardEditDialog(
                                     )
                                 }
                                 IconButton(
-                                    onClick = { cardImages = cardImages - itemData },
-                                    modifier = Modifier.size(20.dp).align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.6f))
+                                    onClick = {
+                                        cardImages = cardImages - itemData
+                                        if (cardUrl == itemData) cardUrl = ""
+                                    },
+                                    modifier = Modifier.size(22.dp).align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.65f))
                                 ) {
                                     Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(14.dp))
                                 }
@@ -1578,7 +1642,8 @@ private fun CardEditDialog(
                 OutlinedTextField(
                     value = cardUrl,
                     onValueChange = { cardUrl = it },
-                    label = { Text("ওয়েব লিংক (ঐচ্ছিক)") },
+                    label = { Text("ফাইল লিংক / PDF লিংক (ঐচ্ছিক)") },
+                    placeholder = { Text("https://... বা ড্রাইভ লিংক") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -1587,18 +1652,25 @@ private fun CardEditDialog(
             Button(
                 onClick = {
                     if (cardTitle.isNotBlank()) {
+                        val firstImg = cardImages.firstOrNull() ?: ""
+                        val finalUrl = when {
+                            cardUrl.isNotBlank() -> cardUrl.trim()
+                            firstImg.isNotBlank() && (PdfUtils.isPdf(firstImg) || firstImg.endsWith(".pdf", ignoreCase = true)) -> firstImg
+                            else -> ""
+                        }
                         onSave(
                             cardPath,
                             ContentCard(
                                 id = item?.id ?: "",
-                                title = cardTitle,
-                                url = cardUrl,
+                                title = cardTitle.trim(),
+                                url = finalUrl,
                                 images = cardImages,
-                                image = cardImages.firstOrNull() ?: ""
+                                image = if (PdfUtils.isPdf(firstImg) || firstImg.endsWith(".pdf", ignoreCase = true)) "" else firstImg
                             )
                         )
                     }
-                }
+                },
+                enabled = !isProcessing && cardTitle.isNotBlank()
             ) { Text(if (item == null) "যোগ করুন" else "আপডেট করুন") }
         },
         dismissButton = {
@@ -2412,58 +2484,223 @@ private fun AdminCardsTab(
     products: List<ContentCard>,
     trainings: List<ContentCard>,
     targets: List<ContentCard>,
+    onAddNew: (path: String) -> Unit,
     onEdit: (path: String, card: ContentCard) -> Unit,
     onDelete: (path: String, id: String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Quick Action Top Header Banner
         item {
-            Text("নতুন পণ্য (Product Launch)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
-        }
-        items(products, key = { "pl_${it.id}" }) { c ->
-            CardRowItem(c) {
-                Row {
-                    IconButton(onClick = { onEdit("product_launch_cards", c) }) {
-                        Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MonicoBlue.copy(alpha = 0.08f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("কন্টেন্ট ও টার্গেট শিট কার্ড", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("টার্গেট শিট, নতুন প্রোডাক্ট ও ট্রেনিং কার্ড যোগ ও নিয়ন্ত্রণ করুন", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { onDelete("product_launch_cards", c.id) }) {
-                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
+                    Button(
+                        onClick = { onAddNew("product_target_sheets") },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MonicoAmber),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("নতুন টার্গেট শিট", fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
 
+        // Section 1: টার্গেট শিট (Target Sheets) - Placed first for fast access
         item {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("প্রোডাক্ট ট্রেনিং (Product Training)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Default.TrackChanges, contentDescription = null, tint = MonicoAmber, modifier = Modifier.size(18.dp))
+                    Text("টার্গেট শিট (Target Sheets)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                }
+                TextButton(
+                    onClick = { onAddNew("product_target_sheets") },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("যোগ করুন", fontSize = 11.sp)
+                }
+            }
         }
-        items(trainings, key = { "pt_${it.id}" }) { c ->
-            CardRowItem(c) {
-                Row {
-                    IconButton(onClick = { onEdit("product_training_cards", c) }) {
-                        Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
+
+        if (targets.isEmpty()) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("কোনো টার্গেট শিট কার্ড নেই।", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedButton(
+                            onClick = { onAddNew("product_target_sheets") },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MonicoAmber)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("নতুন টার্গেট শিট যোগ করুন", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
-                    IconButton(onClick = { onDelete("product_training_cards", c.id) }) {
-                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
+                }
+            }
+        } else {
+            items(targets, key = { "ts_${it.id}" }) { c ->
+                CardRowItem(c) {
+                    Row {
+                        IconButton(onClick = { onEdit("product_target_sheets", c) }) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
+                        }
+                        IconButton(onClick = { onDelete("product_target_sheets", c.id) }) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
+                        }
                     }
                 }
             }
         }
 
+        // Section 2: নতুন পণ্য (Product Launch)
         item {
             Spacer(modifier = Modifier.height(4.dp))
-            Text("টার্গেট শিট (Target Sheets)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Default.Star, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(18.dp))
+                    Text("নতুন পণ্য (Product Launch)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                }
+                TextButton(
+                    onClick = { onAddNew("product_launch_cards") },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("যোগ করুন", fontSize = 11.sp)
+                }
+            }
         }
-        items(targets, key = { "ts_${it.id}" }) { c ->
-            CardRowItem(c) {
-                Row {
-                    IconButton(onClick = { onEdit("product_target_sheets", c) }) {
-                        Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
+
+        if (products.isEmpty()) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("কোনো নতুন পণ্য কার্ড নেই।", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedButton(
+                            onClick = { onAddNew("product_launch_cards") },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text("নতুন পণ্য যোগ করুন", fontSize = 11.sp)
+                        }
                     }
-                    IconButton(onClick = { onDelete("product_target_sheets", c.id) }) {
-                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
+                }
+            }
+        } else {
+            items(products, key = { "pl_${it.id}" }) { c ->
+                CardRowItem(c) {
+                    Row {
+                        IconButton(onClick = { onEdit("product_launch_cards", c) }) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
+                        }
+                        IconButton(onClick = { onDelete("product_launch_cards", c.id) }) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Section 3: প্রোডাক্ট ট্রেনিং (Product Training)
+        item {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Default.School, contentDescription = null, tint = MonicoGreen, modifier = Modifier.size(18.dp))
+                    Text("প্রোডাক্ট ট্রেনিং (Product Training)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                }
+                TextButton(
+                    onClick = { onAddNew("product_training_cards") },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("যোগ করুন", fontSize = 11.sp)
+                }
+            }
+        }
+
+        if (trainings.isEmpty()) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("কোনো ট্রেনিং কার্ড নেই।", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedButton(
+                            onClick = { onAddNew("product_training_cards") },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text("ট্রেনিং কার্ড যোগ করুন", fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        } else {
+            items(trainings, key = { "pt_${it.id}" }) { c ->
+                CardRowItem(c) {
+                    Row {
+                        IconButton(onClick = { onEdit("product_training_cards", c) }) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
+                        }
+                        IconButton(onClick = { onDelete("product_training_cards", c.id) }) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
+                        }
                     }
                 }
             }

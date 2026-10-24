@@ -49,10 +49,19 @@ object PdfUtils {
         val cleanUrl = s.substringBefore("?").substringBefore("#").lowercase()
         if (cleanUrl.endsWith(".pdf")) return true
 
+        if (s.startsWith("file://") || s.startsWith("/")) {
+            val path = if (s.startsWith("file://")) Uri.parse(s).path ?: s.removePrefix("file://") else s
+            if (path != null) {
+                val f = File(path)
+                if (f.name.endsWith(".pdf", ignoreCase = true)) return true
+                if (f.exists() && f.length() > 0 && isValidPdfFile(f)) return true
+            }
+        }
+
         val lower = s.lowercase()
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
-            if (lower.contains(".pdf?") || lower.contains(".pdf#") || lower.contains("type=pdf") || lower.contains("format=pdf")) return true
-            if (lower.contains("drive.google.com") && (lower.contains(".pdf") || lower.contains("mimetype=application/pdf"))) return true
+            if (lower.contains(".pdf?") || lower.contains(".pdf#") || lower.contains("type=pdf") || lower.contains("format=pdf") || lower.contains(".pdf")) return true
+            if (lower.contains("drive.google.com") && (lower.contains(".pdf") || lower.contains("mimetype=application/pdf") || lower.contains("/file/d/"))) return true
         }
 
         return false
@@ -186,8 +195,21 @@ object PdfUtils {
                 }
             }
 
-            // 3. Content or File URI
-            if (s.startsWith("content://") || s.startsWith("file://")) {
+            // 3. Direct Local File or file:// URI
+            if (s.startsWith("file://")) {
+                val path = Uri.parse(s).path ?: s.removePrefix("file://")
+                val f = File(path)
+                if (f.exists() && f.canRead() && f.length() > 0) {
+                    if (isValidPdfFile(f)) return@withContext f
+                    if (f.name.endsWith(".dat")) {
+                        val text = try { f.readText() } catch (_: Exception) { "" }
+                        if (text.isNotBlank()) return@withContext preparePdfFile(context, text)
+                    }
+                }
+            }
+
+            // 4. Content URI
+            if (s.startsWith("content://")) {
                 val uri = Uri.parse(s)
                 val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
                 FileOutputStream(outputFile).use { out ->
@@ -197,9 +219,14 @@ object PdfUtils {
                 return@withContext outputFile
             }
 
-            // 4. Local File path
+            // 5. Direct Local File path
             val directFile = File(s)
             if (directFile.exists() && directFile.canRead() && directFile.length() > 0) {
+                if (isValidPdfFile(directFile)) return@withContext directFile
+                if (directFile.name.endsWith(".dat")) {
+                    val text = try { directFile.readText() } catch (_: Exception) { "" }
+                    if (text.isNotBlank()) return@withContext preparePdfFile(context, text)
+                }
                 return@withContext directFile
             }
 

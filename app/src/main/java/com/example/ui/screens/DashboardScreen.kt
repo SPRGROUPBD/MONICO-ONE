@@ -213,6 +213,7 @@ fun DashboardScreen(
     val grid4Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid4" }) }
     val grid5Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid5" }) }
     val gridStockMenus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid_stock" }) }
+    val grid6Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid6" }) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -777,15 +778,27 @@ fun DashboardScreen(
                         icon = Icons.Default.TrackChanges,
                         color = MonicoAmber
                     )
-                    if (targetSheets.isNotEmpty()) {
+                    if (targetSheets.isNotEmpty() || grid6Menus.isNotEmpty()) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
+                            // Target Sheets saved as ContentCards (from Admin Cards tab or Firebase product_target_sheets)
                             items(targetSheets) { card ->
                                 ContentCardItem(
                                     card = card,
                                     onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }
+                                )
+                            }
+                            // Target Sheets saved as MenuItems (from Admin Grid 6 or web admin menus with group=grid6)
+                            items(grid6Menus) { item ->
+                                MenuItemCard(
+                                    item = item,
+                                    currentEmpId = currentUser?.employeeId ?: "",
+                                    onClick = {
+                                        scope.launch { repository.markMenuSeen(item.id) }
+                                        handleMenuCardClick(item, context, onOpenUrl, onOpenImageViewer)
+                                    }
                                 )
                             }
                         }
@@ -904,27 +917,11 @@ private fun handleMenuCardClick(
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
-    // 1. FIRST: Check if this item is or has an IMAGE (User requirement: ইমেজ থাকলে ইমেজ ভিউয়ার হবে)
-    val itemImages = mutableListOf<String>()
-    item.images.forEach { img ->
-        if (img.isNotBlank() && isImageFile(img)) {
-            itemImages.add(img)
-        }
-    }
-    if (itemImages.isEmpty() && item.url.isNotBlank() && isImageFile(item.url)) {
-        itemImages.add(item.url)
-    }
-    if (itemImages.isEmpty() && item.icon.isNotBlank() && isImageFile(item.icon)) {
-        itemImages.add(item.icon)
-    }
+    // 1. Check images array from item
+    val validImages = item.images.map { it.trim() }.filter { it.isNotBlank() }
+    val pdfFromImages = validImages.firstOrNull { isPdfFile(it) }
 
-    if (itemImages.isNotEmpty()) {
-        onOpenImageViewer(item.title, itemImages)
-        return
-    }
-
-    // 2. SECOND: Check if this item is or has a PDF (User requirement: আর যেগুলা পিডিএফ সেগুলো পিডিএফ ভিউয়ার এর মাধ্যমে ভিউ হবে)
-    val pdfFromImages = item.images.firstOrNull { isPdfFile(it) }
+    // If PDF is in images array or item.url is a PDF
     val isExplicitPdf = isPdfFile(item.url) || pdfFromImages != null ||
             ((item.group == "grid5" || item.group == "grid_stock") && item.url.isNotBlank() && !isImageFile(item.url))
 
@@ -940,13 +937,30 @@ private fun handleMenuCardClick(
         }
     }
 
-    // 3. THIRD: Web URLs, Go: shortcuts, and other links (User requirement: website http ইউ আর এলো ওপেন হবে)
+    // If images are present (and not PDF), open in Image Viewer
+    val imageOnlyList = validImages.filter { !isPdfFile(it) }
+    if (imageOnlyList.isNotEmpty()) {
+        onOpenImageViewer(item.title, imageOnlyList)
+        return
+    }
+
+    // Check item.url for Image
+    if (item.url.isNotBlank() && isImageFile(item.url)) {
+        onOpenImageViewer(item.title, listOf(item.url.trim()))
+        return
+    }
+
+    // Check item.icon for Image
+    if (item.icon.isNotBlank() && isImageFile(item.icon)) {
+        onOpenImageViewer(item.title, listOf(item.icon.trim()))
+        return
+    }
+
+    // Web URLs, Go: shortcuts, and other document links
     if (item.url.isNotBlank()) {
         val effective = resolveGoUrl(item.url)
         if (isImageFile(effective)) {
             onOpenImageViewer(item.title, listOf(effective))
-        } else if (isPdfFile(effective)) {
-            onOpenUrl(item.title, effective)
         } else {
             onOpenUrl(item.title, effective)
         }
@@ -981,30 +995,14 @@ private fun handleContentCardClick(
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
-    // 1. FIRST: Check for images (User requirement: ইমেজ থাকলে ইমেজ ভিউয়ার হবে)
-    val validImgs = mutableListOf<String>()
-    card.images.forEach { img ->
-        if (img.isNotBlank() && isImageFile(img)) {
-            validImgs.add(img)
-        }
-    }
-    if (validImgs.isEmpty() && card.image.isNotBlank() && isImageFile(card.image)) {
-        validImgs.add(card.image)
-    }
-    if (validImgs.isEmpty() && card.url.isNotBlank() && isImageFile(card.url)) {
-        validImgs.add(card.url)
-    }
+    val validImages = card.images.map { it.trim() }.filter { it.isNotBlank() }
+    val pdfFromImages = validImages.firstOrNull { isPdfFile(it) }
 
-    if (validImgs.isNotEmpty()) {
-        onOpenImageViewer(card.title, validImgs)
-        return
-    }
-
-    // 2. SECOND: Check for PDF (User requirement: আর যেগুলা পিডিএফ সেগুলো পিডিএফ ভিউয়ার এর মাধ্যমে ভিউ হবে)
+    // Check for PDF
     val pdfSource = when {
         isPdfFile(card.url) -> card.url
         isPdfFile(card.image) -> card.image
-        card.images.any { isPdfFile(it) } -> card.images.first { isPdfFile(it) }
+        pdfFromImages != null -> pdfFromImages
         else -> null
     }
 
@@ -1013,13 +1011,25 @@ private fun handleContentCardClick(
         return
     }
 
-    // 3. THIRD: Web URL (User requirement: website http ইউ আর এলো ওপেন হবে)
+    // Check for images
+    val imageOnlyList = validImages.filter { !isPdfFile(it) }
+    if (imageOnlyList.isNotEmpty()) {
+        onOpenImageViewer(card.title, imageOnlyList)
+        return
+    }
+
+    if (card.image.isNotBlank()) {
+        val cleanImg = card.image.trim()
+        if (isImageFile(cleanImg) || card.url.isBlank()) {
+            onOpenImageViewer(card.title, listOf(cleanImg))
+            return
+        }
+    }
+
     if (card.url.isNotBlank()) {
         val effective = resolveGoUrl(card.url)
         if (isImageFile(effective)) {
             onOpenImageViewer(card.title, listOf(effective))
-        } else if (isPdfFile(effective)) {
-            onOpenUrl(card.title, effective)
         } else {
             onOpenUrl(card.title, effective)
         }
@@ -1621,7 +1631,12 @@ private fun ContentCardItem(
     card: ContentCard,
     onClick: () -> Unit
 ) {
-    val imageList = if (card.images.isNotEmpty()) card.images else if (card.image.isNotBlank()) listOf(card.image) else emptyList()
+    val validImages = card.images.filter { it.isNotBlank() }
+    val imageList = if (validImages.isNotEmpty()) validImages else if (card.image.isNotBlank()) listOf(card.image) else emptyList()
+
+    val isPdf = (card.url.isNotBlank() && isPdfFile(card.url)) ||
+            (card.image.isNotBlank() && isPdfFile(card.image)) ||
+            imageList.any { isPdfFile(it) }
 
     Card(
         onClick = onClick,
@@ -1633,7 +1648,43 @@ private fun ContentCardItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (imageList.isNotEmpty()) {
+            if (isPdf) {
+                // PDF card styling
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(MonicoRed, Color(0xFF7F1D1D))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PictureAsPdf,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color.White.copy(alpha = 0.25f)
+                        ) {
+                            Text(
+                                text = "PDF FILE",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            } else if (imageList.isNotEmpty()) {
                 AsyncImage(
                     model = ImageUtils.resolveImageModel(imageList[0]),
                     contentDescription = card.title,
@@ -1686,7 +1737,7 @@ private fun ContentCardItem(
                 }
             }
 
-            // Image badge in top-left
+            // Top-left badge: PDF vs Image
             Surface(
                 shape = RoundedCornerShape(6.dp),
                 color = Color(0xCC0F172A),
@@ -1699,18 +1750,33 @@ private fun ContentCardItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Image,
-                        contentDescription = "Image",
-                        tint = Color(0xFF38BDF8),
-                        modifier = Modifier.size(11.dp)
-                    )
-                    Text(
-                        text = if (imageList.size > 1) "${imageList.size} Pages" else "IMAGE",
-                        fontSize = 8.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (isPdf) {
+                        Icon(
+                            imageVector = Icons.Default.PictureAsPdf,
+                            contentDescription = "PDF",
+                            tint = Color(0xFFF87171),
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = "PDF",
+                            fontSize = 8.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Image",
+                            tint = Color(0xFF38BDF8),
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = if (imageList.size > 1) "${imageList.size} Pages" else "IMAGE",
+                            fontSize = 8.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 

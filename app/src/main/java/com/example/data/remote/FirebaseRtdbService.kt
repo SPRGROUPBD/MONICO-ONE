@@ -207,14 +207,71 @@ class FirebaseRtdbService {
             while (keys.hasNext()) {
                 val key = keys.next()
                 val obj = json.optJSONObject(key) ?: continue
+
+                // 1. Robust image extraction: JSONArray, JSONObject (indexed 0, 1...), single string, or fallback fields
                 val imgList = mutableListOf<String>()
                 val imgArr = obj.optJSONArray("images")
                 if (imgArr != null) {
                     for (i in 0 until imgArr.length()) {
                         val s = imgArr.optString(i)
-                        if (!s.isNullOrBlank()) imgList.add(s)
+                        if (!s.isNullOrBlank() && s != "null") imgList.add(s.trim())
+                    }
+                } else {
+                    val imgObj = obj.optJSONObject("images")
+                    if (imgObj != null) {
+                        val sKeys = imgObj.keys().asSequence().toList().sortedWith(Comparator { a, b ->
+                            val aNum = a.toIntOrNull()
+                            val bNum = b.toIntOrNull()
+                            if (aNum != null && bNum != null) aNum.compareTo(bNum) else a.compareTo(b)
+                        })
+                        for (k in sKeys) {
+                            val s = imgObj.optString(k)
+                            if (!s.isNullOrBlank() && s != "null") imgList.add(s.trim())
+                        }
+                    } else {
+                        val singleImg = obj.optString("images", "")
+                        if (singleImg.isNotBlank() && singleImg != "null") {
+                            if (singleImg.contains(",") && !singleImg.startsWith("data:") && !singleImg.contains(";base64,")) {
+                                singleImg.split(",").map { it.trim() }.filter { it.isNotBlank() }.forEach { imgList.add(it) }
+                            } else {
+                                imgList.add(singleImg.trim())
+                            }
+                        }
                     }
                 }
+
+                // Additional fallback for singular image fields used by website admin
+                val fallbackImg = listOf(
+                    obj.optString("image"),
+                    obj.optString("imageUrl"),
+                    obj.optString("image_url"),
+                    obj.optString("photo"),
+                    obj.optString("picture")
+                ).firstOrNull { !it.isNullOrBlank() && it != "null" }
+                if (!fallbackImg.isNullOrBlank() && !imgList.contains(fallbackImg.trim())) {
+                    imgList.add(fallbackImg.trim())
+                }
+
+                // 2. Robust URL extraction: checks url, fileUrl, pdfUrl, downloadUrl, link, targetUrl, etc.
+                val extractedUrl = listOf(
+                    obj.optString("url"),
+                    obj.optString("fileUrl"),
+                    obj.optString("file_url"),
+                    obj.optString("fileURL"),
+                    obj.optString("pdfUrl"),
+                    obj.optString("pdf_url"),
+                    obj.optString("pdfURL"),
+                    obj.optString("pdf"),
+                    obj.optString("file"),
+                    obj.optString("downloadUrl"),
+                    obj.optString("download_url"),
+                    obj.optString("link"),
+                    obj.optString("targetUrl"),
+                    obj.optString("docUrl"),
+                    obj.optString("attachment"),
+                    obj.optString("filePath")
+                ).firstOrNull { !it.isNullOrBlank() && it != "null" }?.trim() ?: ""
+
                 val seenMap = mutableMapOf<String, Boolean>()
                 val seenObj = obj.optJSONObject("seenBy")
                 if (seenObj != null) {
@@ -231,7 +288,7 @@ class FirebaseRtdbService {
                         group = obj.optString("group", "grid2"),
                         title = obj.optString("title", ""),
                         icon = obj.optString("icon", "fa-folder"),
-                        url = obj.optString("url", ""),
+                        url = extractedUrl,
                         images = imgList,
                         allowedRole = obj.optString("allowedRole", "ALL"),
                         month = obj.optString("month", ""),
@@ -337,29 +394,103 @@ class FirebaseRtdbService {
         try {
             val req = Request.Builder().url("$baseUrl/$path.json").get().build()
             val res = client.newCall(req).execute()
-            val body = res.body?.string() ?: return@withContext list
-            if (body == "null" || body.isBlank()) return@withContext list
+            var body = res.body?.string()
 
-            val json = JSONObject(body)
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val obj = json.optJSONObject(key) ?: continue
+            // If product_target_sheets is empty or 404, check alternate path target_sheets
+            if ((body == null || body == "null" || body.isBlank() || body.trim() == "{}") && path == "product_target_sheets") {
+                try {
+                    val altReq = Request.Builder().url("$baseUrl/target_sheets.json").get().build()
+                    val altRes = client.newCall(altReq).execute()
+                    val altBody = altRes.body?.string()
+                    if (!altBody.isNullOrBlank() && altBody != "null" && altBody.trim() != "{}") {
+                        body = altBody
+                    }
+                } catch (_: Exception) {}
+            }
+
+            if (body == null || body == "null" || body.isBlank()) return@withContext list
+
+            val rawItems = mutableListOf<Pair<String, JSONObject>>()
+            val trimmedBody = body.trim()
+            if (trimmedBody.startsWith("[")) {
+                val arr = JSONArray(trimmedBody)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i)
+                    if (obj != null) {
+                        val itemId = obj.optString("id").ifBlank { "-C$i" }
+                        rawItems.add(itemId to obj)
+                    }
+                }
+            } else {
+                val json = JSONObject(trimmedBody)
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val obj = json.optJSONObject(key) ?: continue
+                    rawItems.add(key to obj)
+                }
+            }
+
+            for ((key, obj) in rawItems) {
                 val imgList = mutableListOf<String>()
                 val imgArr = obj.optJSONArray("images")
                 if (imgArr != null) {
                     for (i in 0 until imgArr.length()) {
                         val s = imgArr.optString(i)
-                        if (!s.isNullOrBlank()) imgList.add(s)
+                        if (!s.isNullOrBlank() && s != "null") imgList.add(s.trim())
+                    }
+                } else {
+                    val imgObj = obj.optJSONObject("images")
+                    if (imgObj != null) {
+                        val sKeys = imgObj.keys().asSequence().toList().sortedWith(Comparator { a, b ->
+                            val aNum = a.toIntOrNull()
+                            val bNum = b.toIntOrNull()
+                            if (aNum != null && bNum != null) aNum.compareTo(bNum) else a.compareTo(b)
+                        })
+                        for (k in sKeys) {
+                            val s = imgObj.optString(k)
+                            if (!s.isNullOrBlank() && s != "null") imgList.add(s.trim())
+                        }
+                    } else {
+                        val singleImg = obj.optString("images", "")
+                        if (singleImg.isNotBlank() && singleImg != "null") {
+                            if (singleImg.contains(",") && !singleImg.startsWith("data:") && !singleImg.contains(";base64,")) {
+                                singleImg.split(",").map { it.trim() }.filter { it.isNotBlank() }.forEach { imgList.add(it) }
+                            } else {
+                                imgList.add(singleImg.trim())
+                            }
+                        }
                     }
                 }
+
+                val fallbackImg = listOf(
+                    obj.optString("image"),
+                    obj.optString("imageUrl"),
+                    obj.optString("image_url")
+                ).firstOrNull { !it.isNullOrBlank() && it != "null" }?.trim() ?: ""
+                if (fallbackImg.isNotBlank() && !imgList.contains(fallbackImg)) {
+                    imgList.add(fallbackImg)
+                }
+
+                val extractedUrl = listOf(
+                    obj.optString("url"),
+                    obj.optString("fileUrl"),
+                    obj.optString("file_url"),
+                    obj.optString("pdfUrl"),
+                    obj.optString("pdf"),
+                    obj.optString("file"),
+                    obj.optString("downloadUrl"),
+                    obj.optString("link")
+                ).firstOrNull { !it.isNullOrBlank() && it != "null" }?.trim() ?: ""
+
+                val cardId = obj.optString("id").ifBlank { key }
                 list.add(
                     ContentCard(
-                        id = key,
+                        id = cardId,
                         title = obj.optString("title", ""),
-                        url = obj.optString("url", ""),
+                        url = extractedUrl,
                         images = imgList,
-                        image = obj.optString("image", "")
+                        image = fallbackImg.ifBlank { imgList.firstOrNull() ?: "" }
                     )
                 )
             }
@@ -458,6 +589,7 @@ class FirebaseRtdbService {
                 .put("title", menu.title)
                 .put("icon", menu.icon)
                 .put("url", menu.url)
+                .put("fileUrl", menu.url) // Website admin compatibility
                 .put("allowedRole", menu.allowedRole)
                 .put("month", menu.month)
                 .put("date", menu.date)
@@ -468,6 +600,9 @@ class FirebaseRtdbService {
             val arr = JSONArray()
             menu.images.forEach { arr.put(it) }
             json.put("images", arr)
+            if (menu.images.isNotEmpty()) {
+                json.put("image", menu.images[0]) // Website admin compatibility
+            }
 
             val targetUrl = if (menu.id.isNotEmpty()) "$baseUrl/menus/${menu.id}.json" else "$baseUrl/menus.json"
             val req = if (menu.id.isNotEmpty()) {
@@ -481,6 +616,21 @@ class FirebaseRtdbService {
             e.printStackTrace()
             false
         }
+    }
+
+    /**
+     * Opens an SSE (Server-Sent Events) live streaming call to /menus.json in Firebase RTDB.
+     * Fires events in real time whenever web admin adds, edits, or deletes any menu item or file.
+     */
+    fun openMenusEventStream(): okhttp3.Call {
+        val streamClient = client.newBuilder()
+            .readTimeout(0, TimeUnit.MILLISECONDS) // infinite read timeout for SSE stream
+            .build()
+        val req = Request.Builder()
+            .url("$baseUrl/menus.json")
+            .header("Accept", "text/event-stream")
+            .build()
+        return streamClient.newCall(req)
     }
 
     suspend fun deleteMenuItem(menuId: String): Boolean = withContext(Dispatchers.IO) {
@@ -611,19 +761,37 @@ class FirebaseRtdbService {
     suspend fun saveContentCard(path: String, card: ContentCard): Boolean = withContext(Dispatchers.IO) {
         try {
             val json = JSONObject()
+                .put("id", card.id)
                 .put("title", card.title)
                 .put("url", card.url)
-                .put("image", card.image)
+                .put("fileUrl", card.url) // Website admin compatibility
+                .put("file_url", card.url)
+                .put("pdfUrl", card.url)
+                .put("image", card.image.ifBlank { card.images.firstOrNull() ?: "" })
+                .put("imageUrl", card.image.ifBlank { card.images.firstOrNull() ?: "" })
+
             val arr = JSONArray()
             card.images.forEach { arr.put(it) }
             json.put("images", arr)
+
             val targetUrl = if (card.id.isNotEmpty()) "$baseUrl/$path/${card.id}.json" else "$baseUrl/$path.json"
             val req = if (card.id.isNotEmpty()) {
                 Request.Builder().url(targetUrl).put(json.toString().toRequestBody(jsonMedia)).build()
             } else {
                 Request.Builder().url(targetUrl).post(json.toString().toRequestBody(jsonMedia)).build()
             }
-            client.newCall(req).execute().isSuccessful
+            val isSuccess = client.newCall(req).execute().isSuccessful
+
+            // If saving target sheets, mirror to target_sheets node as well for website admin compatibility
+            if (path == "product_target_sheets" && card.id.isNotEmpty()) {
+                try {
+                    val altUrl = "$baseUrl/target_sheets/${card.id}.json"
+                    val altReq = Request.Builder().url(altUrl).put(json.toString().toRequestBody(jsonMedia)).build()
+                    client.newCall(altReq).execute()
+                } catch (_: Exception) {}
+            }
+
+            isSuccess
         } catch (e: Exception) {
             e.printStackTrace()
             false
@@ -633,7 +801,14 @@ class FirebaseRtdbService {
     suspend fun deleteContentCard(path: String, id: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val req = Request.Builder().url("$baseUrl/$path/$id.json").delete().build()
-            client.newCall(req).execute().isSuccessful
+            val success = client.newCall(req).execute().isSuccessful
+            if (path == "product_target_sheets") {
+                try {
+                    val altReq = Request.Builder().url("$baseUrl/target_sheets/$id.json").delete().build()
+                    client.newCall(altReq).execute()
+                } catch (_: Exception) {}
+            }
+            success
         } catch (e: Exception) {
             e.printStackTrace()
             false

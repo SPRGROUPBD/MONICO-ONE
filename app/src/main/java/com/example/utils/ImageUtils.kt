@@ -8,6 +8,7 @@ import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.File
 
 object ImageUtils {
 
@@ -87,6 +88,13 @@ object ImageUtils {
     fun resolveImageModel(data: String): Any {
         if (data.isBlank()) return ""
         val s = data.trim()
+        if (s.startsWith("file://")) {
+            val path = Uri.parse(s).path ?: s.removePrefix("file://")
+            val f = File(path)
+            if (f.exists() && f.length() > 0) return f
+        } else if (s.startsWith("/") && File(s).exists()) {
+            return File(s)
+        }
         if (s.startsWith("data:image", ignoreCase = true) || s.startsWith("/9j/") || s.startsWith("iVBORw") || s.startsWith("R0lGOD")) {
             val base64Str = if (s.contains("base64,")) s.substringAfter("base64,") else s
             return try {
