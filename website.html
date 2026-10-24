@@ -1200,7 +1200,7 @@
                         </div>
 
                         <!-- Scrollable Continuous PDF Pages Container -->
-                        <div id="viewer-pdf-pages-scroll" class="flex-grow-1 position-relative w-100 h-100 overflow-auto p-2 p-md-3 text-center" style="min-height: 0; background: #1e293b; -webkit-overflow-scrolling: touch;">
+                        <div id="viewer-pdf-pages-scroll" class="flex-grow-1 position-relative w-100 h-100 overflow-auto p-2 p-md-3 text-center" style="min-height: 0; background: #1e293b; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y;">
                             <div id="viewer-pdf-pages-wrapper" class="d-flex flex-column align-items-center gap-3 mx-auto" style="max-width: 100%;">
                                 <!-- Rendered HTML5 Canvas pages will be inserted here -->
                             </div>
@@ -2465,6 +2465,7 @@
             updatePdfZoomLabel();
 
             viewerModal.show();
+            initPdfTouchGestures();
 
             const thisToken = ++currentPdfRenderToken;
 
@@ -2606,6 +2607,89 @@
 
         function togglePdfFullscreen() {
             toggleImmersiveFullscreen();
+        }
+
+        // 2-Finger Mobile Touch Pinch-to-Zoom & Double-Tap Gesture Handler
+        let pdfTouchStartDist = 0;
+        let pdfTouchStartScale = 1.0;
+        let pdfIsPinching = false;
+        let pdfLastTapTime = 0;
+
+        function initPdfTouchGestures() {
+            const scrollContainer = document.getElementById('viewer-pdf-pages-scroll');
+            const wrapper = document.getElementById('viewer-pdf-pages-wrapper');
+            if (!scrollContainer || !wrapper || scrollContainer._touchGesturesAttached) return;
+            scrollContainer._touchGesturesAttached = true;
+
+            scrollContainer.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    pdfIsPinching = true;
+                    pdfTouchStartDist = Math.hypot(
+                        e.touches[0].pageX - e.touches[1].pageX,
+                        e.touches[0].pageY - e.touches[1].pageY
+                    );
+                    pdfTouchStartScale = currentPdfScale;
+                } else if (e.touches.length === 1) {
+                    const now = Date.now();
+                    if (now - pdfLastTapTime < 300) {
+                        // Double tap: toggle between 100% and 200%
+                        if (currentPdfScale > 1.2) {
+                            currentPdfScale = 1.0;
+                        } else {
+                            currentPdfScale = 2.0;
+                        }
+                        updatePdfZoomLabel();
+                        const thisToken = ++currentPdfRenderToken;
+                        renderAllPdfPages(thisToken);
+                        pdfLastTapTime = 0;
+                        return;
+                    }
+                    pdfLastTapTime = now;
+                }
+            }, { passive: false });
+
+            scrollContainer.addEventListener('touchmove', function(e) {
+                if (pdfIsPinching && e.touches.length === 2) {
+                    e.preventDefault(); // Stop default browser zoom/scroll while 2 fingers are pinching
+                    const currentDist = Math.hypot(
+                        e.touches[0].pageX - e.touches[1].pageX,
+                        e.touches[0].pageY - e.touches[1].pageY
+                    );
+                    if (pdfTouchStartDist > 0) {
+                        const ratio = currentDist / pdfTouchStartDist;
+                        const visualScale = Math.min(3.5, Math.max(0.5, pdfTouchStartScale * ratio));
+                        // High-performance hardware-accelerated transform during active pinch
+                        wrapper.style.transform = `scale(${visualScale / currentPdfScale})`;
+                        wrapper.style.transformOrigin = 'center top';
+                        const zoomLabel = document.getElementById('viewer-pdf-zoom-label');
+                        if (zoomLabel) {
+                            zoomLabel.innerText = `${Math.round(visualScale * 100)}%`;
+                        }
+                    }
+                }
+            }, { passive: false });
+
+            scrollContainer.addEventListener('touchend', function(e) {
+                if (pdfIsPinching && e.touches.length < 2) {
+                    pdfIsPinching = false;
+                    wrapper.style.transform = '';
+                    wrapper.style.transformOrigin = '';
+                    if (pdfTouchStartDist > 0) {
+                        const zoomLabel = document.getElementById('viewer-pdf-zoom-label');
+                        let finalScale = currentPdfScale;
+                        if (zoomLabel && zoomLabel.innerText) {
+                            finalScale = Math.min(3.5, Math.max(0.5, parseInt(zoomLabel.innerText, 10) / 100));
+                        }
+                        if (Math.abs(finalScale - currentPdfScale) > 0.05) {
+                            currentPdfScale = finalScale;
+                            updatePdfZoomLabel();
+                            const thisToken = ++currentPdfRenderToken;
+                            renderAllPdfPages(thisToken);
+                        }
+                    }
+                    pdfTouchStartDist = 0;
+                }
+            });
         }
 
         function onIframeLoaded() {

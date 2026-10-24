@@ -552,10 +552,10 @@ fun ContentViewerScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pointerInput(pdfScale) {
+                                .pointerInput(Unit) {
                                     detectTapGestures(
                                         onDoubleTap = { tapOffset ->
-                                            if (pdfScale > 1.2f) {
+                                            if (pdfScale > 1.15f) {
                                                 pdfScale = 1f
                                                 pdfOffsetX = 0f
                                                 pdfOffsetY = 0f
@@ -571,21 +571,60 @@ fun ContentViewerScreen(
                                         }
                                     )
                                 }
-                                .pointerInput(pdfScale) {
-                                    detectTransformGestures(panZoomLock = false) { _, pan, zoom, _ ->
-                                        val oldScale = pdfScale
-                                        val targetScale = (pdfScale * zoom).coerceIn(1f, 6f)
-                                        pdfScale = targetScale
-                                        if (targetScale > 1.01f) {
-                                            val maxPanX = (containerWidth * (targetScale - 1f)) / 2f
-                                            val maxPanY = (containerHeight * (targetScale - 1f)) / 2f
-                                            val newOffsetX = pdfOffsetX * (targetScale / oldScale) + pan.x
-                                            val newOffsetY = pdfOffsetY * (targetScale / oldScale) + pan.y
-                                            pdfOffsetX = newOffsetX.coerceIn(-maxPanX, maxPanX)
-                                            pdfOffsetY = newOffsetY.coerceIn(-maxPanY, maxPanY)
-                                        } else {
-                                            pdfOffsetX = 0f
-                                            pdfOffsetY = 0f
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        var prevPinchDistance = -1f
+                                        var prevCentroid = androidx.compose.ui.geometry.Offset.Zero
+
+                                        while (true) {
+                                            val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                            val activePointers = event.changes.filter { it.pressed }
+
+                                            if (activePointers.size >= 2) {
+                                                // 2-FINGER PINCH ZOOM & MULTI-TOUCH PAN
+                                                val p0 = activePointers[0].position
+                                                val p1 = activePointers[1].position
+                                                val currentDistance = (p0 - p1).getDistance()
+                                                val currentCentroid = (p0 + p1) / 2f
+
+                                                if (prevPinchDistance > 0f) {
+                                                    val scaleChange = currentDistance / prevPinchDistance
+                                                    val oldScale = pdfScale
+                                                    val newScale = (oldScale * scaleChange).coerceIn(1f, 6f)
+                                                    pdfScale = newScale
+
+                                                    if (newScale > 1.01f) {
+                                                        val pan = currentCentroid - prevCentroid
+                                                        val maxPanX = (containerWidth * (newScale - 1f)) / 2f
+                                                        val maxPanY = (containerHeight * (newScale - 1f)) / 2f
+                                                        val newOffsetX = pdfOffsetX * (newScale / oldScale) + pan.x
+                                                        val newOffsetY = pdfOffsetY * (newScale / oldScale) + pan.y
+                                                        pdfOffsetX = newOffsetX.coerceIn(-maxPanX, maxPanX)
+                                                        pdfOffsetY = newOffsetY.coerceIn(-maxPanY, maxPanY)
+                                                    } else {
+                                                        pdfOffsetX = 0f
+                                                        pdfOffsetY = 0f
+                                                    }
+                                                }
+                                                prevPinchDistance = currentDistance
+                                                prevCentroid = currentCentroid
+
+                                                // Consume event changes so the child LazyColumn does not jitter while pinching
+                                                event.changes.forEach { it.consume() }
+                                            } else {
+                                                prevPinchDistance = -1f
+                                                // When zoomed in, allow 1-finger horizontal pan if user drags horizontally
+                                                if (activePointers.size == 1 && pdfScale > 1.05f) {
+                                                    val change = activePointers[0]
+                                                    val dragDelta = change.position - change.previousPosition
+                                                    // If primarily horizontal movement, pan horizontally
+                                                    if (kotlin.math.abs(dragDelta.x) > kotlin.math.abs(dragDelta.y) * 1.5f && kotlin.math.abs(dragDelta.x) > 2f) {
+                                                        val maxPanX = (containerWidth * (pdfScale - 1f)) / 2f
+                                                        pdfOffsetX = (pdfOffsetX + dragDelta.x).coerceIn(-maxPanX, maxPanX)
+                                                        change.consume()
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
