@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.ZoomIn
@@ -76,16 +77,17 @@ fun ImageViewerDialog(
     var isPdfLoading by remember { mutableStateOf(false) }
     var pdfLoadError by remember { mutableStateOf(false) }
     var pdfPageIndex by remember { mutableIntStateOf(0) }
+    var pdfReloadTrigger by remember { mutableIntStateOf(0) }
 
     // When a PDF is encountered, render its pages
-    LaunchedEffect(rawUrl, isPdf) {
+    LaunchedEffect(rawUrl, isPdf, pdfReloadTrigger) {
         if (isPdf) {
             isPdfLoading = true
             pdfLoadError = false
             pdfPages = emptyList()
             pdfPageIndex = 0
             try {
-                val rendered = PdfUtils.renderPdfPages(context, rawUrl)
+                val rendered = PdfUtils.renderPdfPages(context, rawUrl, maxPages = 40)
                 if (rendered.isNotEmpty()) {
                     pdfPages = rendered
                 } else {
@@ -360,14 +362,14 @@ fun ImageViewerDialog(
                                 modifier = Modifier.padding(24.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.PictureAsPdf,
-                                    contentDescription = "PDF",
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "PDF Error",
                                     tint = MonicoRed,
-                                    modifier = Modifier.size(64.dp)
+                                    modifier = Modifier.size(56.dp)
                                 )
                                 Spacer(modifier = Modifier.height(14.dp))
                                 Text(
-                                    text = "PDF ফাইলটি প্রস্তুত রয়েছে",
+                                    text = "PDF পেজ সরাসরি রেন্ডার করা যায়নি",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         color = Color.White,
                                         fontWeight = FontWeight.Bold
@@ -375,25 +377,36 @@ fun ImageViewerDialog(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "আপনার পছন্দের PDF ভিউয়ারে দেখতে নিচের বোতামে চাপুন।",
+                                    text = "ফাইলটি পুনরায় লোড করতে চেষ্টা করুন অথবা ডিভাইসের কোনো PDF রিডারে দেখতে পারেন।",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = Color.LightGray,
                                         textAlign = TextAlign.Center
                                     )
                                 )
                                 Spacer(modifier = Modifier.height(18.dp))
-                                Button(
-                                    onClick = {
-                                        scope.launch {
-                                            PdfUtils.openPdfWithExternalApp(context, rawUrl)
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MonicoRed),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(Icons.Default.OpenInBrowser, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("PDF অ্যাপে খুলুন (Open in PDF App)")
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Button(
+                                        onClick = { pdfReloadTrigger++ },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("পুনরায় চেষ্টা করুন")
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                PdfUtils.openPdfWithExternalApp(context, rawUrl)
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(1.dp, MonicoRed)
+                                    ) {
+                                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("অন্য অ্যাপে দেখুন", color = MonicoRed)
+                                    }
                                 }
                             }
                         }

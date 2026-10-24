@@ -25,32 +25,28 @@ object NotificationHelper {
     private const val WORK_NAME = "monico_notification_sync_worker"
 
     fun initNotificationChannel(context: Context) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                val audioAttributes = AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val audioAttributes = AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build()
 
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = CHANNEL_DESC
-                    enableLights(true)
-                    enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 250, 200, 250)
-                    setSound(soundUri, audioAttributes)
-                    lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
-                }
-
-                val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                manager?.createNotificationChannel(channel)
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = CHANNEL_DESC
+                enableLights(true)
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 200, 250)
+                setSound(soundUri, audioAttributes)
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
         }
     }
 
@@ -151,8 +147,7 @@ object NotificationHelper {
         items.forEach { notif ->
             val matchesRole = isSuperAdmin ||
                     notif.targetRole.equals("ALL", ignoreCase = true) ||
-                    notif.targetRole.contains(cleanRole, ignoreCase = true) ||
-                    notif.targetRole.contains("PALL", ignoreCase = true)
+                    notif.targetRole.contains(cleanRole, ignoreCase = true)
 
             if (matchesRole && !isAlreadyNotified(context, notif.id)) {
                 // If it wasn't read yet by this user, show popup notification with sound
@@ -174,25 +169,21 @@ object NotificationHelper {
      * Schedules periodic background sync using WorkManager so notifications arrive even when app is closed.
      */
     fun scheduleBackgroundSync(context: Context) {
-        try {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
 
-            val syncRequest = PeriodicWorkRequestBuilder<NotificationSyncWorker>(
-                15, TimeUnit.MINUTES // Minimum interval allowed by Android WorkManager
-            )
-                .setConstraints(constraints)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
-                .build()
+        val syncRequest = PeriodicWorkRequestBuilder<NotificationSyncWorker>(
+            15, TimeUnit.MINUTES // Minimum interval allowed by Android WorkManager
+        )
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
+            .build()
 
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
-                syncRequest
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            syncRequest
+        )
     }
 }

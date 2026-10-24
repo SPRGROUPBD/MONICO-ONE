@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,7 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -42,15 +40,11 @@ import com.example.ui.theme.MonicoAmber
 import com.example.ui.theme.MonicoBlue
 import com.example.ui.theme.MonicoGreen
 import com.example.ui.theme.MonicoRed
-import com.example.utils.IconUtils
 import com.example.utils.ImageUtils
 import com.example.utils.PdfUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,74 +57,8 @@ fun AdminPanelScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val currentUser by repository.currentUser.collectAsState()
-    val isSuperAdmin = remember(currentUser) {
-        val role = currentUser?.role?.trim()?.uppercase() ?: ""
-        role == "SUPER_ADMIN" || role == "SUPER ADMIN"
-    }
-
-    if (!isSuperAdmin) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("অ্যাডমিন প্যানেল") },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    }
-                )
-            }
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Security,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Text(
-                            "অ্যাক্সেস সংরক্ষিত (Access Denied)",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Text(
-                            "আপনার অ্যাকাউন্টের রোল (${currentUser?.role ?: "MPO"})। অ্যাডমিন প্যানেলে প্রবেশাধিকার শুধুমাত্র Super Admin এর জন্য অনুমোদিত।",
-                            textAlign = TextAlign.Center,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Button(
-                            onClick = onBack,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text("ড্যাশবোর্ডে ফিরে যান")
-                        }
-                    }
-                }
-            }
-        }
-        return
-    }
-
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("মেনু ফাইল ও সার্কুলার (Grids 1-6)", "সাইডবার মেনু", "স্লাইডার", "নোটিশ", "পপআপ", "প্রোডাক্ট/ট্রেনিং", "ইউজার", "নোটিফিকেশন")
+    val tabs = listOf("মেনু ফাইল (Grids)", "সাইডবার মেনু", "স্লাইডার", "নোটিশ", "পপআপ", "প্রোডাক্ট/ট্রেনিং", "ইউজার", "নোটিফিকেশন")
 
     val menus by repository.menus.collectAsState()
     val sidebarMenus by repository.sidebarMenus.collectAsState()
@@ -146,6 +74,7 @@ fun AdminPanelScreen(
 
     // Dialog control states
     var editingMenuItem by remember { mutableStateOf<MenuItem?>(null) }
+    var currentAddingGrid by remember { mutableStateOf("grid2") }
     var showMenuDialog by remember { mutableStateOf(false) }
 
     var editingSidebarItem by remember { mutableStateOf<SidebarMenuItem?>(null) }
@@ -210,10 +139,10 @@ fun AdminPanelScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = {
                     when (selectedTab) {
-                        0 -> { editingMenuItem = null; showMenuDialog = true }
+                        0 -> { editingMenuItem = null; currentAddingGrid = "grid2"; showMenuDialog = true }
                         1 -> { editingSidebarItem = null; showSidebarDialog = true }
                         2 -> { editingSliderItem = null; showSliderDialog = true }
                         3 -> { editingNoticeItem = null; showNoticeDialog = true }
@@ -223,11 +152,32 @@ fun AdminPanelScreen(
                         7 -> { showSendNotificationDialog = true }
                     }
                 },
+                icon = { Icon(imageVector = Icons.Default.Add, contentDescription = "Add Item") },
+                text = {
+                    Text(
+                        when (selectedTab) {
+                            0 -> "নতুন ফাইল (+)"
+                            1 -> "নতুন সাইডবার (+)"
+                            2 -> "নতুন স্লাইডার (+)"
+                            3 -> "নতুন নোটিশ (+)"
+                            4 -> "নতুন পপআপ (+)"
+                            5 -> "নতুন প্রোডাক্ট কার্ড (+)"
+                            6 -> "নতুন ইউজার (+)"
+                            7 -> "নোটিফিকেশন পাঠান (+)"
+                            else -> "নতুন যোগ করুন (+)"
+                        },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                },
                 containerColor = MonicoBlue,
-                contentColor = Color.White
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Add Item")
-            }
+                contentColor = Color.White,
+                shape = RoundedCornerShape(24.dp),
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
+                modifier = Modifier
+                    .padding(bottom = 8.dp)
+                    .testTag("admin_add_fab")
+            )
         },
         floatingActionButtonPosition = FabPosition.Center,
         modifier = Modifier.fillMaxSize().testTag("admin_panel_screen")
@@ -251,12 +201,13 @@ fun AdminPanelScreen(
                 }
             }
 
-            Box(modifier = Modifier.fillMaxSize().padding(bottom = 80.dp)) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 when (selectedTab) {
                     0 -> AdminMenusTab(
                         menus = menus,
-                        onAddNew = {
+                        onAddNew = { targetGrid ->
                             editingMenuItem = null
+                            currentAddingGrid = targetGrid
                             showMenuDialog = true
                         },
                         onEdit = { m ->
@@ -266,30 +217,16 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "এই মেনু/ফাইলটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    try {
-                                        val ok = repository.deleteMenuItem(id)
-                                        if (ok) {
-                                            snackbarHostState.showSnackbar("ফাইলটি মুছে ফেলা হয়েছে।")
-                                        } else {
-                                            snackbarHostState.showSnackbar("ফাইলটি মুছে ফেলতে সমস্যা হয়েছে।")
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                                    }
+                                    repository.deleteMenuItem(id)
+                                    snackbarHostState.showSnackbar("ফাইলটি মুছে ফেলা হয়েছে।")
                                 }
                             }
                         },
                         onToggleStatus = { m ->
                             val newStatus = if (m.status == "active") "inactive" else "active"
                             scope.launch {
-                                try {
-                                    repository.saveMenuItem(m.copy(status = newStatus))
-                                    snackbarHostState.showSnackbar("স্ট্যাটাস আপডেট করা হয়েছে।")
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                                }
+                                repository.saveMenuItem(m.copy(status = newStatus))
+                                snackbarHostState.showSnackbar("স্ট্যাটাস আপডেট করা হয়েছে।")
                             }
                         }
                     )
@@ -302,47 +239,8 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "এই সাইডবার মেনুটি ডিলিট করতে চান?" to {
                                 scope.launch {
-                                    try {
-                                        val ok = repository.deleteSidebarMenu(id)
-                                        if (ok) {
-                                            snackbarHostState.showSnackbar("সাইডবার মেনু মুছে ফেলা হয়েছে।")
-                                        } else {
-                                            snackbarHostState.showSnackbar("সাইডবার মেনু মুছে ফেলতে সমস্যা হয়েছে।")
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                                    }
-                                }
-                            }
-                        },
-                        onMoveUp = { index ->
-                            if (index > 0) {
-                                val currentList = sidebarMenus.toMutableList()
-                                val item = currentList.removeAt(index)
-                                currentList.add(index - 1, item)
-                                scope.launch {
-                                    try {
-                                        repository.reorderSidebarMenus(currentList)
-                                        snackbarHostState.showSnackbar("সাইডবার মেনু উপরে নেওয়া হয়েছে।")
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
-                                }
-                            }
-                        },
-                        onMoveDown = { index ->
-                            if (index < sidebarMenus.size - 1) {
-                                val currentList = sidebarMenus.toMutableList()
-                                val item = currentList.removeAt(index)
-                                currentList.add(index + 1, item)
-                                scope.launch {
-                                    try {
-                                        repository.reorderSidebarMenus(currentList)
-                                        snackbarHostState.showSnackbar("সাইডবার মেনু নিচে নেওয়া হয়েছে।")
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
+                                    repository.deleteSidebarMenu(id)
+                                    snackbarHostState.showSnackbar("সাইডবার মেনু মুছে ফেলা হয়েছে।")
                                 }
                             }
                         }
@@ -356,17 +254,8 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "স্লাইডারটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    try {
-                                        val ok = repository.deleteSlider(id)
-                                        if (ok) {
-                                            snackbarHostState.showSnackbar("স্লাইডার মুছে ফেলা হয়েছে।")
-                                        } else {
-                                            snackbarHostState.showSnackbar("স্লাইডার মুছে ফেলতে সমস্যা হয়েছে।")
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                                    }
+                                    repository.deleteSlider(id)
+                                    snackbarHostState.showSnackbar("স্লাইডার মুছে ফেলা হয়েছে।")
                                 }
                             }
                         }
@@ -380,17 +269,8 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "নোটিশটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    try {
-                                        val ok = repository.deleteNotice(id)
-                                        if (ok) {
-                                            snackbarHostState.showSnackbar("নোটিশ মুছে ফেলা হয়েছে।")
-                                        } else {
-                                            snackbarHostState.showSnackbar("নোটিশ মুছে ফেলতে সমস্যা হয়েছে।")
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                                    }
+                                    repository.deleteNotice(id)
+                                    snackbarHostState.showSnackbar("নোটিশ মুছে ফেলা হয়েছে।")
                                 }
                             }
                         }
@@ -408,29 +288,16 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "পপআপ নোটিশটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    try {
-                                        val ok = repository.deletePopup(id)
-                                        if (ok) {
-                                            snackbarHostState.showSnackbar("পপআপ মুছে ফেলা হয়েছে।")
-                                        } else {
-                                            snackbarHostState.showSnackbar("পপআপ মুছে ফেলতে সমস্যা হয়েছে।")
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                                    }
+                                    repository.deletePopup(id)
+                                    snackbarHostState.showSnackbar("পপআপ মুছে ফেলা হয়েছে।")
                                 }
                             }
                         },
                         onToggleStatus = { p ->
                             val newStatus = if (p.status.equals("active", ignoreCase = true)) "off" else "active"
                             scope.launch {
-                                try {
-                                    repository.savePopup(p.copy(status = newStatus))
-                                    snackbarHostState.showSnackbar("পপআপ স্ট্যাটাস: " + if (newStatus == "active") "Active (চালু)" else "Off (বন্ধ)")
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
+                                repository.savePopup(p.copy(status = newStatus))
+                                snackbarHostState.showSnackbar("পপআপ স্ট্যাটাস: " + if (newStatus == "active") "Active (চালু)" else "Off (বন্ধ)")
                             }
                         }
                     )
@@ -446,17 +313,8 @@ fun AdminPanelScreen(
                         onDelete = { path, id ->
                             itemToDelete = "এই কার্ডটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    try {
-                                        val ok = repository.deleteCard(path, id)
-                                        if (ok) {
-                                            snackbarHostState.showSnackbar("কার্ড মুছে ফেলা হয়েছে।")
-                                        } else {
-                                            snackbarHostState.showSnackbar("কার্ড মুছে ফেলতে সমস্যা হয়েছে।")
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                                    }
+                                    repository.deleteCard(path, id)
+                                    snackbarHostState.showSnackbar("কার্ড মুছে ফেলা হয়েছে।")
                                 }
                             }
                         }
@@ -470,17 +328,8 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "ইউজার $id মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    try {
-                                        val ok = repository.deleteUser(id)
-                                        if (ok) {
-                                            snackbarHostState.showSnackbar("ইউজার মুছে ফেলা হয়েছে।")
-                                        } else {
-                                            snackbarHostState.showSnackbar("ইউজার মুছে ফেলতে সমস্যা হয়েছে।")
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                                    }
+                                    repository.deleteUser(id)
+                                    snackbarHostState.showSnackbar("ইউজার মুছে ফেলা হয়েছে।")
                                 }
                             }
                         }
@@ -491,17 +340,8 @@ fun AdminPanelScreen(
                         onDelete = { id ->
                             itemToDelete = "এই নোটিফিকেশনটি মুছে ফেলতে চান?" to {
                                 scope.launch {
-                                    try {
-                                        val ok = repository.deleteNotification(id)
-                                        if (ok) {
-                                            snackbarHostState.showSnackbar("নোটিফিকেশন মুছে ফেলা হয়েছে।")
-                                        } else {
-                                            snackbarHostState.showSnackbar("নোটিফিকেশন মুছে ফেলতে সমস্যা হয়েছে।")
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                                    }
+                                    repository.deleteNotification(id)
+                                    snackbarHostState.showSnackbar("নোটিফিকেশন মুছে ফেলা হয়েছে।")
                                 }
                             }
                         }
@@ -538,22 +378,13 @@ fun AdminPanelScreen(
     if (showMenuDialog) {
         MenuEditDialog(
             item = editingMenuItem,
+            initialGrid = currentAddingGrid,
             onDismiss = { showMenuDialog = false },
             onSave = { updatedItem ->
                 scope.launch {
-                    try {
-                        val ok = repository.saveMenuItem(updatedItem)
-                        if (ok) {
-                            snackbarHostState.showSnackbar(if (editingMenuItem == null) "নতুন ফাইল যোগ করা হয়েছে।" else "ফাইল আপডেট করা হয়েছে।")
-                        } else {
-                            snackbarHostState.showSnackbar("ফাইল সংরক্ষণ করতে সমস্যা হয়েছে।")
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        snackbarHostState.showSnackbar("ত্রুটি: ${e.message ?: "অজানা সমস্যা"}")
-                    } finally {
-                        showMenuDialog = false
-                    }
+                    repository.saveMenuItem(updatedItem)
+                    snackbarHostState.showSnackbar(if (editingMenuItem == null) "নতুন ফাইল যোগ করা হয়েছে।" else "ফাইল আপডেট করা হয়েছে।")
+                    showMenuDialog = false
                 }
             }
         )
@@ -566,14 +397,9 @@ fun AdminPanelScreen(
             onDismiss = { showSidebarDialog = false },
             onSave = { updatedItem ->
                 scope.launch {
-                    try {
-                        repository.saveSidebarMenu(updatedItem)
-                        snackbarHostState.showSnackbar("সাইডবার মেনু সংরক্ষিত হয়েছে।")
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    } finally {
-                        showSidebarDialog = false
-                    }
+                    repository.saveSidebarMenu(updatedItem)
+                    snackbarHostState.showSnackbar("সাইডবার মেনু সংরক্ষিত হয়েছে।")
+                    showSidebarDialog = false
                 }
             }
         )
@@ -586,14 +412,9 @@ fun AdminPanelScreen(
             onDismiss = { showSliderDialog = false },
             onSave = { updatedItem ->
                 scope.launch {
-                    try {
-                        repository.saveSlider(updatedItem)
-                        snackbarHostState.showSnackbar("স্লাইডার সংরক্ষিত হয়েছে।")
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    } finally {
-                        showSliderDialog = false
-                    }
+                    repository.saveSlider(updatedItem)
+                    snackbarHostState.showSnackbar("স্লাইডার সংরক্ষিত হয়েছে।")
+                    showSliderDialog = false
                 }
             }
         )
@@ -606,14 +427,9 @@ fun AdminPanelScreen(
             onDismiss = { showNoticeDialog = false },
             onSave = { text, id ->
                 scope.launch {
-                    try {
-                        repository.saveNotice(text, id)
-                        snackbarHostState.showSnackbar("নোটিশ সংরক্ষিত হয়েছে।")
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    } finally {
-                        showNoticeDialog = false
-                    }
+                    repository.saveNotice(text, id)
+                    snackbarHostState.showSnackbar("নোটিশ সংরক্ষিত হয়েছে।")
+                    showNoticeDialog = false
                 }
             }
         )
@@ -626,14 +442,9 @@ fun AdminPanelScreen(
             onDismiss = { showPopupDialog = false },
             onSave = { updatedItem ->
                 scope.launch {
-                    try {
-                        repository.savePopup(updatedItem)
-                        snackbarHostState.showSnackbar("পপআপ নোটিশ সংরক্ষিত হয়েছে।")
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    } finally {
-                        showPopupDialog = false
-                    }
+                    repository.savePopup(updatedItem)
+                    snackbarHostState.showSnackbar("পপআপ নোটিশ সংরক্ষিত হয়েছে।")
+                    showPopupDialog = false
                 }
             }
         )
@@ -647,14 +458,9 @@ fun AdminPanelScreen(
             onDismiss = { showCardDialog = false },
             onSave = { path, updatedCard ->
                 scope.launch {
-                    try {
-                        repository.saveCard(path, updatedCard)
-                        snackbarHostState.showSnackbar("কার্ড সংরক্ষিত হয়েছে।")
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    } finally {
-                        showCardDialog = false
-                    }
+                    repository.saveCard(path, updatedCard)
+                    snackbarHostState.showSnackbar("কার্ড সংরক্ষিত হয়েছে।")
+                    showCardDialog = false
                 }
             }
         )
@@ -667,14 +473,9 @@ fun AdminPanelScreen(
             onDismiss = { showUserDialog = false },
             onSave = { updatedUser ->
                 scope.launch {
-                    try {
-                        repository.saveUser(updatedUser)
-                        snackbarHostState.showSnackbar("ইউজার সংরক্ষিত হয়েছে।")
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    } finally {
-                        showUserDialog = false
-                    }
+                    repository.saveUser(updatedUser)
+                    snackbarHostState.showSnackbar("ইউজার সংরক্ষিত হয়েছে।")
+                    showUserDialog = false
                 }
             }
         )
@@ -713,6 +514,7 @@ fun AdminPanelScreen(
 @Composable
 private fun MenuEditDialog(
     item: MenuItem?,
+    initialGrid: String = "grid2",
     onDismiss: () -> Unit,
     onSave: (MenuItem) -> Unit
 ) {
@@ -720,12 +522,13 @@ private fun MenuEditDialog(
     val scope = rememberCoroutineScope()
 
     val gridOptions = listOf(
-        "grid1" to "GRID 1: Primary Menus (Daily Work)",
-        "grid2" to "GRID 2: Flat Bonus Sheet",
-        "grid3" to "GRID 3: Head Office Circular",
-        "grid4" to "GRID 4: Salary TA Bill",
-        "grid5" to "GRID 5: Sales Report (PDF)",
-        "grid6" to "GRID 6: Stock Report (PDF)"
+        "grid1" to "GRID 1: Primary Menus (দৈনিক কাজ)",
+        "grid2" to "GRID 2: Flat Bonus Sheet (বোনাস শিট)",
+        "grid3" to "GRID 3: Head Office Circular (সার্কুলার)",
+        "grid4" to "GRID 4: Salary TA Bill (বেতন ও বিল)",
+        "grid5" to "GRID 5: Sales Report (সেলস রিপোর্ট PDF)",
+        "grid_stock" to "GRID 6: Stock Report (স্টক রিপোর্ট PDF)",
+        "grid6" to "GRID 7: Product & Target Sheet (টার্গেট শিট)"
     )
     val monthOptions = listOf(
         "January", "February", "March", "April", "May", "June",
@@ -737,37 +540,33 @@ private fun MenuEditDialog(
         "MPO" to "MPO (MPO-এর নির্ধারিত Feature)",
         "DA" to "DA (Delivery Assistant Feature)",
         "SUPER_ADMIN" to "Super Admin (সম্পূর্ণ নিয়ন্ত্রণ)",
-        "PALL+SALL" to "Everyone (PALL+SALL)",
         "DIC" to "DIC Only"
     )
 
-    var selectedGrid by remember { mutableStateOf(item?.group?.ifBlank { "grid2" } ?: "grid2") }
+    var selectedGrid by remember { mutableStateOf(item?.group?.ifBlank { initialGrid } ?: initialGrid) }
     var gridMenuOpen by remember { mutableStateOf(false) }
 
-    val defaultMonth = remember { SimpleDateFormat("MMMM", Locale.ENGLISH).format(Date()) }
-    val defaultDate = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
-
-    var selectedMonth by remember { mutableStateOf(item?.month?.ifBlank { defaultMonth } ?: defaultMonth) }
+    var selectedMonth by remember { mutableStateOf(item?.month?.ifBlank { "March" } ?: "March") }
     var monthMenuOpen by remember { mutableStateOf(false) }
 
     val initialRoleSet = remember(item) {
         val r = item?.allowedRole?.trim() ?: "ALL"
         when {
-            r.isBlank() || r.equals("ALL", true) || r.equals("EVERYONE", true) || r.equals("PALL+SALL", true) -> {
+            r.isBlank() || r.equals("ALL", true) || r.equals("EVERYONE", true) -> {
                 setOf("SUPER_ADMIN", "MPO", "AM", "TM", "RSM", "DA", "ADIC", "DIC")
             }
             r.equals("SUPERVISOR", true) -> {
                 setOf("AM", "TM", "RSM")
             }
             else -> {
-                r.split(",", "+").map { it.trim().uppercase() }.filter { it.isNotBlank() }.toSet()
+                r.split(",", "+").map { it.trim().uppercase() }.filter { it.isNotBlank() && it != "PALL" && it != "SALL" && it != "PALL+SALL" }.toSet()
             }
         }
     }
     var selectedRoleSet by remember { mutableStateOf(initialRoleSet) }
 
     var title by remember { mutableStateOf(item?.title ?: "") }
-    var dateStr by remember { mutableStateOf(item?.date?.ifBlank { defaultDate } ?: defaultDate) }
+    var dateStr by remember { mutableStateOf(item?.date?.ifBlank { "2026-03-25" } ?: "2026-03-25") }
     var icon by remember { mutableStateOf(item?.icon ?: "fa-folder") }
     var isPinned by remember { mutableStateOf(item?.isPinned ?: false) }
 
@@ -827,7 +626,11 @@ private fun MenuEditDialog(
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            gridMenuOpen = false
+            monthMenuOpen = false
+            onDismiss()
+        },
         title = {
             Text(if (item == null) "নতুন মেনু / ফাইল যোগ করুন" else "মেনু / ফাইল এডিট করুন", fontWeight = FontWeight.Bold)
         },
@@ -862,8 +665,8 @@ private fun MenuEditDialog(
                             DropdownMenuItem(
                                 text = { Text(label, fontSize = 12.sp, fontWeight = if (selectedGrid == key) FontWeight.Bold else FontWeight.Normal) },
                                 onClick = {
-                                    selectedGrid = key
                                     gridMenuOpen = false
+                                    selectedGrid = key
                                 }
                             )
                         }
@@ -882,86 +685,22 @@ private fun MenuEditDialog(
                 )
 
                 if (selectedGrid == "grid1") {
-                    Surface(
+                    OutlinedTextField(
+                        value = icon,
+                        onValueChange = { icon = it },
+                        label = { Text("আইকন (যেমন: fa-cart-shopping, fa-check)") },
+                        singleLine = true,
                         shape = RoundedCornerShape(12.dp),
-                        color = MonicoBlue.copy(alpha = 0.08f),
-                        border = BorderStroke(1.dp, MonicoBlue.copy(alpha = 0.3f)),
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(20.dp))
-                                Text("GRID 1: দৈনিক কাজের মেনু (Primary Menus)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MonicoBlue)
-                            }
-                            Text("শুধুমাত্র আইকন কোড এবং ওয়েব লিংক বা কমান্ড (URL)। কোনো ছবি আপলোড বা ইমেজ URL হবে না।", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                            // Icon Input with Live Preview
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = icon,
-                                    onValueChange = { icon = it },
-                                    label = { Text("আইকন কোড (যেমন: fa-cart-shopping, fa-briefcase)") },
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(54.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(MonicoBlue),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = IconUtils.getIconForName(icon),
-                                        contentDescription = "Preview",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(26.dp)
-                                    )
-                                }
-                            }
-
-                            // Quick Icon Selection Chips
-                            Text("দ্রুত আইকন বাছাই করুন (Quick Suggestions):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(IconUtils.COMMON_SUGGESTIONS) { sugg ->
-                                    FilterChip(
-                                        selected = icon.contains(sugg.code, ignoreCase = true),
-                                        onClick = { icon = sugg.code },
-                                        leadingIcon = {
-                                            Icon(sugg.icon, contentDescription = null, modifier = Modifier.size(14.dp))
-                                        },
-                                        label = { Text(sugg.label, fontSize = 10.sp) }
-                                    )
-                                }
-                            }
-
-                            // URL / Command Input
-                            OutlinedTextField(
-                                value = externalUrl,
-                                onValueChange = { externalUrl = it },
-                                label = { Text("লিংক বা কমান্ড (যেমন: https://... বা go:order)") },
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            // Quick Command Chips
-                            Text("সিস্টেম কমান্ড শর্টকাট (System Commands):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(listOf("go:order", "go:dcc", "go:Tour", "go:delivery", "go:bill", "go:att1")) { cmd ->
-                                    SuggestionChip(
-                                        onClick = { externalUrl = cmd },
-                                        label = { Text(cmd, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    )
+                    OutlinedTextField(
+                        value = externalUrl,
+                        onValueChange = { externalUrl = it },
+                        label = { Text("লিংক বা কমান্ড (যেমন: https://... বা go:dcc)") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 } else {
                     // Month Dropdown
                     Text("মাস (Month):", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
@@ -983,8 +722,8 @@ private fun MenuEditDialog(
                                 DropdownMenuItem(
                                     text = { Text(m, fontSize = 12.sp) },
                                     onClick = {
-                                        selectedMonth = m
                                         monthMenuOpen = false
+                                        selectedMonth = m
                                     }
                                 )
                             }
@@ -1001,169 +740,153 @@ private fun MenuEditDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    val isPdfGrid = selectedGrid == "grid5" || selectedGrid == "grid6"
-                    val isStockGrid = selectedGrid == "grid6"
-                    if (isPdfGrid) {
-                        // GRID 5: SALES REPORT PDF & GRID 6: STOCK REPORT PDF
-                        val themeColor = if (isStockGrid) Color(0xFF0D9488) else MonicoRed
-                        val reportTitle = if (isStockGrid) "স্টক রিপোর্ট" else "সেলস রিপোর্ট"
-                        val reportSubtitle = if (isStockGrid) 
-                            "গ্রিড ৬-এর ফাইলগুলো শুধুমাত্র স্টক রিপোর্ট PDF হিসেবে ওপেন হবে।"
-                        else 
-                            "গ্রিড ৫-এর ফাইলগুলো শুধুমাত্র সেলস রিপোর্ট PDF হিসেবে ওপেন হবে।"
+                    // Dedicated PDF Upload Card for Sales Report & Stock Report
+                    if (selectedGrid == "grid5" || selectedGrid == "grid_stock") {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = themeColor.copy(alpha = 0.08f),
-                            border = BorderStroke(1.dp, themeColor.copy(alpha = 0.3f)),
+                            color = MonicoRed.copy(alpha = 0.08f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MonicoRed.copy(alpha = 0.3f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(if (isStockGrid) Icons.Default.Inventory else Icons.Default.PictureAsPdf, contentDescription = null, tint = themeColor, modifier = Modifier.size(20.dp))
-                                    Text("$reportTitle PDF আপলোড (শুধুমাত্র PDF):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = themeColor)
-                                }
-                                Text(reportSubtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                                // Device PDF Picker Button
-                                OutlinedButton(
-                                    onClick = { pdfPickerLauncher.launch("application/pdf") },
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = themeColor)
-                                ) {
-                                    Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(20.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(if (attachedPdfData.isNotBlank()) "নতুন PDF নির্বাচন করুন" else "ডিভাইস থেকে $reportTitle PDF পছন্দ করুন", fontSize = 12.sp)
+                                    Text(
+                                        if (selectedGrid == "grid5") "সেলস রিপোর্ট PDF আপলোড" else "স্টক রিপোর্ট PDF আপলোড",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = MonicoRed
+                                    )
                                 }
-
+                                Text(
+                                    "ডিভাইস থেকে PDF ফাইল বেছে নিন অথবা নিচে সরাসরি লিংক দিন:",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Button(
+                                    onClick = { pdfPickerLauncher.launch("application/pdf") },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MonicoRed),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                                ) {
+                                    Icon(Icons.Default.UploadFile, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("ডিভাইস থেকে PDF আপলোড করুন", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                                if (isProcessingFile) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MonicoRed)
+                                        Text("PDF প্রসেস করা হচ্ছে...", fontSize = 11.sp, color = MonicoRed)
+                                    }
+                                }
                                 if (attachedPdfData.isNotBlank()) {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.surface,
-                                        border = BorderStroke(1.dp, themeColor.copy(alpha = 0.4f)),
-                                        modifier = Modifier.fillMaxWidth()
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = themeColor, modifier = Modifier.size(18.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MonicoGreen, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(
-                                                attachedPdfName.ifBlank { "সংযুক্ত $reportTitle PDF ডকুমেন্ট" },
+                                                attachedPdfName.ifBlank { "PDF ডকুমেন্ট সংযুক্ত রয়েছে" },
                                                 fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.Black,
                                                 maxLines = 1,
-                                                modifier = Modifier.weight(1f),
-                                                fontWeight = FontWeight.SemiBold
+                                                overflow = TextOverflow.Ellipsis
                                             )
-                                            IconButton(
-                                                onClick = {
-                                                    attachedPdfData = ""
-                                                    attachedPdfName = ""
-                                                },
-                                                modifier = Modifier.size(22.dp)
-                                            ) {
-                                                Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Gray, modifier = Modifier.size(14.dp))
-                                            }
+                                        }
+                                        IconButton(
+                                            onClick = { attachedPdfData = ""; attachedPdfName = "" },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(Icons.Default.Close, contentDescription = "Remove", tint = MonicoRed, modifier = Modifier.size(16.dp))
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
 
-                                // Direct PDF Web Link
-                                Text("অথবা সরাসরি PDF ওয়েব লিংক দিন:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    // URL INPUT SECTION (PDF & Image URL - No device upload / base64 required)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("ফাইল / ইমেজ URL লিংক:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+
+                            // PDF URL or Main Web Link
+                            OutlinedTextField(
+                                value = externalUrl,
+                                onValueChange = { externalUrl = it },
+                                label = { Text("PDF বা ফাইল URL লিংক (Direct Link)") },
+                                placeholder = { Text("https://example.com/document.pdf") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MonicoRed, modifier = Modifier.size(18.dp))
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            // Image URLs (Multiple image URLs separated by comma or new line)
+                            var imageUrlInput by remember { mutableStateOf("") }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 OutlinedTextField(
-                                    value = externalUrl,
-                                    onValueChange = { externalUrl = it },
-                                    label = { Text("PDF ওয়েব লিংক (https://...pdf)") },
-                                    placeholder = { Text(if (isStockGrid) "https://example.com/daily_stock_report.pdf" else "https://example.com/daily_sales_report.pdf") },
+                                    value = imageUrlInput,
+                                    onValueChange = { imageUrlInput = it },
+                                    label = { Text("ছবি URL যোগ করুন (Image URL)") },
+                                    placeholder = { Text("https://example.com/photo.jpg") },
                                     leadingIcon = {
-                                        Icon(Icons.Default.Link, contentDescription = null, tint = themeColor, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(18.dp))
                                     },
                                     singleLine = true,
                                     shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.weight(1f)
                                 )
-                            }
-                        }
-                    } else {
-                        // GRIDS 1, 2, 3, 4: IMAGES ONLY
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MonicoBlue.copy(alpha = 0.08f),
-                            border = BorderStroke(1.dp, MonicoBlue.copy(alpha = 0.3f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(20.dp))
-                                    Text("ছবি সংযুক্তি (শুধুমাত্র ছবি ফাইল):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MonicoBlue)
-                                }
-                                Text("সার্কুলার, বোনাস শিট ও নোটিশ ছবি হিসেবে প্রদর্শিত হবে।", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                                // Device Image Picker Button
-                                OutlinedButton(
-                                    onClick = { photoPickerLauncher.launch("image/*") },
+                                Button(
+                                    onClick = {
+                                        val trimmed = imageUrlInput.trim()
+                                        if (trimmed.isNotBlank() && !deviceImages.contains(trimmed)) {
+                                            deviceImages = (deviceImages + trimmed).take(10)
+                                            imageUrlInput = ""
+                                        }
+                                    },
                                     shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoBlue)
+                                    colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
+                                    contentPadding = PaddingValues(horizontal = 12.dp)
                                 ) {
-                                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("ডিভাইস থেকে ছবি আপলোড করুন (${deviceImages.size}/10)", fontSize = 12.sp)
+                                    Text("যোগ", fontSize = 11.sp)
                                 }
+                            }
 
-                                // Image URLs
-                                var imageUrlInput by remember { mutableStateOf("") }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedTextField(
-                                        value = imageUrlInput,
-                                        onValueChange = { imageUrlInput = it },
-                                        label = { Text("ছবি URL যোগ করুন (Image URL)") },
-                                        placeholder = { Text("https://example.com/photo.jpg") },
-                                        leadingIcon = {
-                                            Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue, modifier = Modifier.size(18.dp))
-                                        },
-                                        singleLine = true,
-                                        shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Button(
-                                        onClick = {
-                                            val trimmed = imageUrlInput.trim()
-                                            if (trimmed.isNotBlank() && !deviceImages.contains(trimmed)) {
-                                                deviceImages = (deviceImages + trimmed).take(10)
-                                                imageUrlInput = ""
-                                            }
-                                        },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
-                                        contentPadding = PaddingValues(horizontal = 12.dp)
-                                    ) {
-                                        Text("যোগ", fontSize = 11.sp)
-                                    }
-                                }
-
-                                if (deviceImages.isNotEmpty()) {
-                                    Text("সংযুক্ত ছবির লিংকসমূহ (${deviceImages.size}টি):", fontSize = 10.sp, color = MonicoGreen, fontWeight = FontWeight.Bold)
-                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        items(deviceImages) { imgUrl ->
-                                            Box(modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp))) {
-                                                AsyncImage(
-                                                    model = ImageUtils.resolveImageModel(imgUrl),
-                                                    contentDescription = null,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
-                                                IconButton(
-                                                    onClick = { deviceImages = deviceImages - imgUrl },
-                                                    modifier = Modifier.size(20.dp).align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.6f))
-                                                ) {
-                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(14.dp))
-                                                }
+                            if (deviceImages.isNotEmpty()) {
+                                Text("সংযুক্ত ছবির লিংকসমূহ (${deviceImages.size}টি):", fontSize = 10.sp, color = MonicoGreen, fontWeight = FontWeight.Bold)
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    items(deviceImages) { imgUrl ->
+                                        Box(modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp))) {
+                                            AsyncImage(
+                                                model = ImageUtils.resolveImageModel(imgUrl),
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            IconButton(
+                                                onClick = { deviceImages = deviceImages - imgUrl },
+                                                modifier = Modifier.size(20.dp).align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.6f))
+                                            ) {
+                                                Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(14.dp))
                                             }
                                         }
                                     }
@@ -1299,32 +1022,14 @@ private fun MenuEditDialog(
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
-                        val isGrid1 = selectedGrid == "grid1"
-                        val isPdf = selectedGrid == "grid5" || selectedGrid == "grid6"
+                        // Compute final URL: prioritize attached device PDF if uploaded, then external URL, then device images
                         val finalUrl = when {
-                            isGrid1 -> externalUrl.trim()
-                            isPdf -> externalUrl.trim().ifBlank { attachedPdfData.trim() }
-                            else -> if (deviceImages.isNotEmpty()) deviceImages[0].trim() else externalUrl.trim()
+                            attachedPdfData.isNotBlank() -> attachedPdfData.trim()
+                            externalUrl.isNotBlank() -> externalUrl.trim()
+                            deviceImages.isNotEmpty() -> deviceImages[0].trim()
+                            else -> ""
                         }
-
-                        val finalImages = when {
-                            isGrid1 -> emptyList()
-                            isPdf -> emptyList()
-                            else -> {
-                                val list = mutableListOf<String>()
-                                list.addAll(deviceImages)
-                                if (externalUrl.isNotBlank() && !list.contains(externalUrl.trim())) {
-                                    list.add(externalUrl.trim())
-                                }
-                                list
-                            }
-                        }
-
-                        val finalIcon = when {
-                            isGrid1 -> icon.ifBlank { "fa-folder" }
-                            isPdf -> "fa-file-pdf"
-                            else -> if (finalImages.isNotEmpty()) finalImages[0] else "fa-image"
-                        }
+                        val finalIcon = if (selectedGrid == "grid5" || selectedGrid == "grid_stock" || PdfUtils.isPdf(finalUrl)) "fa-file-pdf" else if (deviceImages.isNotEmpty()) deviceImages[0].trim() else icon
 
                         val finalRole = when {
                             selectedRoleSet.isEmpty() -> "ALL"
@@ -1340,7 +1045,7 @@ private fun MenuEditDialog(
                                 group = selectedGrid,
                                 icon = finalIcon,
                                 url = finalUrl,
-                                images = finalImages,
+                                images = if (selectedGrid != "grid1") deviceImages else emptyList(),
                                 month = if (selectedGrid == "grid1") "" else selectedMonth,
                                 date = if (selectedGrid == "grid1") "" else dateStr,
                                 isPinned = isPinned,
@@ -1353,7 +1058,11 @@ private fun MenuEditDialog(
             ) { Text(if (item == null) "সংরক্ষণ করুন" else "আপডেট করুন") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("বাতিল") }
+            TextButton(onClick = {
+                gridMenuOpen = false
+                monthMenuOpen = false
+                onDismiss()
+            }) { Text("বাতিল") }
         }
     )
 }
@@ -1369,7 +1078,6 @@ private fun SidebarEditDialog(
     var icon by remember { mutableStateOf(item?.icon ?: "fa-globe") }
     var allowedRole by remember { mutableStateOf(item?.allowedRole ?: "SUPER_ADMIN,DIC") }
     var status by remember { mutableStateOf(item?.status ?: "active") }
-    var orderText by remember { mutableStateOf((item?.order ?: 0).toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1408,14 +1116,6 @@ private fun SidebarEditDialog(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = orderText,
-                    onValueChange = { orderText = it },
-                    label = { Text("ক্রমিক নম্বর / অর্ডার (0, 1, 2...)") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         },
         confirmButton = {
@@ -1429,8 +1129,7 @@ private fun SidebarEditDialog(
                                 url = url,
                                 icon = icon,
                                 allowedRole = allowedRole,
-                                status = status,
-                                order = orderText.toIntOrNull() ?: (item?.order ?: 0)
+                                status = status
                             )
                         )
                     }
@@ -1480,26 +1179,13 @@ private fun SliderEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 1. Device Image Picker Button
-                OutlinedButton(
-                    onClick = { sliderPickerLauncher.launch("image/*") },
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoBlue)
-                ) {
-                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(if (isProcessing) "প্রসেসিং হচ্ছে..." else "১. ডিভাইস থেকে ছবি আপলোড করুন", fontSize = 12.sp)
-                }
-
-                // 2. Direct Image URL Input
                 OutlinedTextField(
                     value = image,
                     onValueChange = { image = it },
-                    label = { Text("২. অথবা ছবির সরাসরি লিংক (Image URL)") },
+                    label = { Text("ছবির সরাসরি লিংক (Image URL)") },
                     placeholder = { Text("https://example.com/banner.jpg") },
                     leadingIcon = {
-                        Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue)
+                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1667,26 +1353,13 @@ private fun PopupEditDialog(
                     fontWeight = FontWeight.Medium
                 )
 
-                // 1. Device Image Picker Button
-                OutlinedButton(
-                    onClick = { popupPickerLauncher.launch("image/*") },
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoBlue)
-                ) {
-                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(if (isProcessing) "প্রসেসিং হচ্ছে..." else "১. ডিভাইস থেকে পপআপ ছবি আপলোড করুন", fontSize = 12.sp)
-                }
-
-                // 2. Direct Image URL Input
                 OutlinedTextField(
                     value = image,
                     onValueChange = { image = it },
-                    label = { Text("২. অথবা পপআপ ছবির সরাসরি লিংক (Image URL)") },
+                    label = { Text("পপআপ ছবির সরাসরি লিংক (Image URL)") },
                     placeholder = { Text("https://example.com/popup.jpg") },
                     leadingIcon = {
-                        Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue)
+                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, tint = MonicoBlue)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1743,19 +1416,11 @@ private fun CardEditDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var cardPath by remember {
-        mutableStateOf(
-            when (initialPath) {
-                "product_training_cards" -> "training_cards"
-                "product_target_sheets" -> "target_sheets"
-                else -> initialPath
-            }
-        )
-    }
+    var cardPath by remember { mutableStateOf(initialPath) }
     val cardPathOptions = listOf(
         "product_launch_cards" to "নতুন পণ্য (New Product Launch)",
-        "training_cards" to "প্রোডাক্ট ট্রেনিং (Product Training)",
-        "target_sheets" to "টার্গেট শিট (Target Sheet)"
+        "product_training_cards" to "প্রোডাক্ট ট্রেনিং (Product Training)",
+        "product_target_sheets" to "টার্গেট শিট (Target Sheet)"
     )
     var cardPathMenuOpen by remember { mutableStateOf(false) }
 
@@ -1799,7 +1464,10 @@ private fun CardEditDialog(
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            cardPathMenuOpen = false
+            onDismiss()
+        },
         title = { Text(if (item == null) "নতুন কার্ড যোগ করুন" else "কার্ড এডিট করুন", fontWeight = FontWeight.Bold) },
         text = {
             Column(
@@ -1825,8 +1493,8 @@ private fun CardEditDialog(
                             DropdownMenuItem(
                                 text = { Text(label, fontSize = 12.sp) },
                                 onClick = {
-                                    cardPath = key
                                     cardPathMenuOpen = false
+                                    cardPath = key
                                 }
                             )
                         }
@@ -1840,34 +1508,7 @@ private fun CardEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 1. Device Image & PDF Picker Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { cardPhotoPicker.launch("image/*") },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoBlue)
-                    ) {
-                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isProcessing) "প্রসেসিং..." else "ছবি আপলোড", fontSize = 11.sp)
-                    }
-                    OutlinedButton(
-                        onClick = { cardPdfPicker.launch("application/pdf") },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MonicoRed)
-                    ) {
-                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isProcessing) "প্রসেসিং..." else "PDF আপলোড", fontSize = 11.sp)
-                    }
-                }
-
-                // 2. Direct PDF / Image URL inputs
+                // Direct PDF / Image URL inputs
                 var urlInputText by remember { mutableStateOf("") }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1877,7 +1518,7 @@ private fun CardEditDialog(
                     OutlinedTextField(
                         value = urlInputText,
                         onValueChange = { urlInputText = it },
-                        label = { Text("অথবা ছবি/PDF লিংক দিন (URL)") },
+                        label = { Text("ছবি বা PDF লিংক যোগ করুন (URL)") },
                         placeholder = { Text("https://example.com/item.jpg বা .pdf") },
                         leadingIcon = {
                             Icon(Icons.Default.AddLink, contentDescription = null, tint = MonicoBlue)
@@ -1961,7 +1602,10 @@ private fun CardEditDialog(
             ) { Text(if (item == null) "যোগ করুন" else "আপডেট করুন") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("বাতিল") }
+            TextButton(onClick = {
+                cardPathMenuOpen = false
+                onDismiss()
+            }) { Text("বাতিল") }
         }
     )
 }
@@ -2051,99 +1695,56 @@ private fun UserEditDialog(
                     }
                 }
 
-                // Profile Picture Options for Super Admin
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth()
+                // Profile picture: Device upload (Base64) or Image URL
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
-                        modifier = Modifier.padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    Button(
+                        onClick = { userPhotoPicker.launch("image/*") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MonicoGreen),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text(
-                            text = "প্রোফাইল ছবি (URL অথবা ডিভাইস থেকে):",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("ডিভাইস থেকে ছবি (Base64)", fontSize = 12.sp)
+                    }
+                    if (isProcessing) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    }
+                }
 
-                        // Option 1: URL input (Recommended for minimal DB storage)
-                        OutlinedTextField(
-                            value = profilePic,
-                            onValueChange = { profilePic = it.trim() },
-                            label = { Text("ছবির সরাসরি লিংক (URL - ডেটাবেজ সেভিং)") },
-                            placeholder = { Text("https://example.com/photo.jpg") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Link, contentDescription = null, tint = MonicoGreen)
-                            },
-                            trailingIcon = {
-                                if (profilePic.isNotBlank()) {
-                                    IconButton(onClick = { profilePic = "" }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                OutlinedTextField(
+                    value = profilePic,
+                    onValueChange = { profilePic = it },
+                    label = { Text("প্রোফাইল ছবির লিংক বা Base64") },
+                    placeholder = { Text("https://example.com/photo.jpg") },
+                    leadingIcon = {
+                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MonicoGreen)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
+                if (profilePic.isNotBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(modifier = Modifier.size(60.dp).clip(CircleShape).border(2.dp, MonicoGreen, CircleShape)) {
+                            AsyncImage(
+                                model = ImageUtils.resolveImageModel(profilePic),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                         Text(
-                            text = "অথবা ডিভাইস থেকে আপলোড করতে চাইলে:",
+                            text = if (profilePic.startsWith("data:image")) "ডিভাইস থেকে ছবি আপলোড হয়েছে (Base64)" else "ছবির লিংক যুক্ত আছে",
                             fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MonicoGreen
                         )
-
-                        // Option 2: Device upload button
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedButton(
-                                onClick = { userPhotoPicker.launch("image/*") },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp), tint = MonicoGreen)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("ডিভাইস থেকে নির্বাচন করুন", fontSize = 11.sp)
-                            }
-                            if (isProcessing) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            }
-                        }
-
-                        // Preview indicator
-                        if (profilePic.isNotBlank()) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Box(modifier = Modifier.size(48.dp).clip(CircleShape).border(2.dp, MonicoGreen, CircleShape)) {
-                                    AsyncImage(
-                                        model = ImageUtils.resolveImageModel(profilePic),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        text = if (profilePic.startsWith("data:image")) "ডিভাইস থেকে ছবি লোড হয়েছে (Base64)" else "ওয়েব লিংক যুক্ত হয়েছে (URL)",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MonicoGreen
-                                    )
-                                    Text(
-                                        text = if (profilePic.startsWith("data:image")) "ডাটাবেজে Base64 হিসেবে সেভ হবে" else "সরাসরি URL ব্যবহার হবে (কম ডেটা খরচ)",
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -2189,13 +1790,14 @@ private val adminGridCategories = listOf(
     AdminGridCategory("grid3", "Grid 3: Head Office Circular (সার্কুলার)", "Grid 3 (Circular)", Icons.Default.Campaign, MonicoAmber),
     AdminGridCategory("grid4", "Grid 4: Salary & TA Bill (বেতন ও বিল)", "Grid 4 (Salary TA)", Icons.Default.Payments, Color(0xFF9333EA)),
     AdminGridCategory("grid5", "Grid 5: Sales Report PDF (সেলস রিপোর্ট)", "Grid 5 (Sales PDF)", Icons.Default.PictureAsPdf, MonicoRed),
-    AdminGridCategory("grid6", "Grid 6: Stock Report PDF (স্টক রিপোর্ট)", "Grid 6 (Stock PDF)", Icons.Default.Inventory, Color(0xFF0D9488))
+    AdminGridCategory("grid_stock", "Stock Report PDF (স্টক রিপোর্ট)", "Stock (PDF)", Icons.Default.Inventory, Color(0xFF0D9488)),
+    AdminGridCategory("grid6", "Grid 6: Product & Target Sheet (টার্গেট শিট)", "Grid 6 (Target)", Icons.Default.School, Color(0xFF00897B))
 )
 
 @Composable
 private fun AdminMenusTab(
     menus: List<MenuItem>,
-    onAddNew: () -> Unit,
+    onAddNew: (defaultGrid: String) -> Unit,
     onEdit: (MenuItem) -> Unit,
     onDelete: (String) -> Unit,
     onToggleStatus: (MenuItem) -> Unit
@@ -2246,7 +1848,7 @@ private fun AdminMenusTab(
                     }
 
                     Button(
-                        onClick = onAddNew,
+                        onClick = { onAddNew(if (selectedGridFilter == "all" || selectedGridFilter == "grid1") "grid2" else selectedGridFilter) },
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MonicoBlue),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
@@ -2316,7 +1918,7 @@ private fun AdminMenusTab(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Default.FolderOpen, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
                     Text("কোনো ফাইল পাওয়া যায়নি।", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = onAddNew, shape = RoundedCornerShape(10.dp)) {
+                    Button(onClick = { onAddNew(if (selectedGridFilter == "all" || selectedGridFilter == "grid1") "grid2" else selectedGridFilter) }, shape = RoundedCornerShape(10.dp)) {
                         Text("নতুন ফাইল যোগ করুন")
                     }
                 }
@@ -2324,7 +1926,8 @@ private fun AdminMenusTab(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 96.dp)
             ) {
                 if (selectedGridFilter == "all") {
                     // Grouped view by Grid
@@ -2365,27 +1968,26 @@ private fun AdminMenusTab(
                                 }
                             }
 
-                            val distinctGridItems = itemsInGrid.distinctBy { it.id }
-                            items(distinctGridItems, key = { m -> "grid_${cat.id}_${m.id}" }) { m ->
+                            items(itemsInGrid, key = { it.id }) { m ->
                                 MenuItemAdminCard(m, cat.color, onToggleStatus, onEdit, onDelete)
                             }
                         }
                     }
 
                     // Any orphan items not in known categories
-                    val orphanItems = filteredList.filter { m -> adminGridCategories.none { it.id == m.group } }.distinctBy { it.id }
+                    val orphanItems = filteredList.filter { m -> adminGridCategories.none { it.id == m.group } }
                     if (orphanItems.isNotEmpty()) {
                         item(key = "header_others") {
                             Text("অন্যান্য ফাইল (${orphanItems.size}টি):", fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                         }
-                        items(orphanItems, key = { m -> "orphan_${m.id}" }) { m ->
+                        items(orphanItems, key = { it.id }) { m ->
                             MenuItemAdminCard(m, Color.Gray, onToggleStatus, onEdit, onDelete)
                         }
                     }
                 } else {
                     // Single Grid Selected View
                     val currentCat = adminGridCategories.firstOrNull { it.id == selectedGridFilter }
-                    item(key = "header_selected_grid") {
+                    item {
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = (currentCat?.color ?: MonicoBlue).copy(alpha = 0.12f),
@@ -2410,8 +2012,7 @@ private fun AdminMenusTab(
                         }
                     }
 
-                    val distinctFilteredList = filteredList.distinctBy { it.id }
-                    items(distinctFilteredList, key = { m -> "filter_${m.group}_${m.id}" }) { m ->
+                    items(filteredList, key = { it.id }) { m ->
                         MenuItemAdminCard(m, currentCat?.color ?: MonicoBlue, onToggleStatus, onEdit, onDelete)
                     }
                 }
@@ -2428,9 +2029,8 @@ private fun MenuItemAdminCard(
     onEdit: (MenuItem) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    val isGrid1 = m.group == "grid1" || m.group == "grid-1" || m.group == "grid_1" || m.group.equals("primary", ignoreCase = true)
-    val isPdf = m.group == "grid5" || m.group == "grid6"
-    val isStock = m.group == "grid6"
+    val hasImg = (m.url.isNotBlank() && ImageUtils.isImage(m.url)) || m.images.any { it.isNotBlank() && ImageUtils.isImage(it) }
+    val isPdf = !hasImg && (m.group == "grid5" || m.group == "grid_stock" || PdfUtils.isPdf(m.url) || m.images.any { PdfUtils.isPdf(it) })
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -2444,31 +2044,16 @@ private fun MenuItemAdminCard(
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (isGrid1) {
+                    if (isPdf) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = MonicoBlue.copy(alpha = 0.15f),
-                            contentColor = MonicoBlue
+                            color = MonicoRed.copy(alpha = 0.15f),
+                            contentColor = MonicoRed
                         ) {
                             Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(IconUtils.getIconForName(m.icon), contentDescription = "Primary", tint = MonicoBlue, modifier = Modifier.size(12.dp))
+                                Icon(Icons.Default.PictureAsPdf, contentDescription = "PDF", tint = MonicoRed, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(2.dp))
-                                Text("PRIMARY MENU (LINK)", fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    } else if (isPdf) {
-                        val pdfColor = if (isStock) Color(0xFF0D9488) else MonicoRed
-                        val pdfLabel = if (isStock) "PDF (Stock Report)" else "PDF (Sales Report)"
-                        val pdfIcon = if (isStock) Icons.Default.Inventory else Icons.Default.PictureAsPdf
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = pdfColor.copy(alpha = 0.15f),
-                            contentColor = pdfColor
-                        ) {
-                            Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(pdfIcon, contentDescription = "PDF", tint = pdfColor, modifier = Modifier.size(12.dp))
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Text(pdfLabel, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("PDF", fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     } else {
@@ -2480,7 +2065,7 @@ private fun MenuItemAdminCard(
                             Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Image, contentDescription = "IMG", tint = MonicoBlue, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(2.dp))
-                                Text("IMAGE (${m.images.size}টি)", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("IMG", fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -2544,9 +2129,7 @@ private fun MenuItemAdminCard(
 private fun AdminSidebarMenusTab(
     sidebarMenus: List<SidebarMenuItem>,
     onEdit: (SidebarMenuItem) -> Unit,
-    onDelete: (String) -> Unit,
-    onMoveUp: (Int) -> Unit = {},
-    onMoveDown: (Int) -> Unit = {}
+    onDelete: (String) -> Unit
 ) {
     if (sidebarMenus.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -2558,7 +2141,7 @@ private fun AdminSidebarMenusTab(
         modifier = Modifier.fillMaxSize().padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        itemsIndexed(sidebarMenus, key = { _, it -> it.id }) { index, sm ->
+        items(sidebarMenus, key = { it.id }) { sm ->
             Card(
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -2569,64 +2152,16 @@ private fun AdminSidebarMenusTab(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MonicoBlue.copy(alpha = 0.15f),
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "${index + 1}",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = MonicoBlue
-                                )
-                            }
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(sm.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(sm.url, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
-                            Text("Role: ${sm.allowedRole} | Status: ${sm.status} | Order: ${sm.order}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(sm.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(sm.url, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                        Text("Role: ${sm.allowedRole} | Status: ${sm.status}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = { onMoveUp(index) },
-                            enabled = index > 0,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "উপরে নিন",
-                                tint = if (index > 0) MonicoBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                            )
-                        }
-                        IconButton(
-                            onClick = { onMoveDown(index) },
-                            enabled = index < sidebarMenus.size - 1,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = "নিচে নিন",
-                                tint = if (index < sidebarMenus.size - 1) MonicoBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                            )
-                        }
-                        IconButton(
-                            onClick = { onEdit(sm) },
-                            modifier = Modifier.size(36.dp)
-                        ) {
+                        IconButton(onClick = { onEdit(sm) }) {
                             Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
                         }
-                        IconButton(
-                            onClick = { onDelete(sm.id) },
-                            modifier = Modifier.size(36.dp)
-                        ) {
+                        IconButton(onClick = { onDelete(sm.id) }) {
                             Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
                         }
                     }
@@ -2907,10 +2442,10 @@ private fun AdminCardsTab(
         items(trainings, key = { "pt_${it.id}" }) { c ->
             CardRowItem(c) {
                 Row {
-                    IconButton(onClick = { onEdit("training_cards", c) }) {
+                    IconButton(onClick = { onEdit("product_training_cards", c) }) {
                         Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
                     }
-                    IconButton(onClick = { onDelete("training_cards", c.id) }) {
+                    IconButton(onClick = { onDelete("product_training_cards", c.id) }) {
                         Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
                     }
                 }
@@ -2924,10 +2459,10 @@ private fun AdminCardsTab(
         items(targets, key = { "ts_${it.id}" }) { c ->
             CardRowItem(c) {
                 Row {
-                    IconButton(onClick = { onEdit("target_sheets", c) }) {
+                    IconButton(onClick = { onEdit("product_target_sheets", c) }) {
                         Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MonicoBlue)
                     }
-                    IconButton(onClick = { onDelete("target_sheets", c.id) }) {
+                    IconButton(onClick = { onDelete("product_target_sheets", c.id) }) {
                         Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MonicoRed)
                     }
                 }

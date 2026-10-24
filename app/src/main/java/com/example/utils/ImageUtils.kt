@@ -37,8 +37,8 @@ object ImageUtils {
             val byteArray = outputStream.toByteArray()
             val base64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
             "data:image/jpeg;base64,$base64"
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (t: Throwable) {
+            t.printStackTrace()
             null
         }
     }
@@ -58,10 +58,26 @@ object ImageUtils {
             val byteArray = outputStream.toByteArray()
             val base64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
             "data:image/jpeg;base64,$base64"
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (t: Throwable) {
+            t.printStackTrace()
             null
         }
+    }
+
+    /**
+     * Accurately determines if a string represents an image (data URI, base64 header, or image URL).
+     * NEVER returns true for a PDF.
+     */
+    fun isImage(data: String): Boolean {
+        if (data.isBlank()) return false
+        val s = data.trim()
+        if (s.startsWith("data:image/", ignoreCase = true)) return true
+        if (s.startsWith("/9j/") || s.startsWith("iVBORw0KGgo") || s.startsWith("R0lGOD")) return true
+        
+        // Strip query params and hash for clean extension check
+        val clean = s.substringBefore("?").substringBefore("#").lowercase()
+        return clean.endsWith(".jpg") || clean.endsWith(".jpeg") || clean.endsWith(".png") ||
+               clean.endsWith(".webp") || clean.endsWith(".gif") || clean.endsWith(".bmp") || clean.endsWith(".svg")
     }
 
     /**
@@ -71,13 +87,13 @@ object ImageUtils {
     fun resolveImageModel(data: String): Any {
         if (data.isBlank()) return ""
         val s = data.trim()
-        if (s.startsWith("data:image", ignoreCase = true) || s.startsWith("/9j/") || s.startsWith("iVBORw")) {
+        if (s.startsWith("data:image", ignoreCase = true) || s.startsWith("/9j/") || s.startsWith("iVBORw") || s.startsWith("R0lGOD")) {
             val base64Str = if (s.contains("base64,")) s.substringAfter("base64,") else s
             return try {
                 val bytes = Base64.decode(base64Str, Base64.DEFAULT)
                 val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                bitmap ?: java.nio.ByteBuffer.wrap(bytes)
-            } catch (e: Exception) {
+                bitmap ?: s
+            } catch (t: Throwable) {
                 s
             }
         }

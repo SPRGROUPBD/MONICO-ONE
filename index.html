@@ -332,29 +332,30 @@
 </head>
 <body>
 
-    <!-- 0. SUPER ADMIN ACCESS GATE -->
-    <div id="admin-auth-gate" class="min-vh-100 d-flex align-items-center justify-content-center p-3" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0369a1 100%); overflow-y: auto;">
+    <!-- 0. SUPER ADMIN ACCESS GATE / MODAL -->
+    <div id="admin-auth-gate" class="min-vh-100 d-flex align-items-center justify-content-center p-3 d-none" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(6px); overflow-y: auto;">
         <div class="card border-0 shadow-lg rounded-4 overflow-hidden my-auto" style="max-width: 460px; width: 100%; background: #ffffff;">
-            <div class="p-4 text-center text-white" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+            <div class="p-4 text-center text-white position-relative" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" onclick="closeAdminAuthGate()" aria-label="Close"></button>
                 <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white text-primary mb-3 shadow" style="width: 64px; height: 64px; font-size: 26px;">
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
                 <h4 class="fw-bold m-0">Monico One Admin</h4>
                 <p class="small text-white-50 m-0 mt-1">সুপার অ্যাডমিন সিকিউরিটি গেটওয়ে</p>
-                <div class="badge bg-danger text-white mt-2 px-3 py-1 rounded-pill" style="font-size: 11px;">
-                    <i class="fa-solid fa-lock me-1"></i> শুধুমাত্র Super Admin অ্যাক্সেস
+                <div class="badge bg-warning text-dark mt-2 px-3 py-1 rounded-pill" style="font-size: 11px;">
+                    <i class="fa-solid fa-lock me-1"></i> ডাটা যোগ, পরিবর্তন ও মুছে ফেলতে লগইন করুন
                 </div>
             </div>
 
             <div class="p-4">
-                <!-- Denied box if non-super-admin user is logged in -->
-                <div id="gate-denied-box" class="alert alert-danger rounded-3 d-none mb-3">
+                <!-- Denied box / Prompt message -->
+                <div id="gate-denied-box" class="alert alert-warning rounded-3 d-none mb-3">
                     <div class="d-flex align-items-start gap-2">
-                        <i class="fa-solid fa-triangle-exclamation text-danger mt-1 fs-5"></i>
+                        <i class="fa-solid fa-circle-exclamation text-warning mt-1 fs-5"></i>
                         <div>
-                            <div class="fw-bold text-danger">প্রবেশাধিকার অস্বীকৃত</div>
+                            <div class="fw-bold text-dark">সুপার অ্যাডমিন অনুমতি প্রয়োজন</div>
                             <div class="small mt-1 text-dark" id="gate-denied-msg">
-                                সাধারণ ইউজারদের জন্য অ্যাডমিন প্যানেল অ্যাক্সেস সংরক্ষিত নয়।
+                                ডাটা পরিবর্তন বা মুছে ফেলতে সুপার অ্যাডমিন হিসেবে লগইন করুন।
                             </div>
                         </div>
                     </div>
@@ -366,7 +367,7 @@
                         <label class="form-label small fw-semibold text-secondary">
                             <i class="fa-solid fa-user me-1 text-primary"></i> সুপার অ্যাডমিন আইডি
                         </label>
-                        <input type="text" class="form-control form-control-lg fs-6" id="gate-emp-id" placeholder="যেমন: 1001 বা ADMIN" required autofocus autocomplete="username">
+                        <input type="text" class="form-control form-control-lg fs-6" id="gate-emp-id" placeholder="যেমন: KS বা 1001" required autofocus autocomplete="username">
                     </div>
 
                     <div class="mb-3">
@@ -389,22 +390,25 @@
                     </button>
                 </form>
 
-                <div class="text-center mt-3 pt-3 border-top">
-                    <a href="website.html" class="btn btn-light btn-sm text-secondary rounded-pill px-3 fw-semibold text-decoration-none">
-                        <i class="fa-solid fa-arrow-left me-1"></i> ওয়েবসাইটে ফিরে যান (Website View)
+                <div class="text-center mt-3 pt-3 border-top d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="closeAdminAuthGate()">
+                        <i class="fa-solid fa-xmark me-1"></i> ভিউয়ার মোডে থাকুন
+                    </button>
+                    <a href="website.html" class="btn btn-light btn-sm text-secondary rounded-pill px-3 fw-semibold text-decoration-none border">
+                        <i class="fa-solid fa-globe me-1 text-primary"></i> ওয়েবসাইট ভিউ
                     </a>
                 </div>
             </div>
-            <div class="bg-light px-4 py-3 text-center border-top">
+            <div class="bg-light px-4 py-2 text-center border-top">
                 <small class="text-muted" style="font-size: 11px;">
-                    <i class="fa-solid fa-circle-info me-1"></i> সাধারণ বা অননুমোদিত ইউজারদের প্রবেশ কঠোরভাবে নিষিদ্ধ।
+                    <i class="fa-solid fa-circle-check text-success me-1"></i> সকল ডাটা ও রিপোর্ট পাবলিকলি দেখার জন্য উন্মুক্ত
                 </small>
             </div>
         </div>
     </div>
 
-    <!-- MAIN ADMIN APP WRAPPER (Shown only to authenticated Super Admin) -->
-    <div id="admin-app-root" style="display: none;">
+    <!-- MAIN ADMIN APP WRAPPER (Publicly viewable, guarded mutations) -->
+    <div id="admin-app-root" style="display: block;">
 
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
@@ -724,12 +728,13 @@
                     <div class="d-flex gap-2 flex-wrap">
                         <select class="form-select form-select-sm" id="filter-menu-group" onchange="renderMenusTable()" style="width: 130px;">
                             <option value="ALL">সকল গ্রিড</option>
-                            <option value="grid1">Grid 1</option>
-                            <option value="grid2">Grid 2</option>
-                            <option value="grid3">Grid 3</option>
-                            <option value="grid4">Grid 4</option>
-                            <option value="grid5">Grid 5 (Sales Report)</option>
-                            <option value="grid6">Grid 6 (Stock Report)</option>
+                            <option value="grid1">Grid 1 (Daily Menus)</option>
+                            <option value="grid2">Grid 2 (Bonus Sheet)</option>
+                            <option value="grid3">Grid 3 (Circular)</option>
+                            <option value="grid4">Grid 4 (Salary TA)</option>
+                            <option value="grid5">Grid 5 (Sales Report PDF)</option>
+                            <option value="grid_stock">Grid Stock (Stock Report PDF)</option>
+                            <option value="grid6">Grid 6 (Target Sheet)</option>
                         </select>
                         <input type="text" class="form-control form-control-sm" id="search-menus" placeholder="শিরোনাম খুঁজুন..." oninput="renderMenusTable()" style="width: 180px;">
                         <button class="btn btn-info text-white fw-bold px-3 rounded-pill" onclick="openAddMenuModal()">
@@ -1051,7 +1056,7 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSidebarRole('SUPER_ADMIN,DIC')">SUPER_ADMIN,DIC</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSidebarRole('SUPER_ADMIN')">SUPER_ADMIN Only</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSidebarRole('AM,TM,RSM')">Supervisor</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSidebarRole('PALL')">Everyone</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSidebarRole('ALL')">Everyone</button>
                         </div>
                         <input type="text" class="form-control form-control-sm" id="sm-role-custom" placeholder="কাস্টম রোল লিখুন" oninput="document.getElementById('sm-role').value = this.value; document.getElementById('sm-role-badge').innerText = this.value;">
                     </div>
@@ -1090,7 +1095,8 @@
                                 <option value="grid3">GRID 3: Head Office Circular (ছবি)</option>
                                 <option value="grid4">GRID 4: Salary TA Bill (ছবি)</option>
                                 <option value="grid5">GRID 5: Sales Report (PDF - শুধুমাত্র PDF আপলোড)</option>
-                                <option value="grid6">GRID 6: Stock Report (PDF - শুধুমাত্র PDF আপলোড)</option>
+                                <option value="grid_stock">GRID 6: Stock Report (PDF - শুধুমাত্র PDF আপলোড)</option>
+                                <option value="grid6">GRID 7: Product & Target Sheet (টার্গেট শিট)</option>
                             </select>
                         </div>
                         <div class="col-md-7">
@@ -1240,7 +1246,7 @@
                                     <span class="badge bg-primary px-2 py-1" id="role-summary-badge">ALL</span>
                                 </div>
                             </div>
-                            <input type="hidden" id="menu-role" value="PALL">
+                            <input type="hidden" id="menu-role" value="ALL">
 
                             <div class="card p-3 bg-light border">
                                 <!-- Quick Presets -->
@@ -1675,23 +1681,24 @@
             const customDbEl = document.getElementById('custom-db-url');
             if (customDbEl) customDbEl.value = BASE_URL;
 
-            // Enforce Super Admin Access
-            checkAdminAuth();
+            // Check Super Admin status
+            checkAdminAuthStatus();
+
+            // Fetch and render all data immediately so everything is viewable on website & applet
+            fetchAllData();
         });
 
         // ==================== SUPER ADMIN AUTHENTICATION & ACCESS CONTROL ====================
-        function checkAdminAuth() {
-            const savedUserStr = localStorage.getItem('MONICO_LOGGED_USER');
-            const gate = document.getElementById('admin-auth-gate');
-            const appRoot = document.getElementById('admin-app-root');
-            const deniedBox = document.getElementById('gate-denied-box');
-            const deniedMsg = document.getElementById('gate-denied-msg');
+        let isSuperAdminMode = false;
+        let currentAdminUser = null;
+        let isUsersFullLoaded = false;
 
+        function checkAdminAuthStatus() {
+            const savedUserStr = localStorage.getItem('MONICO_LOGGED_USER');
             if (!savedUserStr) {
-                // No user logged in
-                gate.classList.remove('d-none');
-                appRoot.style.display = 'none';
-                deniedBox.classList.add('d-none');
+                isSuperAdminMode = false;
+                currentAdminUser = null;
+                updateHeaderAuthUI();
                 return false;
             }
 
@@ -1699,39 +1706,82 @@
                 const u = JSON.parse(savedUserStr);
                 const role = (u.role || '').trim().toUpperCase();
                 if (role === 'SUPER_ADMIN' || role === 'SUPER ADMIN') {
-                    // Authorized Super Admin!
-                    unlockAdminPanel(u);
+                    isSuperAdminMode = true;
+                    currentAdminUser = u;
+                    updateHeaderAuthUI();
                     return true;
                 } else {
-                    // Non-super-admin user logged in - Block Admin access!
-                    gate.classList.remove('d-none');
-                    appRoot.style.display = 'none';
-                    deniedMsg.innerHTML = `আপনি বর্তমানে <strong>${escapeHtml(u.fullName || u.employeeId)}</strong> হিসেবে লগইন আছেন (রোল: <span class="badge bg-secondary">${escapeHtml(u.role || 'USER')}</span>)।<br>ওয়েবসাইটের সাধারণ ইউজারদের জন্য অ্যাডমিন প্যানেল অ্যাক্সেস সংরক্ষিত নয়। অ্যাডমিন অ্যাক্সেস শুধুমাত্র <strong>Super Admin</strong> এর জন্য অনুমোদিত।`;
-                    deniedBox.classList.remove('d-none');
+                    isSuperAdminMode = false;
+                    currentAdminUser = null;
+                    updateHeaderAuthUI();
                     return false;
                 }
             } catch(e) {
-                gate.classList.remove('d-none');
-                appRoot.style.display = 'none';
-                deniedBox.classList.add('d-none');
+                isSuperAdminMode = false;
+                currentAdminUser = null;
+                updateHeaderAuthUI();
                 return false;
             }
         }
 
-        function unlockAdminPanel(user) {
-            const gate = document.getElementById('admin-auth-gate');
-            const appRoot = document.getElementById('admin-app-root');
-            gate.classList.add('d-none');
-            appRoot.style.display = 'block';
+        function updateHeaderAuthUI() {
+            const badgeContainer = document.getElementById('admin-user-header-badge');
+            if (!badgeContainer) return;
 
-            // Update top header user info
-            const nameEl = document.getElementById('admin-header-user-name');
-            if (nameEl) {
-                nameEl.innerText = user.fullName || user.employeeId;
+            if (isSuperAdminMode && currentAdminUser) {
+                badgeContainer.className = "d-flex align-items-center gap-2 px-3 py-1 bg-primary bg-opacity-10 rounded-pill border border-primary border-opacity-25";
+                badgeContainer.innerHTML = `
+                    <i class="fa-solid fa-user-shield text-primary"></i>
+                    <span class="small fw-bold text-primary" id="admin-header-user-name">${escapeHtml(currentAdminUser.fullName || currentAdminUser.employeeId || 'Super Admin')}</span>
+                    <span class="badge bg-danger rounded-pill" style="font-size: 10px;">SUPER_ADMIN</span>
+                    <button class="btn btn-sm btn-outline-danger border-0 rounded-circle p-1 ms-1" onclick="handleAdminLogout()" title="লগআউট">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
+                `;
+            } else {
+                badgeContainer.className = "d-flex align-items-center gap-2 px-3 py-1 bg-light rounded-pill border";
+                badgeContainer.innerHTML = `
+                    <span class="small fw-semibold text-muted"><i class="fa-solid fa-eye me-1 text-primary"></i>লাইভ ভিউয়ার মোড</span>
+                    <button class="btn btn-sm btn-primary rounded-pill px-2 py-0 ms-1 fw-bold" onclick="openAdminAuthGate()" style="font-size: 11px;">
+                        <i class="fa-solid fa-lock me-1"></i>অ্যাডমিন লগইন
+                    </button>
+                `;
+            }
+        }
+
+        function openAdminAuthGate(purposeMessage = null) {
+            const gate = document.getElementById('admin-auth-gate');
+            const deniedBox = document.getElementById('gate-denied-box');
+            const deniedMsg = document.getElementById('gate-denied-msg');
+            const errBox = document.getElementById('gate-error-alert');
+            if (errBox) errBox.classList.add('d-none');
+
+            if (purposeMessage && deniedBox && deniedMsg) {
+                deniedMsg.innerHTML = purposeMessage;
+                deniedBox.classList.remove('d-none');
+            } else if (deniedBox) {
+                deniedBox.classList.add('d-none');
             }
 
-            // Fetch all admin data now that authentication is verified
-            fetchAllData();
+            if (gate) {
+                gate.classList.remove('d-none');
+                const empInput = document.getElementById('gate-emp-id');
+                if (empInput) setTimeout(() => empInput.focus(), 150);
+            }
+        }
+
+        function closeAdminAuthGate() {
+            const gate = document.getElementById('admin-auth-gate');
+            if (gate) gate.classList.add('d-none');
+        }
+
+        function requireSuperAdmin(actionName = 'পরিবর্তন') {
+            if (!isSuperAdminMode) {
+                openAdminAuthGate(`ডাটা <strong>${actionName}</strong> করার জন্য সুপার অ্যাডমিন একাউন্ট দিয়ে লগইন করা আবশ্যক।`);
+                showToast(`ডাটা ${actionName} করার অনুমতি শুধুমাত্র Super Admin-এর আছে।`, true);
+                return false;
+            }
+            return true;
         }
 
         async function handleAdminLogin(e) {
@@ -1746,16 +1796,40 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>যাচাই করা হচ্ছে...';
 
             try {
-                const res = await fetch(`${BASE_URL}/users.json`);
-                if (!res.ok) throw new Error('ডাটাবেজ কানেকশন সমস্যা! স্ট্যাটাস: ' + res.status);
-                const usersData = await res.json() || {};
-                state.users = usersData;
+                // Hardcoded fallback for Super Admin KS / Monica Ku
+                if (empId.toUpperCase() === 'KS' && pass === 'Monica Ku') {
+                    const ksAdmin = {
+                        employeeId: 'KS',
+                        fullName: 'Super Admin KS',
+                        role: 'SUPER_ADMIN',
+                        status: 'active'
+                    };
+                    localStorage.setItem('MONICO_LOGGED_USER', JSON.stringify(ksAdmin));
+                    isSuperAdminMode = true;
+                    currentAdminUser = ksAdmin;
+                    updateHeaderAuthUI();
+                    closeAdminAuthGate();
+                    showToast('সুপার অ্যাডমিন হিসেবে সফলভাবে লগইন করেছেন!');
+                    return;
+                }
+
+                // Check Firebase RTDB users
+                let usersData = state.users;
+                if (!isUsersFullLoaded || !usersData || !usersData[empId] || typeof usersData[empId] !== 'object') {
+                    const res = await fetch(`${BASE_URL}/users.json`);
+                    if (!res.ok) throw new Error('ডাটাবেজ কানেকশন সমস্যা! স্ট্যাটাস: ' + res.status);
+                    usersData = await res.json() || {};
+                    state.users = usersData;
+                    isUsersFullLoaded = true;
+                }
 
                 let matchedUser = null;
                 Object.keys(usersData).forEach(k => {
                     const u = usersData[k];
-                    if ((u.employeeId || k).toLowerCase() === empId.toLowerCase() && String(u.password).trim() === pass) {
-                        matchedUser = { employeeId: u.employeeId || k, ...u };
+                    if (u && typeof u === 'object') {
+                        if ((u.employeeId || k).toLowerCase() === empId.toLowerCase() && String(u.password).trim() === pass) {
+                            matchedUser = { employeeId: u.employeeId || k, ...u };
+                        }
                     }
                 });
 
@@ -1767,15 +1841,18 @@
 
                 const role = (matchedUser.role || '').trim().toUpperCase();
                 if (role !== 'SUPER_ADMIN' && role !== 'SUPER ADMIN') {
-                    errBox.innerHTML = `<strong>অ্যাক্সেস অস্বীকৃত!</strong> এই অ্যাকাউন্টের রোল হলো <strong>${escapeHtml(matchedUser.role || 'USER')}</strong>। অ্যাডমিন প্যানেল শুধুমাত্র <strong>Super Admin</strong> এর জন্য অনুমোদিত। সাধারণ ইউজারদের প্রবেশ নিষেধ।`;
+                    errBox.innerHTML = `<strong>অ্যাক্সেস অস্বীকৃত!</strong> আপনার রোল হলো <strong>${escapeHtml(matchedUser.role || 'USER')}</strong>। অ্যাডমিন এক্সেস শুধুমাত্র <strong>Super Admin</strong> এর জন্য অনুমোদিত।`;
                     errBox.classList.remove('d-none');
                     return;
                 }
 
                 // Super Admin validated
                 localStorage.setItem('MONICO_LOGGED_USER', JSON.stringify(matchedUser));
+                isSuperAdminMode = true;
+                currentAdminUser = matchedUser;
+                updateHeaderAuthUI();
+                closeAdminAuthGate();
                 showToast(`স্বাগতম, Super Admin ${matchedUser.fullName || matchedUser.employeeId}!`);
-                unlockAdminPanel(matchedUser);
             } catch(err) {
                 console.error(err);
                 errBox.innerText = 'লগইন ব্যর্থ হয়েছে: ' + (err.message || 'নেটওয়ার্ক সমস্যা');
@@ -1787,17 +1864,12 @@
         }
 
         function handleAdminLogout() {
-            if (!confirm('আপনি কি অ্যাডমিন কনসোল থেকে লগআউট করতে চান?')) return;
+            if (!confirm('আপনি কি সুপার অ্যাডমিন মোড থেকে লগআউট করতে চান?')) return;
             localStorage.removeItem('MONICO_LOGGED_USER');
-            showToast('অ্যাডমিন প্যানেল থেকে সফলভাবে লগআউট হয়েছে।');
-            const gate = document.getElementById('admin-auth-gate');
-            const appRoot = document.getElementById('admin-app-root');
-            const deniedBox = document.getElementById('gate-denied-box');
-            appRoot.style.display = 'none';
-            gate.classList.remove('d-none');
-            deniedBox.classList.add('d-none');
-            const passInput = document.getElementById('gate-password');
-            if (passInput) passInput.value = '';
+            isSuperAdminMode = false;
+            currentAdminUser = null;
+            updateHeaderAuthUI();
+            showToast('লগআউট সম্পন্ন হয়েছে। বর্তমানে লাইভ ভিউয়ার মোডে আছেন।');
         }
 
         function toggleGatePasswordVisibility() {
@@ -1853,7 +1925,7 @@
             const titles = {
                 'dashboard': 'ওভারভিউ ড্যাশবোর্ড',
                 'sidebar-menus': 'সাইডবার মেনু ও ক্রম বিন্যাস (Reorder Up/Down)',
-                'menus': 'মেনু ফাইল ও সার্কুলার (Grids 1-5)',
+                'menus': 'মেনু ফাইল ও সার্কুলার (Grids 1-5 & Stock)',
                 'cards': 'প্রোডাক্ট ও ট্রেনিং কার্ড',
                 'sliders': 'ব্যানার স্লাইডার',
                 'notices': 'স্ক্রোল নোটিশ',
@@ -1864,8 +1936,31 @@
             };
             document.getElementById('page-title').innerText = titles[tabId] || 'অ্যাডমিন কনসোল';
 
+            if (tabId === 'users') {
+                loadFullUsersIfNeeded();
+            }
+
             if (window.innerWidth < 992) {
                 document.getElementById('sidebar').classList.remove('show');
+            }
+        }
+
+        async function loadFullUsersIfNeeded() {
+            if (isUsersFullLoaded) return;
+            const tbody = document.getElementById('tbody-users');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2 text-primary"></span>ইউজারদের তথ্য লোড হচ্ছে...</td></tr>`;
+            try {
+                const res = await fetch(`${BASE_URL}/users.json`);
+                if (res.ok) {
+                    const data = await res.json() || {};
+                    state.users = data;
+                    isUsersFullLoaded = true;
+                    renderUsersTable();
+                    updateCounters();
+                }
+            } catch(e) {
+                console.error('Failed to load full users:', e);
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>ইউজার ডাটা লোড করতে সমস্যা হয়েছে।</td></tr>`;
             }
         }
 
@@ -1954,7 +2049,7 @@
                     fetch(`${BASE_URL}/sliders.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/notices.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/popup_notices.json`).then(r => r.json()).catch(() => null),
-                    fetch(`${BASE_URL}/users.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${BASE_URL}/users.json?shallow=true`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/notifications.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/product_launch_cards.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/training_cards.json`).then(r => r.json()).catch(() => null),
@@ -2021,8 +2116,10 @@
                     });
                 }
 
-                // 6. Users
-                state.users = uRes || {};
+                // 6. Users (Shallow count or full users)
+                if (!isUsersFullLoaded) {
+                    state.users = uRes || {};
+                }
 
                 // 7. Notifications
                 state.notifications = [];
@@ -2164,6 +2261,7 @@
 
         let isReorderingSidebar = false;
         async function moveSidebarItem(index, delta) {
+            if (!requireSuperAdmin('ক্রম পরিবর্তন')) return;
             if (isReorderingSidebar) return;
             index = parseInt(index, 10);
             delta = parseInt(delta, 10);
@@ -2228,6 +2326,7 @@
         }
 
         function openAddSidebarModal() {
+            if (!requireSuperAdmin('নতুন সাইডবার মেনু যোগ')) return;
             document.getElementById('modalSidebarTitle').innerText = 'নতুন সাইডবার মেনু যোগ করুন';
             document.getElementById('sm-id').value = '';
             document.getElementById('sm-name').value = '';
@@ -2240,6 +2339,7 @@
         }
 
         function openEditSidebarModal(id) {
+            if (!requireSuperAdmin('সাইডবার মেনু এডিট')) return;
             const item = state.sidebarMenus.find(it => it.id === id);
             if (!item) return;
 
@@ -2255,6 +2355,7 @@
         }
 
         async function saveSidebarMenu() {
+            if (!requireSuperAdmin('সাইডবার মেনু সংরক্ষণ')) return;
             const id = document.getElementById('sm-id').value.trim();
             const name = document.getElementById('sm-name').value.trim();
             const url = document.getElementById('sm-url').value.trim();
@@ -2290,6 +2391,7 @@
         }
 
         async function deleteSidebarItem(id, name) {
+            if (!requireSuperAdmin('সাইডবার মেনু ডিলিট')) return;
             if (!confirm(`আপনি কি "${name}" সাইডবার মেনুটি ডিলিট করতে চান?`)) return;
 
             try {
@@ -2313,7 +2415,11 @@
 
             let list = state.menus;
             if (groupFilter !== 'ALL') {
-                list = list.filter(m => (m.group || 'grid1') === groupFilter);
+                if (groupFilter === 'grid_stock' || groupFilter === 'grid6') {
+                    list = list.filter(m => (m.group || '') === 'grid_stock' || (m.group || '') === 'grid6');
+                } else {
+                    list = list.filter(m => (m.group || 'grid1') === groupFilter);
+                }
             }
             if (search) {
                 list = list.filter(m => (m.title || '').toLowerCase().includes(search));
@@ -2329,15 +2435,15 @@
                 const isActive = (m.status || 'active') === 'active';
                 const isGrid1 = (m.group || '') === 'grid1' || (m.group || '') === 'grid-1' || (m.group || '') === 'grid_1';
                 const isGrid5Pdf = (m.group || '') === 'grid5';
-                const isGrid6Pdf = (m.group || '') === 'grid6';
-                const isPdf = isGrid5Pdf || isGrid6Pdf;
+                const isStockPdf = (m.group || '') === 'grid_stock' || (m.group || '') === 'grid6';
+                const isPdf = isGrid5Pdf || isStockPdf;
                 const hasUrl = m.url && m.url.trim().length > 0;
                 const imgCount = (m.images && Array.isArray(m.images)) ? m.images.length : 0;
 
                 let groupBadge = 'bg-primary';
                 if (isGrid1) groupBadge = 'bg-info text-dark';
                 else if (isGrid5Pdf) groupBadge = 'bg-danger';
-                else if (isGrid6Pdf) groupBadge = 'bg-success';
+                else if (isStockPdf) groupBadge = 'bg-success';
 
                 let iconClass = m.icon || 'fa-folder';
                 if (!iconClass.startsWith('fa-') && !iconClass.startsWith('fa ')) iconClass = 'fa-' + iconClass;
@@ -2352,8 +2458,8 @@
                             <span class="badge bg-light text-dark border me-1"><code><i class="fa-solid ${escapeHtml(iconClass)} me-1"></i>${escapeHtml(m.icon || 'fa-folder')}</code></span>
                             ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
                         ` : (isPdf ? `
-                            <span class="badge ${isGrid6Pdf ? 'bg-success' : 'bg-danger'} mb-1"><i class="fa-solid fa-file-pdf me-1"></i> ${isGrid6Pdf ? 'স্টক রিপোর্ট PDF' : 'সেলস রিপোর্ট PDF'}</span><br>
-                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="${isGrid6Pdf ? 'text-success' : 'text-danger'} small text-truncate d-inline-block" style="max-width: 180px;"><i class="fa-solid fa-link me-1"></i> ${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
+                            <span class="badge ${isStockPdf ? 'bg-success' : 'bg-danger'} mb-1"><i class="fa-solid fa-file-pdf me-1"></i> ${isStockPdf ? 'স্টক রিপোর্ট PDF' : 'সেলস রিপোর্ট PDF'}</span><br>
+                            ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="${isStockPdf ? 'text-success' : 'text-danger'} small text-truncate d-inline-block" style="max-width: 180px;"><i class="fa-solid fa-link me-1"></i> ${escapeHtml(m.url)}</a>` : '<span class="text-muted small">কোনো লিংক নেই</span>'}
                         ` : `
                             <span class="badge bg-primary mb-1"><i class="fa-solid fa-image me-1"></i> ছবি ফাইল (${imgCount}টি)</span><br>
                             ${hasUrl ? `<a href="${escapeHtml(m.url)}" target="_blank" class="text-primary small text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(m.url)}</a>` : '<span class="text-muted small">গ্যালারি ছবি</span>'}
@@ -2380,7 +2486,7 @@
 
         function formatRoleBadge(roleStr) {
             const r = (roleStr || 'ALL').trim().toUpperCase();
-            if (!r || r === 'ALL' || r === 'PALL' || r === 'PALL+SALL' || r === 'EVERYONE') {
+            if (!r || r === 'ALL' || r === 'EVERYONE') {
                 return '<span class="badge bg-success bg-opacity-10 text-success border border-success"><i class="fa-solid fa-users me-1"></i>Everyone</span>';
             }
             if (r === 'SUPERVISOR') {
@@ -2401,7 +2507,7 @@
         function applyRolesToCheckboxes(roleString) {
             const r = (roleString || 'ALL').trim().toUpperCase();
             let selected = [];
-            if (!r || r === 'ALL' || r === 'EVERYONE' || r === 'PALL' || r === 'PALL+SALL') {
+            if (!r || r === 'ALL' || r === 'EVERYONE') {
                 selected = [...ALL_ROLES];
             } else if (r === 'SUPERVISOR') {
                 selected = [...SUPERVISOR_ROLES];
@@ -2632,8 +2738,8 @@
             if (group === 'grid-1' || group === 'grid_1') group = 'grid1';
             const isGrid1 = group === 'grid1';
             const isGrid5 = group === 'grid5';
-            const isGrid6 = group === 'grid6';
-            const isPdf = isGrid5 || isGrid6;
+            const isStock = group === 'grid_stock' || group === 'grid6';
+            const isPdf = isGrid5 || isStock;
             const boxGrid1 = document.getElementById('box-grid1-input');
             const boxPdf = document.getElementById('box-pdf-input');
             const boxImg = document.getElementById('box-image-input');
@@ -2650,7 +2756,7 @@
 
             const alertText = document.getElementById('pdf-alert-text');
             if (alertText) {
-                if (isGrid6) {
+                if (isStock) {
                     alertText.innerHTML = '<strong>GRID 6 (স্টক রিপোর্ট) - শুধুমাত্র PDF আপলোড:</strong><br>স্টক রিপোর্ট শুধুমাত্র PDF ফরম্যাটে অ্যাপে প্রদর্শিত হবে। নিচের বাটন থেকে পিসির PDF ফাইল সিলেক্ট করুন অথবা সরাসরি লিংক দিন।';
                 } else {
                     alertText.innerHTML = '<strong>GRID 5 (সেলস রিপোর্ট) - শুধুমাত্র PDF আপলোড:</strong><br>সেলস রিপোর্ট শুধুমাত্র PDF ফরম্যাটে অ্যাপে প্রদর্শিত হবে। নিচের বাটন থেকে পিসির PDF ফাইল সিলেক্ট করুন অথবা সরাসরি লিংক দিন।';
@@ -2660,9 +2766,10 @@
         }
 
         function openAddMenuModal() {
+            if (!requireSuperAdmin('নতুন ফাইল যোগ')) return;
             document.getElementById('modalMenuTitle').innerText = 'নতুন মেনু ফাইল যোগ করুন';
             document.getElementById('menu-id').value = '';
-            document.getElementById('menu-group').value = 'grid1';
+            document.getElementById('menu-group').value = 'grid2';
             document.getElementById('menu-title').value = '';
             document.getElementById('menu-grid1-icon').value = 'fa-folder';
             document.getElementById('menu-grid1-url').value = '';
@@ -2689,6 +2796,7 @@
         }
 
         function openEditMenuModal(id) {
+            if (!requireSuperAdmin('ফাইল এডিট')) return;
             const m = state.menus.find(it => it.id === id);
             if (!m) return;
 
@@ -2709,11 +2817,11 @@
             document.getElementById('menu-active').checked = (m.status || 'active') === 'active';
 
             clearSelectedPdf();
-            if ((group === 'grid5' || group === 'grid6') && m.url) {
+            if ((group === 'grid5' || group === 'grid_stock' || group === 'grid6') && m.url) {
                 const info = document.getElementById('pdf-file-info');
                 if (info) {
-                    const label = group === 'grid6' ? 'স্টক রিপোর্ট' : 'সেলস রিপোর্ট';
-                    const badgeClass = group === 'grid6' ? 'bg-success' : 'bg-danger';
+                    const label = (group === 'grid_stock' || group === 'grid6') ? 'স্টক রিপোর্ট' : 'সেলস রিপোর্ট';
+                    const badgeClass = (group === 'grid_stock' || group === 'grid6') ? 'bg-success' : 'bg-danger';
                     info.innerHTML = `<span class="badge ${badgeClass}"><i class="fa-solid fa-file-pdf me-1"></i> বর্তমান সংরক্ষিত ${label} PDF লিংক/ফাইল</span>`;
                 }
             } else if (group !== 'grid1') {
@@ -2729,6 +2837,7 @@
         }
 
         async function saveMenu() {
+            if (!requireSuperAdmin('ফাইল সংরক্ষণ')) return;
             const id = document.getElementById('menu-id').value.trim();
             const group = document.getElementById('menu-group').value;
             const title = document.getElementById('menu-title').value.trim();
@@ -2748,8 +2857,8 @@
 
             const isGrid1 = group === 'grid1' || group === 'grid-1' || group === 'grid_1';
             const isGrid5 = group === 'grid5';
-            const isGrid6 = group === 'grid6';
-            const isPdf = isGrid5 || isGrid6;
+            const isStock = group === 'grid_stock' || group === 'grid6';
+            const isPdf = isGrid5 || isStock;
             let images = [];
             let finalUrl = '';
             let finalIcon = 'fa-folder';
@@ -2811,6 +2920,7 @@
         }
 
         async function deleteMenuItem(id, title) {
+            if (!requireSuperAdmin('ফাইল ডিলিট')) return;
             if (!confirm(`আপনি কি "${title}" ফাইলটি ডিলিট করতে চান?`)) return;
 
             try {
@@ -2829,6 +2939,10 @@
         // ==================== 3. USERS ====================
         function renderUsersTable() {
             const tbody = document.getElementById('tbody-users');
+            if (!isUsersFullLoaded) {
+                loadFullUsersIfNeeded();
+                return;
+            }
             const search = document.getElementById('search-users').value.toLowerCase().trim();
 
             const keys = Object.keys(state.users);
@@ -2896,6 +3010,7 @@
         }
 
         function openAddUserModal() {
+            if (!requireSuperAdmin('ইউজার তৈরি')) return;
             document.getElementById('modalUserTitle').innerText = 'নতুন ইউজার একাউন্ট তৈরি';
             document.getElementById('u-empid').value = '';
             document.getElementById('u-empid').removeAttribute('readonly');
@@ -2913,6 +3028,7 @@
         }
 
         function openEditUserModal(key) {
+            if (!requireSuperAdmin('ইউজার এডিট')) return;
             const u = state.users[key];
             if (!u) return;
 
@@ -2933,6 +3049,7 @@
         }
 
         async function saveUser() {
+            if (!requireSuperAdmin('ইউজার সংরক্ষণ')) return;
             const empId = document.getElementById('u-empid').value.trim().toUpperCase();
             const fullName = document.getElementById('u-fullname').value.trim();
             const password = document.getElementById('u-password').value.trim();
@@ -2966,6 +3083,7 @@
         }
 
         async function deleteUser(key, name) {
+            if (!requireSuperAdmin('ইউজার ডিলিট')) return;
             if (!confirm(`আপনি কি "${name}" (${key}) একাউন্টটি ডিলিট করতে চান?`)) return;
 
             try {
@@ -3129,6 +3247,7 @@
         }
 
         function openAddCardModal() {
+            if (!requireSuperAdmin('কার্ড তৈরি')) return;
             document.getElementById('modalCardTitle').innerText = 'নতুন কার্ড যোগ করুন';
             document.getElementById('card-id').value = '';
             document.getElementById('card-title').value = '';
@@ -3145,6 +3264,7 @@
         }
 
         function openEditCardModal(id) {
+            if (!requireSuperAdmin('কার্ড এডিট')) return;
             const list = state.cards[state.currentCardType] || [];
             const c = list.find(it => it.id === id);
             if (!c) return;
@@ -3165,6 +3285,7 @@
         }
 
         async function saveCard() {
+            if (!requireSuperAdmin('কার্ড সংরক্ষণ')) return;
             const id = document.getElementById('card-id').value.trim();
             const title = document.getElementById('card-title').value.trim();
             const url = document.getElementById('card-url').value.trim();
@@ -3210,6 +3331,7 @@
         }
 
         async function deleteCard(id, title) {
+            if (!requireSuperAdmin('কার্ড মুছে ফেলা')) return;
             if (!confirm(`আপনি কি "${title}" কার্ডটি ডিলিট করতে চান?`)) return;
 
             try {
@@ -3285,6 +3407,7 @@
         }
 
         function openAddSliderModal() {
+            if (!requireSuperAdmin('স্লাইডার যোগ')) return;
             document.getElementById('modalSliderTitle').innerText = 'নতুন স্লাইডার ব্যানার যোগ';
             document.getElementById('slider-id').value = '';
             document.getElementById('slider-title').value = '';
@@ -3298,6 +3421,7 @@
         }
 
         function openEditSliderModal(id) {
+            if (!requireSuperAdmin('স্লাইডার এডিট')) return;
             const s = state.sliders.find(it => it.id === id);
             if (!s) return;
 
@@ -3314,6 +3438,7 @@
         }
 
         async function saveSlider() {
+            if (!requireSuperAdmin('স্লাইডার সংরক্ষণ')) return;
             const id = document.getElementById('slider-id').value.trim();
             const title = document.getElementById('slider-title').value.trim();
             const image = document.getElementById('slider-image').value.trim();
@@ -3345,6 +3470,7 @@
         }
 
         async function deleteSlider(id) {
+            if (!requireSuperAdmin('স্লাইডার মুছে ফেলা')) return;
             if (!confirm('স্লাইডারটি মুছে ফেলতে চান?')) return;
 
             try {
@@ -3385,6 +3511,7 @@
         }
 
         function openAddNoticeModal() {
+            if (!requireSuperAdmin('নোটিশ যোগ')) return;
             document.getElementById('modalNoticeTitle').innerText = 'নতুন স্ক্রোল নোটিশ যোগ';
             document.getElementById('notice-id').value = '';
             document.getElementById('notice-text').value = '';
@@ -3392,6 +3519,7 @@
         }
 
         function openEditNoticeModal(id) {
+            if (!requireSuperAdmin('নোটিশ এডিট')) return;
             const n = state.notices.find(it => it.id === id);
             if (!n) return;
 
@@ -3402,6 +3530,7 @@
         }
 
         async function saveNotice() {
+            if (!requireSuperAdmin('নোটিশ সংরক্ষণ')) return;
             const id = document.getElementById('notice-id').value.trim();
             const text = document.getElementById('notice-text').value.trim();
 
@@ -3432,6 +3561,7 @@
         }
 
         async function deleteNotice(id) {
+            if (!requireSuperAdmin('নোটিশ মুছে ফেলা')) return;
             if (!confirm('নোটিশটি ডিলিট করতে চান?')) return;
 
             try {
@@ -3506,6 +3636,7 @@
         }
 
         function openAddPopupModal() {
+            if (!requireSuperAdmin('পপআপ যোগ')) return;
             document.getElementById('modalPopupTitle').innerText = 'নতুন পপআপ নোটিশ যোগ';
             document.getElementById('pop-id').value = '';
             document.getElementById('pop-title').value = '';
@@ -3522,6 +3653,7 @@
         }
 
         function openEditPopupModal(id) {
+            if (!requireSuperAdmin('পপআপ এডিট')) return;
             const p = state.popups.find(it => it.id === id);
             if (!p) return;
 
@@ -3541,6 +3673,7 @@
         }
 
         async function togglePopupStatus(id, currentStatus) {
+            if (!requireSuperAdmin('পপআপ স্ট্যাটাস পরিবর্তন')) return;
             const newStatus = (currentStatus || 'active').toLowerCase() === 'active' ? 'off' : 'active';
             try {
                 await fetch(`${BASE_URL}/popup_notices/${id}.json`, {
@@ -3556,6 +3689,7 @@
         }
 
         async function savePopup() {
+            if (!requireSuperAdmin('পপআপ সংরক্ষণ')) return;
             const id = document.getElementById('pop-id').value.trim();
             const title = document.getElementById('pop-title').value.trim();
             const body = document.getElementById('pop-body').value.trim();
@@ -3590,6 +3724,7 @@
         }
 
         async function deletePopup(id) {
+            if (!requireSuperAdmin('পপআপ মুছে ফেলা')) return;
             if (!confirm('পপআপটি মুছে ফেলতে চান?')) return;
 
             try {

@@ -87,8 +87,7 @@ fun NotificationsDialog(
     val userNotifications = remember(notifications, userRole) {
         notifications.filter { notif ->
             notif.targetRole.equals("ALL", ignoreCase = true) ||
-                    notif.targetRole.contains(userRole, ignoreCase = true) ||
-                    notif.targetRole.contains("PALL", ignoreCase = true)
+                    notif.targetRole.contains(userRole, ignoreCase = true)
         }
     }
 
@@ -584,8 +583,8 @@ fun SendNotificationDialog(
                             DropdownMenuItem(
                                 text = { Text(label, fontSize = 13.sp) },
                                 onClick = {
-                                    targetRole = key
                                     targetExpanded = false
+                                    targetRole = key
                                 }
                             )
                         }
@@ -619,8 +618,8 @@ fun SendNotificationDialog(
                             DropdownMenuItem(
                                 text = { Text(label, fontSize = 13.sp) },
                                 onClick = {
-                                    type = key
                                     typeExpanded = false
+                                    type = key
                                 }
                             )
                         }
@@ -643,7 +642,11 @@ fun SendNotificationDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     OutlinedButton(
-                        onClick = onDismiss,
+                        onClick = {
+                            targetExpanded = false
+                            typeExpanded = false
+                            onDismiss()
+                        },
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Text("বাতিল")
@@ -656,6 +659,8 @@ fun SendNotificationDialog(
                             } else if (message.isBlank()) {
                                 errorText = "অনুগ্রহ করে বার্তা বিবরণ লিখুন।"
                             } else {
+                                targetExpanded = false
+                                typeExpanded = false
                                 onSend(title.trim(), message.trim(), targetRole, type, targetUrl.trim())
                             }
                         },

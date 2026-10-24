@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Toastify CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <!-- PDF.js library for 100% Mobile & Desktop in-app PDF rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <style>
         :root {
@@ -910,10 +912,10 @@
                         </button>
                     </div>
 
-                    <!-- Direct Link to Admin Console (Super Admin Only) -->
-                    <a href="index.html" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-1 ms-1 d-none" id="nav-admin-link" title="অ্যাডমিন কনসোল খুলুন">
+                    <!-- Direct Link to Admin Console -->
+                    <a href="index.html" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-1 ms-1" id="nav-admin-link" title="অ্যাডমিন কনসোল খুলুন">
                         <i class="fa-solid fa-shield-halved"></i>
-                        <span class="d-none d-sm-inline">অ্যাডমিন</span>
+                        <span class="d-none d-sm-inline">অ্যাডমিন প্যানেল</span>
                     </a>
                 </div>
             </div>
@@ -1008,8 +1010,8 @@
                 <button class="filter-pill" onclick="setGridFilter('grid5', this)">
                     <i class="fa-solid fa-file-pdf me-1 text-danger"></i> সেলস রিপোর্ট PDF (Grid 5)
                 </button>
-                <button class="filter-pill" onclick="setGridFilter('grid6', this)">
-                    <i class="fa-solid fa-chart-simple me-1 text-success"></i> স্টক রিপোর্ট PDF (Grid 6)
+                <button class="filter-pill" onclick="setGridFilter('grid_stock', this)">
+                    <i class="fa-solid fa-chart-simple me-1 text-success"></i> স্টক রিপোর্ট PDF (Stock Report)
                 </button>
             </div>
 
@@ -1163,8 +1165,55 @@
                         <p class="text-light small mt-2">ডকুমেন্ট / ছবি লোড হচ্ছে...</p>
                     </div>
 
-                    <!-- Iframe for Web / PDF -->
+                    <!-- Iframe for Web / External Links -->
                     <iframe id="viewer-iframe" class="viewer-frame d-none w-100 flex-grow-1" style="display: none; border: none; background: #ffffff;"></iframe>
+
+                    <!-- Native PDF.js Mobile & Desktop Viewer Container -->
+                    <div id="viewer-pdf" class="d-none w-100 flex-grow-1 position-relative d-flex flex-column h-100" style="display: none; background: #0f172a; min-height: 0;">
+                        <!-- PDF Quick Actions Bar -->
+                        <div class="d-flex justify-content-between align-items-center px-2 px-md-3 py-2 bg-dark bg-opacity-90 border-bottom border-secondary border-opacity-25 text-white small flex-wrap gap-2" style="min-height: 48px; z-index: 10;">
+                            <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                <span class="badge bg-danger rounded-pill px-2 py-1"><i class="fa-solid fa-file-pdf me-1"></i>PDF.js</span>
+                                <span id="viewer-pdf-page-indicator" class="badge bg-secondary bg-opacity-50 text-light rounded-pill px-2 py-1" style="font-size: 11px;">লোড হচ্ছে...</span>
+                                <span id="viewer-pdf-filename" class="text-truncate fw-semibold text-light small d-none d-sm-inline" style="max-width: 200px;">ডকুমেন্ট</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1 gap-sm-2 ms-auto">
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="zoomPdfViewer(0.8)" title="জুম আউট" style="width: 30px; height: 30px;">
+                                    <i class="fa-solid fa-magnifying-glass-minus"></i>
+                                </button>
+                                <span id="viewer-pdf-zoom-label" class="small fw-bold px-1 text-info text-nowrap" style="min-width: 42px; text-align: center; font-size: 11px;">১০০%</span>
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="zoomPdfViewer(1.25)" title="জুম ইন" style="width: 30px; height: 30px;">
+                                    <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-2 py-1 border d-flex align-items-center gap-1" onclick="fitPdfWidth()" title="স্ক্রিন ফিট" style="font-size: 11px; height: 28px;">
+                                    <i class="fa-solid fa-arrows-left-right-to-line"></i>
+                                    <span class="d-none d-md-inline">ফিট উইডথ</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-1 border-0" onclick="togglePdfFullscreen()" title="পূর্ণ পর্দা" style="width: 30px; height: 30px;">
+                                    <i id="pdf-fullscreen-icon" class="fa-solid fa-expand"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 py-1 fw-semibold d-flex align-items-center gap-1 shadow-sm" onclick="openCurrentUrlExternal()" title="ডাউনলোড" style="height: 28px;">
+                                    <i class="fa-solid fa-download"></i>
+                                    <span class="d-none d-sm-inline">ডাউনলোড</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Scrollable Continuous PDF Pages Container -->
+                        <div id="viewer-pdf-pages-scroll" class="flex-grow-1 position-relative w-100 h-100 overflow-auto p-2 p-md-3 text-center" style="min-height: 0; background: #1e293b; -webkit-overflow-scrolling: touch;">
+                            <div id="viewer-pdf-pages-wrapper" class="d-flex flex-column align-items-center gap-3 mx-auto" style="max-width: 100%;">
+                                <!-- Rendered HTML5 Canvas pages will be inserted here -->
+                            </div>
+                            <div id="viewer-pdf-error-box" class="d-none py-5 text-center text-light">
+                                <i class="fa-solid fa-triangle-exclamation fa-3x text-warning mb-3"></i>
+                                <h5 class="fw-bold">PDF পেজ সরাসরি রেন্ডার করা যায়নি</h5>
+                                <p class="text-light text-opacity-75 small mb-3">ফাইলটি সরাসরি ডাউনলোড করে দেখতে পারেন।</p>
+                                <button type="button" class="btn btn-danger rounded-pill px-4" onclick="openCurrentUrlExternal()">
+                                    <i class="fa-solid fa-download me-1"></i> PDF ডাউনলোড করুন
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Gallery Container for Images (True Portrait & Landscape Center View) -->
                     <div id="viewer-gallery" class="p-0 text-center d-none position-relative w-100 flex-grow-1" style="display: none; min-height: 0; background: #090d16; overflow: hidden; height: 100%;">
@@ -1398,6 +1447,15 @@
                     gallery.classList.add('d-none');
                     gallery.style.setProperty('display', 'none', 'important');
                 }
+                const pdfContainer = document.getElementById('viewer-pdf');
+                if (pdfContainer) {
+                    pdfContainer.classList.add('d-none');
+                    pdfContainer.style.setProperty('display', 'none', 'important');
+                }
+                const pagesWrapper = document.getElementById('viewer-pdf-pages-wrapper');
+                if (pagesWrapper) pagesWrapper.innerHTML = '';
+                currentPdfDoc = null;
+                currentPdfRenderToken++;
                 const carouselInner = document.getElementById('gallery-carousel-inner');
                 if (carouselInner) carouselInner.innerHTML = '';
                 portalState.currentViewerType = '';
@@ -1558,7 +1616,7 @@
             document.getElementById('db-status-label').innerText = 'সিঙ্ক হচ্ছে...';
 
             try {
-                const [sbRes, mRes, slRes, nRes, pRes, prodRes, trainRes, targetRes, legacyTrainRes, legacyTargetRes, notifRes, uRes] = await Promise.all([
+                const [sbRes, mRes, slRes, nRes, pRes, prodRes, trainRes, targetRes, legacyTrainRes, legacyTargetRes, notifRes] = await Promise.all([
                     fetch(`${BASE_URL}/sidebar_menus.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/menus.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/sliders.json`).then(r => r.json()).catch(() => null),
@@ -1569,8 +1627,7 @@
                     fetch(`${BASE_URL}/target_sheets.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/product_training_cards.json`).then(r => r.json()).catch(() => null),
                     fetch(`${BASE_URL}/product_target_sheets.json`).then(r => r.json()).catch(() => null),
-                    fetch(`${BASE_URL}/notifications.json`).then(r => r.json()).catch(() => null),
-                    fetch(`${BASE_URL}/users.json`).then(r => r.json()).catch(() => null)
+                    fetch(`${BASE_URL}/notifications.json`).then(r => r.json()).catch(() => null)
                 ]);
 
                 // 1. Sidebar Menus
@@ -1673,7 +1730,7 @@
                 }
 
                 // 10. Users
-                portalState.users = uRes || {};
+                portalState.users = portalState.users || {};
 
                 // Render all sections
                 renderAllComponents();
@@ -1685,9 +1742,9 @@
                 triggerAutoPopupNotice();
 
             } catch (err) {
-                console.error(err);
+                console.error('fetchWebsiteData error:', err);
                 document.getElementById('db-status-label').innerText = 'অফলাইন / ত্রুটি';
-                showToast('ডাটাবেজ থেকে ডাটা লোড করতে সমস্যা হয়েছে!', true);
+                showToast('ডাটাবেজ থেকে ডাটা লোড করতে সমস্যা হয়েছে: ' + (err.message || ''), true);
             } finally {
                 if (spinIcon) spinIcon.classList.remove('fa-spin');
             }
@@ -1828,12 +1885,20 @@
 
             // Filter by Grid
             if (portalState.activeGridFilter !== 'ALL') {
-                list = list.filter(m => (m.group || 'grid1') === portalState.activeGridFilter);
+                if (portalState.activeGridFilter === 'grid_stock' || portalState.activeGridFilter === 'grid6') {
+                    list = list.filter(m => m.group === 'grid_stock' || m.group === 'grid6');
+                } else {
+                    list = list.filter(m => (m.group || 'grid1') === portalState.activeGridFilter);
+                }
             }
 
-            // Filter by Month
+            // Filter by Month (Flexible prefix match)
             if (portalState.activeMonthFilter !== 'ALL') {
-                list = list.filter(m => (m.month || '').toUpperCase() === portalState.activeMonthFilter);
+                const targetMon = portalState.activeMonthFilter.toUpperCase();
+                list = list.filter(m => {
+                    const mon = (m.month || '').toUpperCase();
+                    return mon === targetMon || mon.startsWith(targetMon) || (targetMon.length >= 3 && mon.includes(targetMon));
+                });
             }
 
             // Filter by Search Query
@@ -1863,13 +1928,19 @@
 
             let html = '';
             list.forEach(m => {
-                const isGrid5Pdf = (m.group || '') === 'grid5';
-                const isGrid6Pdf = (m.group || '') === 'grid6';
-                const isPdf = isGrid5Pdf || isGrid6Pdf || (m.url && m.url.toLowerCase().includes('.pdf'));
+                const itemImages = getItemImages(m);
                 const hasUrl = m.url && m.url.trim().length > 0;
-                const images = Array.isArray(m.images) ? m.images : [];
-                const imgCount = images.length;
                 const effectiveUrl = resolveGoUrl(m.url);
+
+                // 1. Image Check (User requirement: ইমেজ থাকলে ইমেজ ভিউয়ার হবে)
+                const hasItemImages = itemImages.length > 0 || (hasUrl && isImageUrl(effectiveUrl)) || (m.icon && isImageUrl(m.icon));
+                const allImages = hasItemImages ? (itemImages.length > 0 ? itemImages : [hasUrl && isImageUrl(effectiveUrl) ? effectiveUrl : m.icon].filter(Boolean)) : [];
+                const imgCount = allImages.length;
+
+                // 2. PDF Check (User requirement: আর যেগুলা পিডিএফ সেগুলো পিডিএফ ভিউয়ার এর মাধ্যমে ভিউ হবে)
+                const isGrid5Pdf = (m.group || '') === 'grid5';
+                const isStockPdf = (m.group || '') === 'grid_stock' || (m.group || '') === 'grid6';
+                const isPdf = !hasItemImages && (isPdfUrl(effectiveUrl) || ((isGrid5Pdf || isStockPdf) && hasUrl) || (m.icon && m.icon.toLowerCase().includes('pdf')));
 
                 let iconClass = m.icon || (isPdf ? 'fa-file-pdf' : (imgCount > 0 ? 'fa-images' : 'fa-folder'));
                 if (!iconClass.startsWith('fa-') && !iconClass.startsWith('fa ')) iconClass = 'fa-' + iconClass;
@@ -1903,10 +1974,10 @@
                                     ${m.month ? `
                                         <span class="badge-soft badge-soft-primary">${escapeHtml(m.month)}</span>
                                     ` : ''}
-                                    ${isPdf ? `
-                                        <span class="badge-soft badge-soft-danger"><i class="fa-solid fa-file-pdf me-1"></i>PDF ডকুমেন্ট</span>
-                                    ` : (imgCount > 0 ? `
+                                    ${imgCount > 0 ? `
                                         <span class="badge-soft badge-soft-primary"><i class="fa-solid fa-image me-1"></i>${imgCount}টি ছবি</span>
+                                    ` : (isPdf ? `
+                                        <span class="badge-soft badge-soft-danger"><i class="fa-solid fa-file-pdf me-1"></i>PDF ডকুমেন্ট</span>
                                     ` : `
                                         <span class="badge-soft badge-soft-success"><i class="fa-solid fa-globe me-1"></i>ওয়েব লিংক</span>
                                     `)}
@@ -1915,21 +1986,28 @@
 
                             <div class="menu-card-footer">
                                 ${imgCount > 0 ? `
-                                    <button class="btn btn-primary btn-sm rounded-pill px-3 w-100 fw-semibold" onclick="openGalleryViewer('${escapeHtml(m.title)}', ${JSON.stringify(images).replace(/"/g, '&quot;')})">
-                                        <i class="fa-solid fa-images me-1"></i> ছবি গ্যালারি (${imgCount})
+                                    <button class="btn btn-primary btn-sm rounded-pill px-3 w-100 fw-semibold" onclick="openGalleryViewer('${escapeHtml(m.title)}', ${JSON.stringify(allImages).replace(/"/g, '&quot;')})">
+                                        <i class="fa-solid fa-images me-1"></i> ছবি ভিউয়ার (${imgCount})
+                                    </button>
+                                ` : (isPdf ? `
+                                    <button class="btn btn-outline-danger btn-sm rounded-pill px-3 flex-grow-1 fw-semibold" onclick="openPdfViewer('${escapeHtml(m.title)}', '${escapeHtml(effectiveUrl)}')">
+                                        <i class="fa-solid fa-file-pdf me-1"></i> PDF ভিউয়ার
+                                    </button>
+                                    <button type="button" class="btn btn-light border btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="ডাউনলোড" onclick="portalState.currentViewerUrl='${escapeHtml(effectiveUrl)}'; openCurrentUrlExternal();">
+                                        <i class="fa-solid fa-download"></i>
                                     </button>
                                 ` : (hasUrl ? `
                                     <button class="btn btn-outline-primary btn-sm rounded-pill px-3 flex-grow-1 fw-semibold" onclick="handleItemClick('${escapeHtml(m.title)}', '${escapeHtml(effectiveUrl)}')">
-                                        <i class="fa-solid fa-eye me-1"></i> ভিউ করুন
+                                        <i class="fa-solid fa-globe me-1"></i> ওয়েব ভিউয়ার
                                     </button>
-                                    <a href="${escapeHtml(effectiveUrl)}" target="_blank" class="btn btn-light border btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="সরাসরি খুলুন">
+                                    <a href="${escapeHtml(effectiveUrl)}" target="_blank" class="btn btn-light border btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="নতুন ট্যাবে খুলুন">
                                         <i class="fa-solid fa-arrow-up-right-from-square"></i>
                                     </a>
                                 ` : `
                                     <button class="btn btn-light btn-sm rounded-pill px-3 w-100 text-muted" disabled>
                                         কোনো লিংক নেই
                                     </button>
-                                `)}
+                                `))}
                             </div>
                         </div>
                     </div>
@@ -2018,16 +2096,29 @@
 
         function isImageUrl(url) {
             if (!url) return false;
-            const u = String(url).trim().toLowerCase();
-            return u.startsWith('data:image/') ||
-                   /\.(jpeg|jpg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(u) ||
-                   (u.includes('firebasestorage.googleapis.com') && (u.includes('alt=media') || !u.includes('.pdf'))) ||
-                   u.includes('drive.google.com') ||
-                   u.includes('googleusercontent.com') ||
-                   u.includes('images.unsplash.com') ||
-                   u.includes('i.ibb.co') ||
-                   u.includes('imgur.com') ||
-                   u.includes('placehold.co');
+            const u = String(url).trim();
+            if (u.startsWith('data:image/')) return true;
+            if (u.startsWith('/9j/') || u.startsWith('iVBORw0KGgo') || u.startsWith('R0lGOD')) return true;
+            const lower = u.toLowerCase();
+            return /\.(jpeg|jpg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(lower) ||
+                   (lower.includes('firebasestorage.googleapis.com') && (lower.includes('alt=media') || !lower.includes('.pdf'))) ||
+                   lower.includes('drive.google.com') ||
+                   lower.includes('googleusercontent.com') ||
+                   lower.includes('images.unsplash.com') ||
+                   lower.includes('i.ibb.co') ||
+                   lower.includes('imgur.com') ||
+                   lower.includes('placehold.co');
+        }
+
+        function isPdfUrl(url) {
+            if (!url) return false;
+            const u = String(url).trim();
+            // CRITICAL: Images must never be flagged as PDF
+            if (isImageUrl(u)) return false;
+            if (u.startsWith('data:application/pdf')) return true;
+            if (u.startsWith('%PDF-') || u.startsWith('JVBERi0')) return true;
+            const lower = u.toLowerCase();
+            return /\.pdf(\?.*)?$/i.test(lower) || lower.includes('/pdf') || lower.includes('format=pdf') || lower.includes('type=pdf');
         }
 
         function getItemImages(item) {
@@ -2270,29 +2361,43 @@
         function handleItemClick(title, url) {
             if (!url) return;
 
-            // Direct image URL handling - show in rich image gallery instead of broken iframe
+            // 1. Direct image handling (User requirement: ইমেজ থাকলে ইমেজ ভিউয়ার হবে)
             if (isImageUrl(url)) {
                 openGalleryViewer(title, [url]);
                 return;
             }
 
+            // 2. Direct PDF handling (User requirement: আর যেগুলা পিডিএফ সেগুলো পিডিএফ ভিউয়ার এর মাধ্যমে ভিউ হবে)
+            if (isPdfUrl(url)) {
+                openPdfViewer(title, url);
+                return;
+            }
+
+            // 3. Website HTTP/HTTPS handling (User requirement: website http ইউ আর এলো ওপেন হবে)
             portalState.currentViewerType = 'doc';
             portalState.currentViewerUrl = url;
             document.getElementById('viewer-modal-title').innerText = title;
             document.getElementById('viewer-modal-subtitle').innerText = url;
             document.getElementById('viewer-action-label').innerText = 'নতুন ট্যাবে খুলুন';
 
-            const isPdf = url.toLowerCase().includes('.pdf');
             const iconBadge = document.getElementById('viewer-icon-badge');
-            iconBadge.innerHTML = isPdf ? '<i class="fa-solid fa-file-pdf"></i>' : '<i class="fa-solid fa-globe"></i>';
+            if (iconBadge) {
+                iconBadge.className = 'badge bg-success rounded-pill p-2';
+                iconBadge.innerHTML = '<i class="fa-solid fa-globe"></i>';
+            }
 
             const iframe = document.getElementById('viewer-iframe');
             const gallery = document.getElementById('viewer-gallery');
+            const pdfContainer = document.getElementById('viewer-pdf');
             const loader = document.getElementById('viewer-loader');
 
             if (gallery) {
                 gallery.classList.add('d-none');
                 gallery.style.setProperty('display', 'none', 'important');
+            }
+            if (pdfContainer) {
+                pdfContainer.classList.add('d-none');
+                pdfContainer.style.setProperty('display', 'none', 'important');
             }
             if (iframe) {
                 iframe.classList.add('d-none');
@@ -2300,26 +2405,217 @@
             }
             if (loader) loader.classList.remove('d-none');
 
-            // If PDF remote URL, use Google Docs Viewer for seamless web iframe rendering
-            let effectiveEmbedUrl = url;
-            if (isPdf && (url.startsWith('http://') || url.startsWith('https://')) && !url.includes('docs.google.com')) {
-                effectiveEmbedUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
-            }
-
             if (iframe) {
                 iframe.onload = onIframeLoaded;
-                iframe.src = effectiveEmbedUrl;
+                iframe.src = url;
             }
             viewerModal.show();
         }
 
+        let currentPdfDoc = null;
+        let currentPdfScale = 1.0;
+        let currentPdfBaseScale = 1.0;
+        let currentPdfRenderToken = 0;
+
+        async function openPdfViewer(title, url) {
+            if (!url) return;
+            portalState.currentViewerType = 'pdf';
+            portalState.currentViewerUrl = url;
+
+            document.getElementById('viewer-modal-title').innerText = title || 'PDF রিপোর্ট ও ডকুমেন্ট';
+            document.getElementById('viewer-modal-subtitle').innerText = 'Monico One PDF ভিউয়ার';
+            document.getElementById('viewer-action-label').innerText = 'ডাউনলোড';
+            const iconBadge = document.getElementById('viewer-icon-badge');
+            if (iconBadge) {
+                iconBadge.className = 'badge bg-danger rounded-pill p-2';
+                iconBadge.innerHTML = '<i class="fa-solid fa-file-pdf"></i>';
+            }
+
+            const gallery = document.getElementById('viewer-gallery');
+            const iframe = document.getElementById('viewer-iframe');
+            const pdfContainer = document.getElementById('viewer-pdf');
+            const loader = document.getElementById('viewer-loader');
+            const pagesWrapper = document.getElementById('viewer-pdf-pages-wrapper');
+            const errorBox = document.getElementById('viewer-pdf-error-box');
+            const pageIndicator = document.getElementById('viewer-pdf-page-indicator');
+            const pdfFilename = document.getElementById('viewer-pdf-filename');
+
+            if (gallery) {
+                gallery.classList.add('d-none');
+                gallery.style.setProperty('display', 'none', 'important');
+            }
+            if (iframe) {
+                iframe.onload = null;
+                iframe.removeAttribute('src');
+                iframe.classList.add('d-none');
+                iframe.style.setProperty('display', 'none', 'important');
+            }
+            if (pdfContainer) {
+                pdfContainer.classList.remove('d-none');
+                pdfContainer.style.setProperty('display', 'flex', 'important');
+            }
+            if (loader) loader.classList.remove('d-none');
+            if (errorBox) errorBox.classList.add('d-none');
+            if (pagesWrapper) pagesWrapper.innerHTML = '';
+            if (pageIndicator) pageIndicator.innerText = 'লোড হচ্ছে...';
+            if (pdfFilename) pdfFilename.innerText = title || 'ডকুমেন্ট.pdf';
+
+            currentPdfScale = 1.0;
+            currentPdfBaseScale = 1.0;
+            updatePdfZoomLabel();
+
+            viewerModal.show();
+
+            const thisToken = ++currentPdfRenderToken;
+
+            try {
+                // Ensure PDF.js is loaded
+                if (typeof pdfjsLib === 'undefined' && window['pdfjs-dist/build/pdf']) {
+                    window.pdfjsLib = window['pdfjs-dist/build/pdf'];
+                }
+                if (typeof pdfjsLib === 'undefined') {
+                    throw new Error('PDF.js লাইব্রেরি লোড হয়নি');
+                }
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+                let rawData = url.trim();
+                let loadingTask = null;
+
+                if (rawData.startsWith('data:application/pdf') || rawData.startsWith('JVBERi0') || (rawData.includes(';base64,') && !rawData.startsWith('http'))) {
+                    // Extract and sanitize base64
+                    let b64 = rawData.includes(',') ? rawData.split(',')[1] : rawData;
+                    b64 = b64.trim().replace(/\s+/g, '').replace(/%2B/gi, '+').replace(/%2F/gi, '/').replace(/%3D/gi, '=');
+                    const binaryStr = atob(b64);
+                    const len = binaryStr.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryStr.charCodeAt(i);
+                    }
+                    loadingTask = pdfjsLib.getDocument({ data: bytes });
+                } else {
+                    // Remote HTTP/HTTPS URL
+                    loadingTask = pdfjsLib.getDocument({
+                        url: rawData,
+                        withCredentials: false
+                    });
+                }
+
+                currentPdfDoc = await loadingTask.promise;
+
+                if (thisToken !== currentPdfRenderToken) return;
+
+                if (!currentPdfDoc || currentPdfDoc.numPages === 0) {
+                    throw new Error('কোনো পেজ পাওয়া যায়নি');
+                }
+
+                if (pageIndicator) {
+                    pageIndicator.innerText = `মোট ${currentPdfDoc.numPages}টি পেজ`;
+                }
+
+                // Render page 1 first to compute base scale fitting container width
+                const firstPage = await currentPdfDoc.getPage(1);
+                const scrollEl = document.getElementById('viewer-pdf-pages-scroll');
+                const availableWidth = Math.max(300, (scrollEl ? scrollEl.clientWidth - 32 : window.innerWidth - 32));
+                const unscaledViewport = firstPage.getViewport({ scale: 1.0 });
+                currentPdfBaseScale = Math.min(2.5, Math.max(0.5, availableWidth / unscaledViewport.width));
+
+                await renderAllPdfPages(thisToken);
+
+                if (loader) loader.classList.add('d-none');
+            } catch (err) {
+                console.error('PDF.js render error:', err);
+                if (thisToken !== currentPdfRenderToken) return;
+                if (loader) loader.classList.add('d-none');
+                if (pageIndicator) pageIndicator.innerText = 'ত্রুটি';
+                if (errorBox) errorBox.classList.remove('d-none');
+            }
+        }
+
+        async function renderAllPdfPages(token) {
+            if (!currentPdfDoc) return;
+            const pagesWrapper = document.getElementById('viewer-pdf-pages-wrapper');
+            if (!pagesWrapper) return;
+            pagesWrapper.innerHTML = '';
+
+            const numPages = currentPdfDoc.numPages;
+            const dpr = window.devicePixelRatio || 1;
+            const effectiveScale = currentPdfBaseScale * currentPdfScale;
+
+            for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                if (token !== currentPdfRenderToken) return;
+
+                const page = await currentPdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: effectiveScale });
+
+                const pageCard = document.createElement('div');
+                pageCard.className = 'pdf-page-card bg-white rounded-3 shadow-sm p-1 p-md-2 position-relative';
+                pageCard.style.maxWidth = '100%';
+
+                const pageBadge = document.createElement('div');
+                pageBadge.className = 'text-center small text-muted py-1 border-bottom mb-1 fw-bold';
+                pageBadge.style.fontSize = '11px';
+                pageBadge.innerText = `পৃষ্ঠা ${pageNum} / ${numPages}`;
+
+                const canvas = document.createElement('canvas');
+                canvas.className = 'pdf-page-canvas rounded-2 w-100 d-block';
+                canvas.width = Math.floor(viewport.width * dpr);
+                canvas.height = Math.floor(viewport.height * dpr);
+                canvas.style.maxWidth = '100%';
+                canvas.style.height = 'auto';
+
+                pageCard.appendChild(pageBadge);
+                pageCard.appendChild(canvas);
+                pagesWrapper.appendChild(pageCard);
+
+                const ctx = canvas.getContext('2d');
+                ctx.scale(dpr, dpr);
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                await page.render(renderContext).promise;
+            }
+        }
+
+        function zoomPdfViewer(factor) {
+            if (!currentPdfDoc) return;
+            const newScale = Math.min(3.0, Math.max(0.5, currentPdfScale * factor));
+            if (Math.abs(newScale - currentPdfScale) > 0.05) {
+                currentPdfScale = newScale;
+                updatePdfZoomLabel();
+                const thisToken = ++currentPdfRenderToken;
+                renderAllPdfPages(thisToken);
+            }
+        }
+
+        function fitPdfWidth() {
+            if (!currentPdfDoc) return;
+            currentPdfScale = 1.0;
+            updatePdfZoomLabel();
+            const thisToken = ++currentPdfRenderToken;
+            renderAllPdfPages(thisToken);
+        }
+
+        function updatePdfZoomLabel() {
+            const zoomLabel = document.getElementById('viewer-pdf-zoom-label');
+            if (zoomLabel) {
+                zoomLabel.innerText = `${Math.round(currentPdfScale * 100)}%`;
+            }
+        }
+
+        function togglePdfFullscreen() {
+            toggleImmersiveFullscreen();
+        }
+
         function onIframeLoaded() {
             const gallery = document.getElementById('viewer-gallery');
+            const pdfContainer = document.getElementById('viewer-pdf');
             const iframe = document.getElementById('viewer-iframe');
             const loader = document.getElementById('viewer-loader');
 
-            // CRITICAL: If gallery is active or current type is image or iframe is empty/about:blank, never show iframe!
-            if (portalState.currentViewerType !== 'doc' || !gallery || !gallery.classList.contains('d-none')) {
+            // CRITICAL: If gallery or pdf is active, never show iframe!
+            if (portalState.currentViewerType !== 'doc' || (gallery && !gallery.classList.contains('d-none')) || (pdfContainer && !pdfContainer.classList.contains('d-none'))) {
                 if (iframe) {
                     iframe.classList.add('d-none');
                     iframe.style.setProperty('display', 'none', 'important');
@@ -2614,7 +2910,7 @@
         function openCurrentUrlExternal() {
             if (!portalState.currentViewerUrl) return;
             const url = portalState.currentViewerUrl;
-            const title = document.getElementById('viewer-modal-title').innerText || 'MonicoOne_Image';
+            const title = document.getElementById('viewer-modal-title').innerText || 'MonicoOne_Document';
 
             if (url.startsWith('data:image/')) {
                 try {
@@ -2642,6 +2938,29 @@
                     if (win) {
                         win.document.write(`<title>${escapeHtml(title)}</title><body style="margin:0;background:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${escapeHtml(url)}" style="max-width:100%;max-height:100vh;object-fit:contain;"></body>`);
                     }
+                }
+            } else if (url.startsWith('data:application/pdf') || url.startsWith('JVBERi0')) {
+                try {
+                    const rawBase64 = url.includes(',') ? url.split(',')[1] : url;
+                    const bstr = atob(rawBase64);
+                    let n = bstr.length;
+                    const u8arr = new Uint8Array(n);
+                    while (n--) {
+                        u8arr[n] = bstr.charCodeAt(n);
+                    }
+                    const blob = new Blob([u8arr], { type: 'application/pdf' });
+                    const blobUrl = URL.createObjectURL(blob);
+
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = `${title.replace(/[^a-zA-Z0-9_\u0980-\u09FF]/g, '_') || 'document'}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    showToast('PDF ফাইল ডাউনলোড শুরু হয়েছে।');
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 20000);
+                } catch(e) {
+                    window.open(url, '_blank');
                 }
             } else {
                 window.open(url, '_blank');
@@ -2777,24 +3096,59 @@
             loginModal.show();
         }
 
-        function handleUserLogin(e) {
+        async function handleUserLogin(e) {
             e.preventDefault();
             const empId = document.getElementById('login-emp-id').value.trim();
             const pass = document.getElementById('login-emp-pass').value.trim();
+            const submitBtn = e.target.querySelector('button[type="submit"]');
 
-            if (!portalState.users || !Object.keys(portalState.users).length) {
-                showToast('ইউজার ডাটাবেজ এখনও লোড হচ্ছে, অনুগ্রহ করে একটু অপেক্ষা করুন...', true);
+            // 1. Super Admin Hardcoded Fallback
+            if (empId.toUpperCase() === 'KS' && pass === 'Monica Ku') {
+                const ksAdmin = {
+                    employeeId: 'KS',
+                    fullName: 'Super Admin KS',
+                    role: 'SUPER_ADMIN',
+                    status: 'active'
+                };
+                portalState.currentUser = ksAdmin;
+                localStorage.setItem('MONICO_LOGGED_USER', JSON.stringify(ksAdmin));
+                loginModal.hide();
+                updateUserUI();
+                showToast('সুপার অ্যাডমিন হিসেবে সফলভাবে লগইন করেছেন!');
                 return;
+            }
+
+            // 2. Fetch users on demand if not yet loaded
+            if (!portalState.users || !Object.keys(portalState.users).length) {
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>যাচাই করা হচ্ছে...';
+                }
+                try {
+                    const res = await fetch(`${BASE_URL}/users.json`);
+                    portalState.users = await res.json() || {};
+                } catch(err) {
+                    console.error('Login user fetch failed:', err);
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket me-2"></i>লগইন সম্পন্ন করুন';
+                    }
+                }
             }
 
             // Find matching user in Firebase users table
             let matchedUser = null;
-            Object.keys(portalState.users).forEach(k => {
-                const u = portalState.users[k];
-                if ((u.employeeId || k).toLowerCase() === empId.toLowerCase() && String(u.password).trim() === pass) {
-                    matchedUser = { employeeId: u.employeeId || k, ...u };
-                }
-            });
+            if (portalState.users) {
+                Object.keys(portalState.users).forEach(k => {
+                    const u = portalState.users[k];
+                    if (u && typeof u === 'object') {
+                        if ((u.employeeId || k).toLowerCase() === empId.toLowerCase() && String(u.password).trim() === pass) {
+                            matchedUser = { employeeId: u.employeeId || k, ...u };
+                        }
+                    }
+                });
+            }
 
             if (matchedUser) {
                 portalState.currentUser = matchedUser;

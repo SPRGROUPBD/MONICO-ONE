@@ -11,12 +11,12 @@ data class User(
 
 data class MenuItem(
     val id: String = "",
-    val group: String = "grid1", // grid1, grid2, grid3, grid4, grid5, grid6
+    val group: String = "grid2", // grid1 (Primary), grid2 (Bonus), grid3 (Circular), grid4 (Salary), grid5 (Sales PDF), grid_stock (Stock PDF), grid6 (Target)
     val title: String = "",
     val icon: String = "fa-folder",
     val url: String = "",
     val images: List<String> = emptyList(),
-    val allowedRole: String = "PALL",
+    val allowedRole: String = "ALL",
     val month: String = "",
     val date: String = "",
     val color: String = "",

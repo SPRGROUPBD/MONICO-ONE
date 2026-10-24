@@ -15,10 +15,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
@@ -43,7 +41,6 @@ import com.example.R
 import com.example.data.model.*
 import com.example.data.repository.MonicoRepository
 import com.example.ui.theme.*
-import com.example.utils.IconUtils
 import com.example.utils.ImageUtils
 import com.example.utils.PdfUtils
 import kotlinx.coroutines.delay
@@ -81,6 +78,7 @@ fun DashboardScreen(
     var showNotificationsDialog by remember { mutableStateOf(initialShowNotifications) }
     var showPermissionsDialog by remember { mutableStateOf(false) }
     var activePopupNotice by remember { mutableStateOf<PopupNotice?>(null) }
+    var dismissedPopupId by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
     var selectedMonth by remember { mutableStateOf("ALL") }
@@ -103,8 +101,7 @@ fun DashboardScreen(
         val role = userRole
         notifications.count { notif ->
             val matches = notif.targetRole.equals("ALL", ignoreCase = true) ||
-                    notif.targetRole.contains(role, ignoreCase = true) ||
-                    notif.targetRole.contains("PALL", ignoreCase = true)
+                    notif.targetRole.contains(role, ignoreCase = true)
             val isRead = readNotificationIds.contains(notif.id) || (notif.readBy[emp] == true)
             matches && !isRead
         }
@@ -113,7 +110,7 @@ fun DashboardScreen(
     // Initial popup display: Active hole sobar app open korle dekhte pabe, r Off hole dekha jabe na
     LaunchedEffect(popups) {
         val active = popups.firstOrNull { it.status.equals("active", ignoreCase = true) }
-        if (active != null && activePopupNotice == null) {
+        if (active != null && activePopupNotice == null && dismissedPopupId != active.id) {
             activePopupNotice = active
         }
     }
@@ -123,10 +120,11 @@ fun DashboardScreen(
 
     // Role & User Group Configuration:
     // 1. Super Admin: সম্পূর্ণ অ্যাপের নিয়ন্ত্রণ
-    // 2. Everyone: MPO, AM, TM, RSM, DA, ADIC, DIC, Super Admin
+    // 2. Everyone (ALL): MPO, AM, TM, RSM, DA, ADIC, DIC, Super Admin
     // 3. MPO: MPO-এর জন্য নির্ধারিত Feature ও Access
     // 4. Supervisor: AM, TM, RSM
     // 5. DA (Delivery Assistant): নির্ধারিত Delivery Assistant Feature
+    // 6. DIC: DIC Only
     val supervisorRoles = listOf("SUPERVISOR", "AM", "TM", "RSM")
 
     fun hasAccess(itemAllowedRole: String): Boolean {
@@ -134,13 +132,12 @@ fun DashboardScreen(
         val roleStr = itemAllowedRole.trim()
         if (roleStr.isBlank() ||
             roleStr.equals("ALL", ignoreCase = true) ||
-            roleStr.equals("EVERYONE", ignoreCase = true) ||
-            roleStr.equals("PALL+SALL", ignoreCase = true)) {
+            roleStr.equals("EVERYONE", ignoreCase = true)) {
             return true
         }
 
         val tokens = roleStr.split(",", "+").map { it.trim().uppercase() }
-        if (tokens.any { it == "ALL" || it == "EVERYONE" || it == "PALL+SALL" }) {
+        if (tokens.any { it == "ALL" || it == "EVERYONE" }) {
             return true
         }
 
@@ -161,11 +158,10 @@ fun DashboardScreen(
             return true
         }
 
-        // Legacy groups
-        val primaryRoles = listOf("MPO", "AM", "RSM", "TM", "SUPER_ADMIN", "SUPERVISOR")
-        val specialRoles = listOf("DIC", "ADIC", "DA", "SUPER_ADMIN")
-        if (tokens.contains("PALL") && userRole in primaryRoles) return true
-        if (tokens.contains("SALL") && userRole in specialRoles) return true
+        // DIC specific
+        if (tokens.contains("DIC") && isDIC) {
+            return true
+        }
 
         return tokens.contains(userRole)
     }
@@ -178,25 +174,44 @@ fun DashboardScreen(
     val filteredMenus = remember(accessibleMenus, searchQuery, selectedMonth) {
         accessibleMenus.filter { item ->
             val matchQuery = searchQuery.isBlank() || item.title.contains(searchQuery, ignoreCase = true)
-            val matchMonth = selectedMonth == "ALL" || item.month.isBlank() || item.month.equals(selectedMonth, ignoreCase = true) || item.group == "grid1"
+            val matchMonth = selectedMonth == "ALL" || item.month.equals(selectedMonth, ignoreCase = true) || item.group == "grid1"
             matchQuery && matchMonth
         }
     }
 
-    val pinnedMenus = remember(filteredMenus) {
-        repository.sortMenusDescending(filteredMenus.filter { it.isPinned })
+    // Z to A and 30-29-28-27 sorting helper
+    val sortDescendingZtoA: (List<MenuItem>) -> List<MenuItem> = remember {
+        { list ->
+            list.sortedWith(Comparator { a, b ->
+                if (a.isPinned != b.isPinned) {
+                    return@Comparator if (a.isPinned) -1 else 1
+                }
+                val aDigits = a.date.filter { it.isDigit() }.toIntOrNull()
+                val bDigits = b.date.filter { it.isDigit() }.toIntOrNull()
+                if (aDigits != null && bDigits != null && aDigits != bDigits) {
+                    return@Comparator bDigits.compareTo(aDigits) // 30, 29, 28, 27 descending
+                }
+                if (aDigits != null && bDigits == null) return@Comparator -1
+                if (aDigits == null && bDigits != null) return@Comparator 1
+
+                val titleCmp = b.title.compareTo(a.title, ignoreCase = true)
+                if (titleCmp != 0) return@Comparator titleCmp
+
+                b.id.compareTo(a.id)
+            })
+        }
     }
 
-    val grid1Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid1" || it.group == "grid-1" || it.group == "grid_1" || it.group.equals("primary", ignoreCase = true) }) }
-    val grid2Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid2" }) }
-    val grid3Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid3" }) }
-    val grid4Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid4" }) }
-    val grid5Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid5" }) }
-    val grid6Menus = remember(filteredMenus) { repository.sortMenusDescending(filteredMenus.filter { it.group == "grid6" }) }
+    val pinnedMenus = remember(filteredMenus) {
+        sortDescendingZtoA(filteredMenus.filter { it.isPinned })
+    }
 
-    val sortedTrainingCards = remember(trainingCards) { repository.sortCardsDescending(trainingCards) }
-    val sortedProductCards = remember(productCards) { repository.sortCardsDescending(productCards) }
-    val sortedTargetSheets = remember(targetSheets) { repository.sortCardsDescending(targetSheets) }
+    val grid1Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid1" }) }
+    val grid2Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid2" }) }
+    val grid3Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid3" }) }
+    val grid4Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid4" }) }
+    val grid5Menus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid5" }) }
+    val gridStockMenus = remember(filteredMenus) { sortDescendingZtoA(filteredMenus.filter { it.group == "grid_stock" }) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -207,15 +222,9 @@ fun DashboardScreen(
                     drawerContainerColor = MaterialTheme.colorScheme.surface,
                     modifier = Modifier.width(300.dp)
                 ) {
-                    val drawerScrollState = rememberScrollState()
-                    val activeSortedSidebarMenus = remember(sidebarMenus) {
-                        sidebarMenus.filter { it.status == "active" }
-                            .sortedWith(compareBy<SidebarMenuItem> { it.order }.thenBy { it.name })
-                    }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .verticalScroll(drawerScrollState)
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -235,17 +244,15 @@ fun DashboardScreen(
                         }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                        if (isSuperAdmin) {
-                            NavigationDrawerItem(
-                                icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MonicoBlue) },
-                                label = { Text("অ্যাডমিন প্যানেল (Admin Console)", fontWeight = FontWeight.SemiBold) },
-                                selected = false,
-                                onClick = {
-                                    scope.launch { drawerState.close() }
-                                    onOpenAdminPanel()
-                                }
-                            )
-                        }
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MonicoBlue) },
+                            label = { Text("অ্যাডমিন প্যানেল (Admin Console)", fontWeight = FontWeight.SemiBold) },
+                            selected = false,
+                            onClick = {
+                                scope.launch { drawerState.close() }
+                                onOpenAdminPanel()
+                            }
+                        )
 
                         NavigationDrawerItem(
                             icon = { Icon(Icons.Default.Security, contentDescription = null, tint = MonicoGreen) },
@@ -259,20 +266,9 @@ fun DashboardScreen(
 
                         Text("সাইডবার লিংক ও পোর্টাল", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
-                        activeSortedSidebarMenus.forEach { sm ->
+                        sidebarMenus.filter { it.status == "active" }.forEach { sm ->
                             NavigationDrawerItem(
-                                icon = {
-                                    if (sm.icon.startsWith("http") || sm.icon.startsWith("data:")) {
-                                        AsyncImage(
-                                            model = ImageUtils.resolveImageModel(sm.icon),
-                                            contentDescription = sm.name,
-                                            modifier = Modifier.size(20.dp),
-                                            contentScale = ContentScale.Fit
-                                        )
-                                    } else {
-                                        Icon(IconUtils.getIconForName(sm.icon), contentDescription = null, tint = MonicoBlue)
-                                    }
-                                },
+                                icon = { Icon(Icons.Default.Link, contentDescription = null, tint = MonicoBlue) },
                                 label = { Text(sm.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                 selected = false,
                                 onClick = {
@@ -284,7 +280,7 @@ fun DashboardScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.weight(1f))
                         Text(
                             text = "Version 1.0.0 (Mobile Firebase)\n© 2026 Monico One",
                             fontSize = 10.sp,
@@ -460,7 +456,7 @@ fun DashboardScreen(
                                         }
                                     }
 
-                                    if (isSuperAdmin) {
+                                    if (isSuperAdmin || isDIC) {
                                         IconButton(
                                             onClick = onOpenAdminPanel,
                                             modifier = Modifier.size(34.dp)
@@ -692,19 +688,19 @@ fun DashboardScreen(
                     }
                 }
 
-                // 10. Grid 6: Stock Report (PDF)
+                // 9.5 Grid: Stock Report (PDF) - View under Sales Report
                 item {
                     SectionHeader(
                         title = "স্টক রিপোর্ট (STOCK REPORT PDF)",
                         icon = Icons.Default.Inventory,
                         color = Color(0xFF0D9488)
                     )
-                    if (grid6Menus.isNotEmpty()) {
+                    if (gridStockMenus.isNotEmpty()) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
-                            items(grid6Menus) { item ->
+                            items(gridStockMenus) { item ->
                                 MenuItemCard(
                                     item = item,
                                     currentEmpId = currentUser?.employeeId ?: "",
@@ -720,19 +716,19 @@ fun DashboardScreen(
                     }
                 }
 
-                // 11. Product Training Section
+                // 10. Product Training Section
                 item {
                     SectionHeader(
                         title = "প্রোডাক্ট ট্রেনিং (PRODUCT TRAINING)",
                         icon = Icons.Default.School,
                         color = MonicoPurple
                     )
-                    if (sortedTrainingCards.isNotEmpty()) {
+                    if (trainingCards.isNotEmpty()) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
-                            items(sortedTrainingCards) { card ->
+                            items(trainingCards) { card ->
                                 ContentCardItem(
                                     card = card,
                                     onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }
@@ -751,12 +747,12 @@ fun DashboardScreen(
                         icon = Icons.Default.RocketLaunch,
                         color = MonicoGreen
                     )
-                    if (sortedProductCards.isNotEmpty()) {
+                    if (productCards.isNotEmpty()) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
-                            items(sortedProductCards) { card ->
+                            items(productCards) { card ->
                                 ContentCardItem(
                                     card = card,
                                     onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }
@@ -775,12 +771,12 @@ fun DashboardScreen(
                         icon = Icons.Default.TrackChanges,
                         color = MonicoAmber
                     )
-                    if (sortedTargetSheets.isNotEmpty()) {
+                    if (targetSheets.isNotEmpty()) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
-                            items(sortedTargetSheets) { card ->
+                            items(targetSheets) { card ->
                                 ContentCardItem(
                                     card = card,
                                     onClick = { handleContentCardClick(card, context, onOpenUrl, onOpenImageViewer) }
@@ -842,7 +838,10 @@ fun DashboardScreen(
     activePopupNotice?.let { popup ->
         UserPopupDialog(
             popup = popup,
-            onDismiss = { activePopupNotice = null }
+            onDismiss = {
+                dismissedPopupId = popup.id
+                activePopupNotice = null
+            }
         )
     }
 
@@ -889,13 +888,8 @@ private fun isPdfFile(url: String): Boolean {
 }
 
 private fun isImageFile(url: String): Boolean {
-    if (url.isBlank()) return false
-    if (url.startsWith("data:image", ignoreCase = true)) return true
-    val lower = url.lowercase()
-    return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp") || lower.contains("image")
+    return ImageUtils.isImage(url)
 }
-
-private fun isImageUrl(url: String): Boolean = isImageFile(url)
 
 private fun handleMenuCardClick(
     item: MenuItem,
@@ -903,86 +897,56 @@ private fun handleMenuCardClick(
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
-    // 1. GRID 1: PRIMARY MENUS (DAILY WORK) - STRICTLY URL/LINK IN WEBVIEW OR BROWSER
-    val isGrid1 = item.group == "grid1" || item.group == "grid-1" || item.group == "grid_1" || 
-        item.group.equals("primary", ignoreCase = true) || item.url.startsWith("go:") ||
-        item.title.contains("order", ignoreCase = true) || item.title.contains("অর্ডার", ignoreCase = true)
-
-    if (isGrid1) {
-        val targetUrl = when {
-            item.url.isNotBlank() -> item.url
-            item.images.isNotEmpty() && !isImageFile(item.images.first()) -> item.images.first()
-            else -> ""
-        }
-        val resolved = resolveGoUrl(targetUrl)
-        if (resolved.isNotBlank()) {
-            onOpenUrl(item.title, resolved)
-        } else {
-            Toast.makeText(context, "${item.title}: কোনো লিংক দেওয়া নেই", Toast.LENGTH_SHORT).show()
-        }
-        return
-    }
-
-    // 2. GRID 5 & GRID 6: SALES REPORT & STOCK REPORT - STRICTLY PDF ONLY
-    if (item.group == "grid5" || item.group == "grid6") {
-        val pdfUrl = when {
-            item.url.isNotBlank() -> resolveGoUrl(item.url)
-            item.images.isNotEmpty() -> item.images.first()
-            else -> ""
-        }
-        if (pdfUrl.isNotBlank()) {
-            if (pdfUrl.startsWith("http://") || pdfUrl.startsWith("https://")) {
-                onOpenUrl(item.title, pdfUrl)
-            } else {
-                onOpenImageViewer(item.title, listOf(pdfUrl))
-            }
-        } else {
-            val label = if (item.group == "grid6") "স্টক রিপোর্ট" else "সেলস রিপোর্ট"
-            Toast.makeText(context, "${item.title}: কোনো $label PDF যুক্ত নেই", Toast.LENGTH_SHORT).show()
-        }
-        return
-    }
-
-    // 3. IF URL IS A DIRECT WEB PORTAL / SYSTEM COMMAND AND NOT AN IMAGE
-    val trimmedUrl = item.url.trim()
-    if (trimmedUrl.isNotBlank() && !isPdfFile(trimmedUrl) && !isImageUrl(trimmedUrl) && 
-        (trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://") || trimmedUrl.startsWith("go:"))) {
-        onOpenUrl(item.title, resolveGoUrl(trimmedUrl))
-        return
-    }
-
-    // 4. GRIDS 2, 3, 4: BONUS SHEETS, CIRCULARS, SALARY BILLS - IMAGES ONLY
-    val allImages = mutableListOf<String>()
+    // 1. FIRST: Check if this item is or has an IMAGE (User requirement: ইমেজ থাকলে ইমেজ ভিউয়ার হবে)
+    val itemImages = mutableListOf<String>()
     item.images.forEach { img ->
-        val trimmed = img.trim()
-        if (trimmed.isNotBlank()) {
-            if (!isImageUrl(trimmed) && (trimmed.startsWith("http://") || trimmed.startsWith("https://")) && !trimmed.contains("base64")) {
-                // If a non-image URL ended up in images, open URL directly instead of failing in image viewer
-                if (allImages.isEmpty() && item.images.size == 1) {
-                    onOpenUrl(item.title, resolveGoUrl(trimmed))
-                    return
-                }
-            } else {
-                allImages.add(trimmed)
-            }
+        if (img.isNotBlank() && isImageFile(img)) {
+            itemImages.add(img)
+        }
+    }
+    if (itemImages.isEmpty() && item.url.isNotBlank() && isImageFile(item.url)) {
+        itemImages.add(item.url)
+    }
+    if (itemImages.isEmpty() && item.icon.isNotBlank() && isImageFile(item.icon)) {
+        itemImages.add(item.icon)
+    }
+
+    if (itemImages.isNotEmpty()) {
+        onOpenImageViewer(item.title, itemImages)
+        return
+    }
+
+    // 2. SECOND: Check if this item is or has a PDF (User requirement: আর যেগুলা পিডিএফ সেগুলো পিডিএফ ভিউয়ার এর মাধ্যমে ভিউ হবে)
+    val pdfFromImages = item.images.firstOrNull { isPdfFile(it) }
+    val isExplicitPdf = isPdfFile(item.url) || pdfFromImages != null ||
+            ((item.group == "grid5" || item.group == "grid_stock") && item.url.isNotBlank() && !isImageFile(item.url))
+
+    if (isExplicitPdf) {
+        val pdfSource = when {
+            isPdfFile(item.url) -> item.url
+            pdfFromImages != null -> pdfFromImages
+            else -> item.url
+        }
+        if (pdfSource.isNotBlank()) {
+            onOpenUrl(item.title, pdfSource)
+            return
         }
     }
 
-    if (allImages.isEmpty()) {
-        if (item.url.isNotBlank() && isImageUrl(item.url)) {
-            val eff = resolveGoUrl(item.url)
-            allImages.add(eff)
+    // 3. THIRD: Web URLs, Go: shortcuts, and other links (User requirement: website http ইউ আর এলো ওপেন হবে)
+    if (item.url.isNotBlank()) {
+        val effective = resolveGoUrl(item.url)
+        if (isImageFile(effective)) {
+            onOpenImageViewer(item.title, listOf(effective))
+        } else if (isPdfFile(effective)) {
+            onOpenUrl(item.title, effective)
+        } else {
+            onOpenUrl(item.title, effective)
         }
-    }
-    if (allImages.isEmpty() && item.icon.isNotBlank() && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
-        allImages.add(item.icon)
+        return
     }
 
-    if (allImages.isNotEmpty()) {
-        onOpenImageViewer(item.title, allImages)
-    } else {
-        Toast.makeText(context, "${item.title}: কোনো ছবি যুক্ত নেই", Toast.LENGTH_SHORT).show()
-    }
+    Toast.makeText(context, "${item.title}: কোনো ফাইল বা লিংক যুক্ত নেই", Toast.LENGTH_SHORT).show()
 }
 
 private fun resolveGoUrl(url: String): String {
@@ -1010,24 +974,52 @@ private fun handleContentCardClick(
     onOpenUrl: (title: String, url: String) -> Unit,
     onOpenImageViewer: (title: String, images: List<String>) -> Unit
 ) {
+    // 1. FIRST: Check for images (User requirement: ইমেজ থাকলে ইমেজ ভিউয়ার হবে)
     val validImgs = mutableListOf<String>()
-    card.images.forEach { if (it.isNotBlank()) validImgs.add(it) }
-    if (validImgs.isEmpty() && card.image.isNotBlank()) {
+    card.images.forEach { img ->
+        if (img.isNotBlank() && isImageFile(img)) {
+            validImgs.add(img)
+        }
+    }
+    if (validImgs.isEmpty() && card.image.isNotBlank() && isImageFile(card.image)) {
         validImgs.add(card.image)
+    }
+    if (validImgs.isEmpty() && card.url.isNotBlank() && isImageFile(card.url)) {
+        validImgs.add(card.url)
     }
 
     if (validImgs.isNotEmpty()) {
         onOpenImageViewer(card.title, validImgs)
-    } else if (card.url.isNotBlank()) {
-        val u = card.url.trim().lowercase()
-        if (u.endsWith(".png") || u.endsWith(".jpg") || u.endsWith(".jpeg") || u.endsWith(".webp") || u.startsWith("data:image")) {
-            onOpenImageViewer(card.title, listOf(card.url.trim()))
-        } else {
-            onOpenUrl(card.title, card.url.trim())
-        }
-    } else {
-        Toast.makeText(context, "${card.title}: কোনো ছবি বা লিংক যুক্ত নেই", Toast.LENGTH_SHORT).show()
+        return
     }
+
+    // 2. SECOND: Check for PDF (User requirement: আর যেগুলা পিডিএফ সেগুলো পিডিএফ ভিউয়ার এর মাধ্যমে ভিউ হবে)
+    val pdfSource = when {
+        isPdfFile(card.url) -> card.url
+        isPdfFile(card.image) -> card.image
+        card.images.any { isPdfFile(it) } -> card.images.first { isPdfFile(it) }
+        else -> null
+    }
+
+    if (pdfSource != null) {
+        onOpenUrl(card.title, pdfSource)
+        return
+    }
+
+    // 3. THIRD: Web URL (User requirement: website http ইউ আর এলো ওপেন হবে)
+    if (card.url.isNotBlank()) {
+        val effective = resolveGoUrl(card.url)
+        if (isImageFile(effective)) {
+            onOpenImageViewer(card.title, listOf(effective))
+        } else if (isPdfFile(effective)) {
+            onOpenUrl(card.title, effective)
+        } else {
+            onOpenUrl(card.title, effective)
+        }
+        return
+    }
+
+    Toast.makeText(context, "${card.title}: কোনো ফাইল বা লিংক যুক্ত নেই", Toast.LENGTH_SHORT).show()
 }
 
 @Composable
@@ -1264,8 +1256,8 @@ private fun MonthFilterBar(
                     DropdownMenuItem(
                         text = { Text(label, fontSize = 12.sp) },
                         onClick = {
-                            onMonthSelected(key)
                             expanded = false
+                            onMonthSelected(key)
                         }
                     )
                 }
@@ -1373,21 +1365,12 @@ private fun PrimaryMenuItemCard(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (item.icon.startsWith("http") || item.icon.startsWith("data:")) {
-                        AsyncImage(
-                            model = ImageUtils.resolveImageModel(item.icon),
-                            contentDescription = item.title,
-                            modifier = Modifier.size(24.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Icon(
-                            imageVector = IconUtils.getIconForName(item.icon),
-                            contentDescription = item.title,
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = getIconForName(item.icon),
+                        contentDescription = item.title,
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -1412,29 +1395,33 @@ private fun MenuItemCard(
     onClick: () -> Unit
 ) {
     val hasSeen = item.seenBy[currentEmpId] == true
-    val isGrid1 = item.group == "grid1" || item.group == "grid-1" || item.group == "grid_1" || item.group.equals("primary", ignoreCase = true) || item.url.startsWith("go:")
-    val isPdf = item.group == "grid5" || item.group == "grid6"
-    val isStock = item.group == "grid6"
+    // Check if the item has valid images first (User requirement: ইমেজ থাকলে ইমেজ ভিউয়ার হবে)
+    val hasImages = item.images.any { it.isNotBlank() && isImageFile(it) } ||
+            (item.url.isNotBlank() && isImageFile(item.url)) ||
+            (item.icon.isNotBlank() && isImageFile(item.icon))
 
-    val imageList = remember(item, isPdf, isGrid1) {
-        if (isPdf || isGrid1) {
-            emptyList()
-        } else {
-            val list = mutableListOf<String>()
-            item.images.forEach { if (it.isNotBlank()) list.add(it) }
-            if (list.isEmpty()) {
-                if (item.url.isNotBlank() && isImageUrl(item.url)) {
-                    list.add(item.url)
-                } else if (item.icon.isNotBlank() && (item.icon.startsWith("http") || item.icon.startsWith("data:"))) {
-                    list.add(item.icon)
-                }
+    val isPdf = !hasImages && (
+            (item.url.isNotBlank() && isPdfFile(item.url)) ||
+            item.images.any { isPdfFile(it) } ||
+            ((item.group == "grid5" || item.group == "grid_stock") && item.url.isNotBlank()) ||
+            item.icon.equals("fa-file-pdf", ignoreCase = true)
+    )
+
+    val imageList = remember(item, hasImages) {
+        val list = mutableListOf<String>()
+        item.images.forEach { if (it.isNotBlank() && isImageFile(it)) list.add(it) }
+        if (list.isEmpty()) {
+            if (item.url.isNotBlank() && isImageFile(item.url)) {
+                list.add(item.url)
+            } else if (item.icon.isNotBlank() && isImageFile(item.icon)) {
+                list.add(item.icon)
             }
-            list
         }
+        list
     }
 
-    val isImageCard = !isPdf && !isGrid1
-    val hasImagePreview = isImageCard && imageList.isNotEmpty()
+    val isImageCard = hasImages || imageList.isNotEmpty()
+    val hasImagePreview = imageList.isNotEmpty()
 
     Card(
         onClick = onClick,
@@ -1463,51 +1450,6 @@ private fun MenuItemCard(
                             )
                         )
                 )
-            } else if (isGrid1) {
-                // Primary menu style with Icon
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(MonicoBlue, MonicoNavy)
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (item.icon.startsWith("http") || item.icon.startsWith("data:")) {
-                            AsyncImage(
-                                model = ImageUtils.resolveImageModel(item.icon),
-                                contentDescription = item.title,
-                                modifier = Modifier.size(32.dp),
-                                contentScale = ContentScale.Fit
-                            )
-                        } else {
-                            Icon(
-                                imageVector = IconUtils.getIconForName(item.icon),
-                                contentDescription = item.title,
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Color.White.copy(alpha = 0.25f)
-                        ) {
-                            Text(
-                                text = "PRIMARY MENU",
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
             } else if (isPdf) {
                 // PDF Card styling with PDF Icon
                 Box(
@@ -1515,7 +1457,7 @@ private fun MenuItemCard(
                         .fillMaxSize()
                         .background(
                             Brush.linearGradient(
-                                colors = if (isStock) listOf(Color(0xFF0D9488), Color(0xFF0F766E)) else listOf(Color(0xFFDC2626), Color(0xFF991B1B))
+                                colors = listOf(Color(0xFFDC2626), Color(0xFF991B1B))
                             )
                         ),
                     contentAlignment = Alignment.Center
@@ -1525,7 +1467,7 @@ private fun MenuItemCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = if (isStock) Icons.Default.Inventory else Icons.Default.PictureAsPdf,
+                            imageVector = Icons.Default.PictureAsPdf,
                             contentDescription = "PDF Icon",
                             tint = Color.White,
                             modifier = Modifier.size(34.dp)
@@ -1535,7 +1477,7 @@ private fun MenuItemCard(
                             color = Color.White.copy(alpha = 0.25f)
                         ) {
                             Text(
-                                text = if (isStock) "STOCK PDF" else "SALES PDF",
+                                text = "PDF REPORT",
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
@@ -1582,7 +1524,7 @@ private fun MenuItemCard(
                 }
             }
 
-            // Top-left type badge: Link icon on Grid 1, PDF icon on PDF cards, Image icon on Image cards
+            // Top-left type badge: Image icon on Image cards, PDF icon on PDF cards
             Surface(
                 shape = RoundedCornerShape(6.dp),
                 color = Color(0xCC0F172A),
@@ -1595,20 +1537,7 @@ private fun MenuItemCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    if (isGrid1) {
-                        Icon(
-                            imageVector = getIconForName(item.icon),
-                            contentDescription = "Link",
-                            tint = Color(0xFF67E8F9),
-                            modifier = Modifier.size(11.dp)
-                        )
-                        Text(
-                            text = "LINK",
-                            fontSize = 8.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    } else if (isPdf) {
+                    if (isPdf) {
                         Icon(
                             imageVector = Icons.Default.PictureAsPdf,
                             contentDescription = "PDF",
@@ -1763,20 +1692,14 @@ private fun ContentCardItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    val isPdf = card.url.lowercase().endsWith(".pdf")
-                    val isLink = card.url.isNotBlank() && imageList.isEmpty()
-                    val badgeIcon = if (isPdf) Icons.Default.Description else if (isLink) Icons.Default.Link else Icons.Default.Image
-                    val badgeTint = if (isPdf) Color(0xFFEF4444) else if (isLink) Color(0xFF10B981) else Color(0xFF38BDF8)
-                    val badgeText = if (isPdf) "PDF" else if (isLink) "LINK" else if (imageList.size > 1) "${imageList.size} Pages" else "IMAGE"
-
                     Icon(
-                        imageVector = badgeIcon,
-                        contentDescription = badgeText,
-                        tint = badgeTint,
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Image",
+                        tint = Color(0xFF38BDF8),
                         modifier = Modifier.size(11.dp)
                     )
                     Text(
-                        text = badgeText,
+                        text = if (imageList.size > 1) "${imageList.size} Pages" else "IMAGE",
                         fontSize = 8.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -1802,5 +1725,17 @@ private fun ContentCardItem(
 }
 
 private fun getIconForName(iconName: String): androidx.compose.ui.graphics.vector.ImageVector {
-    return IconUtils.getIconForName(iconName)
+    return when {
+        iconName.contains("cart", ignoreCase = true) || iconName.contains("order", ignoreCase = true) -> Icons.Default.ShoppingCart
+        iconName.contains("dcc", ignoreCase = true) || iconName.contains("check", ignoreCase = true) -> Icons.Default.CheckCircle
+        iconName.contains("calendar", ignoreCase = true) || iconName.contains("date", ignoreCase = true) -> Icons.Default.CalendarMonth
+        iconName.contains("money", ignoreCase = true) || iconName.contains("bill", ignoreCase = true) -> Icons.Default.AttachMoney
+        iconName.contains("user", ignoreCase = true) || iconName.contains("profile", ignoreCase = true) -> Icons.Default.Person
+        iconName.contains("chart", ignoreCase = true) || iconName.contains("report", ignoreCase = true) -> Icons.Default.BarChart
+        iconName.contains("pdf", ignoreCase = true) -> Icons.Default.PictureAsPdf
+        iconName.contains("bullhorn", ignoreCase = true) || iconName.contains("bell", ignoreCase = true) -> Icons.Default.Campaign
+        iconName.contains("truck", ignoreCase = true) || iconName.contains("delivery", ignoreCase = true) -> Icons.Default.LocalShipping
+        iconName.contains("route", ignoreCase = true) || iconName.contains("tour", ignoreCase = true) -> Icons.Default.NearMe
+        else -> Icons.Default.Folder
+    }
 }

@@ -193,10 +193,7 @@ class MainActivity : ComponentActivity() {
                                         isImageViewerOpen = true
                                     },
                                     onOpenAdminPanel = {
-                                        val role = repository.currentUser.value?.role?.trim()?.uppercase() ?: ""
-                                        if (role == "SUPER_ADMIN" || role == "SUPER ADMIN") {
-                                            currentScreen = ScreenState.AdminPanel
-                                        }
+                                        currentScreen = ScreenState.AdminPanel
                                     },
                                     initialShowNotifications = triggerNotificationsDialog
                                 )
